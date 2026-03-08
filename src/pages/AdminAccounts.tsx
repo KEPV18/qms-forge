@@ -111,7 +111,7 @@ export default function AdminAccounts() {
       }
       const otherUpdates = { ...updates }; delete otherUpdates.password;
       if (Object.keys(otherUpdates).length > 0) await updateUser(u.id, otherUpdates);
-      toast({ title: "✅ تم الحفظ", description: `تم تحديث بيانات ${updates.name || u.name}.` });
+      toast({ title: "✅ Saved", description: `${updates.name || u.name} has been updated.` });
       setEditState(prev => { const s = { ...prev }; delete s[u.id]; return s; });
     } catch {
       toast({ title: "❌ خطأ", description: "فشل التحديث. حاول مرة أخرى.", variant: "destructive" });
