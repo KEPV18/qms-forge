@@ -71,7 +71,7 @@ export function Header() {
     <div className="relative w-full focus-within:ring-2 focus-within:ring-primary/20 rounded-lg transition-all duration-300" ref={dropdownRef}>
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
       <Input
-        placeholder="البحث في الملفات والمجلدات..."
+        placeholder="Search files and folders..."
         className="pl-10 bg-background/50 border-border/50 rounded-lg shadow-sm focus-visible:ring-0 focus-visible:border-primary/50 transition-all"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
