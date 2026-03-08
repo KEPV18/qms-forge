@@ -359,9 +359,9 @@ export default function AdminAccounts() {
                   <Select value={filterStatus} onValueChange={setFilterStatus}>
                     <SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">كل الحالات</SelectItem>
-                      <SelectItem value="active">نشط</SelectItem>
-                      <SelectItem value="inactive">معطل</SelectItem>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
