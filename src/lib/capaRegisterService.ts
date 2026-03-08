@@ -389,7 +389,7 @@ export async function updateCAPA(capaId: string, updates: CAPAUpdate): Promise<C
     updatedCAPA.relatedRisk,
   ];
   
-  const range = `${SHEET_NAME}!A${capa.rowIndex}:O${capa.rowIndex}`;
+  const range = `'${SHEET_NAME}'!A${capa.rowIndex}:O${capa.rowIndex}`;
   const url = `${SHEETS_API_BASE}/${SPREADSHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED&key=${API_KEY}`;
   
   const response = await fetch(url, {
