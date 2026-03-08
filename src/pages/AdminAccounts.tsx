@@ -513,9 +513,9 @@ export default function AdminAccounts() {
                               </Button>
                             </div>
                             <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-destructive hover:bg-destructive/10"
-                              onClick={() => { if (!isProtectedAdmin(u) && window.confirm(`حذف "${u.name}"؟`)) removeUser(u.id); }}
+                              onClick={() => { if (!isProtectedAdmin(u) && window.confirm(`Delete "${u.name}"?`)) removeUser(u.id); }}
                               disabled={isProtectedAdmin(u)}>
-                              <Trash2 className="w-3 h-3" /> حذف الحساب
+                              <Trash2 className="w-3 h-3" /> Delete Account
                             </Button>
                           </div>
                         </div>
