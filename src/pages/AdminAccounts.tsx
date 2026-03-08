@@ -298,7 +298,7 @@ export default function AdminAccounts() {
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
                 <UserPlus className="w-5 h-5 text-primary" />
-                <CardTitle className="text-lg">إضافة مستخدم</CardTitle>
+                <CardTitle className="text-lg">Add New User</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
