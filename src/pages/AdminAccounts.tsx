@@ -232,7 +232,7 @@ export default function AdminAccounts() {
                 <Download className="w-4 h-4" /> Export CSV
               </Button>
               <Button variant="outline" size="sm" className="gap-2" onClick={handleRefresh} disabled={isRefreshing}>
-                <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} /> تحديث
+                <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} /> Refresh
               </Button>
             </div>
           </div>
