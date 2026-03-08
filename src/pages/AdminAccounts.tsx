@@ -80,7 +80,37 @@ export default function AdminAccounts() {
 
     setSavingRows(prev => ({ ...prev, [u.id]: true }));
     try {
-      await updateUser(u.id, updates);
+      // Handle password change via Edge Function
+      if (updates.password && typeof updates.password === "string" && updates.password.trim().length > 0) {
+        const newPassword = updates.password.trim();
+        if (newPassword.length < 6) {
+          toast({ title: "❌ خطأ", description: "كلمة المرور يجب أن تكون 6 أحرف على الأقل.", variant: "destructive" });
+          setSavingRows(prev => ({ ...prev, [u.id]: false }));
+          return;
+        }
+
+        const { data, error } = await supabase.functions.invoke("admin-update-password", {
+          body: { target_user_id: u.id, new_password: newPassword },
+        });
+
+        if (error || (data && data.error)) {
+          const msg = data?.error || error?.message || "فشل تغيير كلمة المرور";
+          toast({ title: "❌ خطأ في تغيير كلمة المرور", description: msg, variant: "destructive" });
+          setSavingRows(prev => ({ ...prev, [u.id]: false }));
+          return;
+        }
+
+        toast({ title: "✅ تم تغيير كلمة المرور", description: `تم تحديث كلمة مرور ${u.name} بنجاح.` });
+      }
+
+      // Handle other updates (name, email, role, active)
+      const otherUpdates = { ...updates };
+      delete otherUpdates.password;
+
+      if (Object.keys(otherUpdates).length > 0) {
+        await updateUser(u.id, otherUpdates);
+      }
+
       toast({
         title: "✅ تم الحفظ بنجاح",
         description: `تم تحديث بيانات ${updates.name || u.name} في قاعدة البيانات.`,
