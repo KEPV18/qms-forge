@@ -476,7 +476,7 @@ export default function AdminAccounts() {
                               <Input value={rowEdit.email !== undefined ? rowEdit.email : u.email} onChange={(e) => handleRowEdit(u.id, "email", e.target.value)} className="h-9 text-sm" />
                             </div>
                             <div className="space-y-1.5">
-                              <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"><Shield className="w-3 h-3" /> الدور</Label>
+                              <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"><Shield className="w-3 h-3" /> Role</Label>
                               <Select value={rowEdit.role !== undefined ? rowEdit.role : u.role} onValueChange={(v) => handleRowEdit(u.id, "role", v as AppUser["role"])}>
                                 <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                                 <SelectContent>
