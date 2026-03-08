@@ -393,16 +393,16 @@ export default function AdminAccounts() {
                 </div>
                 <div className="w-10" />
                 <button className="flex-1 flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => toggleSort("name")}>
-                  الاسم <SortIcon field="name" />
+                  Name <SortIcon field="name" />
                 </button>
                 <button className="w-48 flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => toggleSort("email")}>
-                  البريد <SortIcon field="email" />
+                  Email <SortIcon field="email" />
                 </button>
                 <button className="w-24 flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => toggleSort("role")}>
-                  الدور <SortIcon field="role" />
+                  Role <SortIcon field="role" />
                 </button>
                 <button className="w-28 flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => toggleSort("lastLoginAt")}>
-                  آخر دخول <SortIcon field="lastLoginAt" />
+                  Last Login <SortIcon field="lastLoginAt" />
                 </button>
                 <div className="w-24" />
               </div>
