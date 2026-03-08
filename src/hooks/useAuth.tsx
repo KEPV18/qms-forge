@@ -56,13 +56,13 @@ function saveUsersLocal(users: AppUser[]) {
   } catch { void 0; }
 }
 
-function loadSession(): { userId: string; role: Role } | null {
+function loadSession(): { userId: string; role: Role; displayName?: string } | null {
   const raw = localStorage.getItem(SESSION_KEY);
   if (!raw) return null;
   try {
-    const s = JSON.parse(raw) as { userId: string; role?: Role };
+    const s = JSON.parse(raw) as { userId: string; role?: Role; displayName?: string };
     if (!s.userId) return null;
-    return { userId: s.userId, role: s.role || "user" };
+    return { userId: s.userId, role: s.role || "user", displayName: s.displayName };
   } catch {
     return null;
   }
