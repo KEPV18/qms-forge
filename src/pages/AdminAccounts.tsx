@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Shield, UserPlus, KeyRound, Loader2, Save, Mail, User, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function AdminAccounts() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(localStorage.getItem('sidebarCollapsed') === 'true');
