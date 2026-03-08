@@ -456,7 +456,7 @@ export default function RiskRegisterPage() {
             </CardContent>
           </Card>
         </main>
-        <Footer />
+        {/* Footer */}
       </div>
     </div>
   );

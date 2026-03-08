@@ -1,6 +1,8 @@
 import * as React from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { ProfileRow } from "@/integrations/supabase/types";
+import type { Tables } from "@/integrations/supabase/types";
+
+type ProfileRow = Tables<'profiles'>;
 
 type Role = "admin" | "manager" | "auditor" | "user" | "moderator";
 

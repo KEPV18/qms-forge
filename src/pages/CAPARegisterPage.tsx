@@ -493,7 +493,7 @@ export default function CAPARegisterPage() {
             </CardContent>
           </Card>
         </main>
-        <Footer />
+        {/* Footer */}
       </div>
     </div>
   );
