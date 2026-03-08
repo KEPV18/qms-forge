@@ -70,7 +70,7 @@ export default function AdminAccounts() {
     setIsRefreshing(true);
     await reloadUsers();
     setIsRefreshing(false);
-    toast({ title: "تم التحديث", description: "تم تحديث قائمة المستخدمين." });
+    toast({ title: "Refreshed", description: "User list has been updated." });
   };
 
   const handleAdd = () => {
