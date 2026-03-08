@@ -349,7 +349,7 @@ export default function AdminAccounts() {
                   <Select value={filterRole} onValueChange={setFilterRole}>
                     <SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">كل الأدوار</SelectItem>
+                      <SelectItem value="all">All Roles</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
                       <SelectItem value="manager">Manager</SelectItem>
                       <SelectItem value="auditor">Auditor</SelectItem>
