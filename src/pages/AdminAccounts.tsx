@@ -338,7 +338,7 @@ export default function AdminAccounts() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <Users className="w-5 h-5 text-primary" />
-                  <CardTitle className="text-lg">جميع المستخدمين</CardTitle>
+                  <CardTitle className="text-lg">All Users</CardTitle>
                   <Badge variant="secondary" className="ml-1">{filteredUsers.length}</Badge>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
