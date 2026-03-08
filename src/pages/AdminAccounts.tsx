@@ -409,7 +409,7 @@ export default function AdminAccounts() {
 
               <div className="divide-y divide-border/50">
                 {filteredUsers.length === 0 ? (
-                  <div className="py-12 text-center text-muted-foreground text-sm">لا يوجد مستخدمون مطابقون</div>
+                  <div className="py-12 text-center text-muted-foreground text-sm">No users found matching your criteria</div>
                 ) : filteredUsers.map(u => {
                   const rowEdit = editState[u.id] || {};
                   const hasChanges = Object.keys(rowEdit).length > 0;
