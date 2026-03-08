@@ -284,15 +284,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data: { session } } = await supabase.auth.getSession();
         if (mounted) {
           if (session) {
-            await syncUserProfile(session);
+            // If we have a cached session, stop loading immediately and sync in background
+            const cached = loadSession();
+            if (cached && cached.userId === session.user.id) {
+              setLoading(false);
+              syncUserProfile(session); // fire and forget
+            } else {
+              await syncUserProfile(session);
+              if (mounted) setLoading(false);
+            }
           } else {
             setUser(null);
             saveSession(null);
+            setLoading(false);
           }
         }
       } catch (err) {
         console.error("[AUTH] Bootstrap failed:", err);
-      } finally {
         if (mounted) setLoading(false);
       }
     };
