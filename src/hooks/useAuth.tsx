@@ -56,24 +56,24 @@ function saveUsersLocal(users: AppUser[]) {
   } catch { void 0; }
 }
 
-function loadSession(): { userId: string; role: Role } | null {
+function loadSession(): { userId: string; role: Role; displayName?: string } | null {
   const raw = localStorage.getItem(SESSION_KEY);
   if (!raw) return null;
   try {
-    const s = JSON.parse(raw) as { userId: string; role?: Role };
+    const s = JSON.parse(raw) as { userId: string; role?: Role; displayName?: string };
     if (!s.userId) return null;
-    return { userId: s.userId, role: s.role || "user" };
+    return { userId: s.userId, role: s.role || "user", displayName: s.displayName };
   } catch {
     return null;
   }
 }
 
-function saveSession(userId: string | null, role?: Role) {
+function saveSession(userId: string | null, role?: Role, displayName?: string) {
   if (!userId) {
     localStorage.removeItem(SESSION_KEY);
     return;
   }
-  localStorage.setItem(SESSION_KEY, JSON.stringify({ userId, role }));
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ userId, role, displayName }));
 }
 
 function loadActivatedEmails(): string[] {
@@ -191,7 +191,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log("[AUTH] Using cached role optimistically:", cached.role);
       setUser({
         id: authUserId,
-        name: email.split("@")[0] || "User",
+        name: cached.displayName || email.split("@")[0] || "User",
         email: email,
         password: "",
         role: cached.role,
@@ -236,7 +236,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
 
         setUser(appUser);
-        saveSession(appUser.id, appUser.role);
+        saveSession(appUser.id, appUser.role, appUser.name);
         setUsers(prev => {
           if (prev.some(u => u.id === appUser.id)) return prev;
           return [appUser, ...prev];
@@ -285,7 +285,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (cached) {
           setUser({
             id: cached.userId,
-            name: cached.role === "admin" ? "Admin" : "User",
+            name: cached.displayName || "User",
             email: "",
             password: "",
             role: cached.role,
@@ -576,7 +576,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
 
         setUser(u);
-        saveSession(u.id, u.role);
+        saveSession(u.id, u.role, u.name);
         setSupabaseDisabled(false);
         console.log("[AUTH] Supabase Login successful for:", email);
         return { ok: true, code: "ok", message: "تم تسجيل الدخول", user: u, backend };
@@ -619,7 +619,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             };
 
             setUser(u);
-            saveSession(u.id, u.role);
+            saveSession(u.id, u.role, u.name);
             setSupabaseDisabled(false);
             return { ok: true, code: "ok", message: "تم تسجيل الدخول", user: u, backend };
           }
@@ -637,7 +637,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const u = { ...found, lastLoginAt: Date.now(), needsApprovalNotification: false };
         setUsers(users.map(x => (x.id === u.id ? u : x)));
         setUser(u);
-        saveSession(u.id, u.role);
+        saveSession(u.id, u.role, u.name);
         return { ok: true, code: "ok", message: "تم تسجيل الدخول", user: u, backend: "local" };
       }
     }
@@ -723,7 +723,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (user && user.id === id) {
       const newUser = { ...user, ...updates };
       setUser(newUser);
-      saveSession(newUser.id, newUser.role);
+      saveSession(newUser.id, newUser.role, newUser.name);
     }
 
     if (supabase) {
