@@ -87,7 +87,7 @@ export default function AdminAccounts() {
   const handleSave = async (u: AppUser) => {
     const updates = editState[u.id];
     if (!updates || Object.keys(updates).length === 0) {
-      toast({ title: "لا يوجد تغييرات", description: "لم يتم تعديل أي بيانات." });
+      toast({ title: "No Changes", description: "No data was modified." });
       return;
     }
     setSavingRows(prev => ({ ...prev, [u.id]: true }));
