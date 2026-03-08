@@ -509,7 +509,7 @@ export default function AdminAccounts() {
                                     toast({ title: res.ok ? "✅ Link Sent" : "❌ Error", description: res.message, variant: res.ok ? "default" : "destructive" });
                                   }
                                 }} disabled={resettingPw[u.id]}>
-                                {resettingPw[u.id] ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mail className="w-3 h-3" />} إرسال رابط
+                                {resettingPw[u.id] ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mail className="w-3 h-3" />} Send Reset Link
                               </Button>
                             </div>
                             <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-destructive hover:bg-destructive/10"
