@@ -440,9 +440,9 @@ export default function AdminAccounts() {
                           <p className="text-xs text-muted-foreground truncate">{u.email}</p>
                         </div>
                         <div className="hidden md:block text-right shrink-0 w-28">
-                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">آخر دخول</p>
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Last Login</p>
                           <p className="text-xs tabular-nums text-foreground/70">
-                            {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString("ar-SA", { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : "أبداً"}
+                            {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString("en-US", { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : "Never"}
                           </p>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
