@@ -206,23 +206,23 @@ export function RecordBrowser({ record, isFlat = false }: RecordBrowserProps) {
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div className="flex gap-1">
+                                            <div className="flex gap-2">
                                                 <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-8 w-8 hover:bg-sidebar-primary/10 hover:text-sidebar-primary"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-8 text-xs font-medium hover:bg-sidebar-primary/10 hover:text-sidebar-primary"
                                                     onClick={() => window.open(file.webViewLink, '_blank')}
                                                 >
-                                                    <ExternalLink className="w-4 h-4" />
+                                                    Open Record
                                                 </Button>
                                                 <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive text-muted-foreground/50"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-8 text-xs font-medium hover:bg-destructive/10 hover:text-destructive text-muted-foreground"
                                                     onClick={() => handleArchive(file.id, file.name)}
                                                     disabled={isLoading}
                                                 >
-                                                    <Trash2 className="w-4 h-4" />
+                                                    Delete File
                                                 </Button>
                                             </div>
                                         </div>
