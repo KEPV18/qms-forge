@@ -95,7 +95,7 @@ export default function AdminAccounts() {
       if (updates.password && typeof updates.password === "string" && updates.password.trim().length > 0) {
         const newPassword = updates.password.trim();
         if (newPassword.length < 6) {
-          toast({ title: "❌ خطأ", description: "كلمة المرور يجب أن تكون 6 أحرف على الأقل.", variant: "destructive" });
+          toast({ title: "❌ Error", description: "Password must be at least 6 characters.", variant: "destructive" });
           setSavingRows(prev => ({ ...prev, [u.id]: false }));
           return;
         }
