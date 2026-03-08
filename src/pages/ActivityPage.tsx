@@ -17,13 +17,16 @@ function getActivityType(record: QMSRecord): "new" | "approved" | "pending" | "i
   const reviews = record.fileReviews || {};
   const reviewValues = Object.values(reviews) as Array<{ status?: string }>;
   const statuses = reviewValues.map(r => (r?.status || "").toLowerCase());
-  const hasApproved = statuses.some(s => s === "approved" || s === "✅" || s.includes("approved"));
-  const hasRejected = statuses.some(s => s === "rejected" || s.includes("invalid") || s === "❌" || s.includes("nc"));
+  const approvedCount = statuses.filter(s => s === "approved" || s === "✅" || s.includes("approved")).length;
+  const rejectedCount = statuses.filter(s => s === "rejected" || s.includes("invalid") || s === "❌").length;
   const hasPending = reviewValues.length > 0 && statuses.some(s => s === "" || s === "pending" || s === "pending_review" || s.includes("under"));
   const auditStatus = (record.auditStatus || "").toLowerCase();
 
-  if (auditStatus.includes("nc") || auditStatus.includes("issue") || hasRejected) return "issue";
-  if (record.reviewed || hasApproved) return "approved";
+  // Only flag as issue if audit status explicitly says NC/issue, or rejected outnumber approved
+  if (auditStatus.includes("nc") || auditStatus.includes("issue")) return "issue";
+  if (rejectedCount > 0 && rejectedCount >= approvedCount) return "issue";
+  
+  if (record.reviewed || approvedCount > 0) return "approved";
 
   const hasFiles = (record.actualRecordCount || 0) > 0 || (record.lastSerial && record.lastSerial !== "No Files Yet");
   if (!hasFiles) return "empty";
