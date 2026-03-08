@@ -122,12 +122,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [supabaseDisabled, setSupabaseDisabled] = React.useState(false);
   const isFetchingRef = React.useRef<string | null>(null);
 
-  // Helper for timeouts
-  const withTimeout = async <T,>(promise: any, timeoutMs: number = 8000): Promise<T> => {
+  // Helper for timeouts with retry
+  const withTimeout = async <T,>(promise: any, timeoutMs: number = 15000): Promise<T> => {
     const timeout = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error("Timeout")), timeoutMs)
     );
     return Promise.race([promise, timeout]) as Promise<T>;
+  };
+
+  const withRetry = async <T,>(fn: () => Promise<T>, retries: number = 2, delayMs: number = 1500): Promise<T> => {
+    for (let i = 0; i <= retries; i++) {
+      try {
+        return await fn();
+      } catch (err) {
+        if (i === retries) throw err;
+        console.warn(`[AUTH] Retry ${i + 1}/${retries} after error:`, (err as Error).message);
+        await new Promise(r => setTimeout(r, delayMs));
+      }
+    }
+    throw new Error("Unreachable");
   };
 
   const fetchFullUsersList = React.useCallback(async () => {
@@ -193,10 +206,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       console.log("[TRACE] Syncing profile & role for:", authUserId);
-      const [profileRes, roleRes] = await Promise.all([
-        withTimeout<any>(supabase!.from("profiles").select("*").eq("user_id", authUserId).maybeSingle(), 5000),
-        withTimeout<any>(supabase!.from("user_roles").select("role").eq("user_id", authUserId).maybeSingle(), 5000),
-      ]);
+      const [profileRes, roleRes] = await withRetry(() => Promise.all([
+        withTimeout<any>(supabase!.from("profiles").select("*").eq("user_id", authUserId).maybeSingle(), 15000),
+        withTimeout<any>(supabase!.from("user_roles").select("role").eq("user_id", authUserId).maybeSingle(), 15000),
+      ]));
 
       const profile = profileRes.data;
       const roleData = roleRes.data;
