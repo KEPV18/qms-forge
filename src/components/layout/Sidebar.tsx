@@ -68,13 +68,6 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
   const { user, logout, loading } = useAuth();
   const { notifications, unreadCount, markAsRead, clearAll } = useNotifications();
 
-  const items: NavItem[] =
-    user?.role === "admin"
-      ? [...navItems, { id: "admin", label: "Admin Accounts", icon: Shield, path: "/admin/accounts" }]
-      : navItems;
-
-  if (loading) return null;
-
   useEffect(() => {
     const pathModule = location.pathname.split("/module/")[1];
     if (pathModule && !expandedItems.includes(pathModule)) {
@@ -85,6 +78,13 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
   useEffect(() => {
     localStorage.setItem('sidebarCollapsed', isCollapsed.toString());
   }, [isCollapsed]);
+
+  const items: NavItem[] =
+    user?.role === "admin"
+      ? [...navItems, { id: "admin", label: "Admin Accounts", icon: Shield, path: "/admin/accounts" }]
+      : navItems;
+
+  if (loading) return null;
 
   const toggleSidebar = () => {
     const next = !isCollapsed;
