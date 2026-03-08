@@ -453,7 +453,7 @@ export default function AdminAccounts() {
                                 {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />} Save
                               </Button>
                               <Button variant="ghost" size="sm" className="h-7 px-2 text-[10px] text-muted-foreground"
-                                onClick={() => setEditState(prev => { const s = { ...prev }; delete s[u.id]; return s; })}>إلغاء</Button>
+                                onClick={() => setEditState(prev => { const s = { ...prev }; delete s[u.id]; return s; })}>Cancel</Button>
                             </>
                           )}
                           <Button variant="ghost" size="icon" className="h-8 w-8"
