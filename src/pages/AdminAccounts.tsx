@@ -199,7 +199,7 @@ export default function AdminAccounts() {
     const a = document.createElement("a");
     a.href = url; a.download = "users_export.csv"; a.click();
     URL.revokeObjectURL(url);
-    toast({ title: "تم التصدير", description: `تم تصدير ${filteredUsers.length} مستخدم.` });
+    toast({ title: "Exported", description: `${filteredUsers.length} users exported.` });
   };
 
   const stats = [
