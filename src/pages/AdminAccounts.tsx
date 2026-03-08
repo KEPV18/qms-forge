@@ -229,7 +229,7 @@ export default function AdminAccounts() {
             </div>
             <div className="flex gap-2 self-start md:self-auto">
               <Button variant="outline" size="sm" className="gap-2" onClick={handleExportCSV}>
-                <Download className="w-4 h-4" /> تصدير CSV
+                <Download className="w-4 h-4" /> Export CSV
               </Button>
               <Button variant="outline" size="sm" className="gap-2" onClick={handleRefresh} disabled={isRefreshing}>
                 <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} /> تحديث
