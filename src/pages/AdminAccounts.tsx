@@ -372,14 +372,14 @@ export default function AdminAccounts() {
             {selectedIds.size > 0 && (
               <div className="px-4 md:px-6 pb-3">
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-primary/5 border border-primary/20">
-                  <span className="text-sm font-semibold text-primary">{selectedIds.size} محدد</span>
+                  <span className="text-sm font-semibold text-primary">{selectedIds.size} selected</span>
                   <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={handleBulkActivate}>
-                    <CheckCircle className="w-3 h-3" /> تفعيل
+                    <CheckCircle className="w-3 h-3" /> Activate
                   </Button>
                   <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-destructive" onClick={handleBulkDeactivate}>
-                    <XCircle className="w-3 h-3" /> تعطيل
+                    <XCircle className="w-3 h-3" /> Deactivate
                   </Button>
-                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setSelectedIds(new Set())}>إلغاء</Button>
+                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setSelectedIds(new Set())}>Cancel</Button>
                 </div>
               </div>
             )}
