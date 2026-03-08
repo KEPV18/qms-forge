@@ -284,7 +284,7 @@ export default function AdminAccounts() {
                       <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-lg text-xs font-semibold text-destructive hover:bg-destructive/10"
                         onClick={() => { if (!isProtectedAdmin(u) && window.confirm(`Delete "${u.name}"?`)) removeUser(u.id); }}
                         disabled={isProtectedAdmin(u)}>
-                        <XCircle className="w-3.5 h-3.5" /> رفض
+                        <XCircle className="w-3.5 h-3.5" /> Reject
                       </Button>
                     </div>
                   </div>
