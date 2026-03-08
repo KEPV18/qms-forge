@@ -576,7 +576,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
 
         setUser(u);
-        saveSession(u.id, u.role);
+        saveSession(u.id, u.role, u.name);
         setSupabaseDisabled(false);
         console.log("[AUTH] Supabase Login successful for:", email);
         return { ok: true, code: "ok", message: "تم تسجيل الدخول", user: u, backend };
