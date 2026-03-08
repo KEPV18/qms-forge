@@ -181,7 +181,7 @@ export default function ActivityPage() {
                       <div
                         key={`${record.code}-${i}`}
                         className="px-5 py-4 hover:bg-muted/30 transition-colors cursor-pointer group"
-                        onClick={() => navigate(`/record/${record.code}`)}
+                        onClick={() => navigate(`/record/${encodeURIComponent(record.code)}`)}
                       >
                         <div className="flex items-center gap-4">
                           <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0", config.bg)}>

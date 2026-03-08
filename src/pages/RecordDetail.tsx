@@ -30,7 +30,7 @@ export default function RecordDetail() {
     return () => window.removeEventListener('qms-sidebar-toggle', handleToggle as EventListener);
   }, []);
 
-  const { code } = useParams<{ code: string }>();
+  const { "*": splat } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -39,7 +39,7 @@ export default function RecordDetail() {
   const { data: records, isLoading } = useQMSData();
   const updateRecord = useUpdateRecord();
 
-  const decodedCode = code ? decodeURIComponent(code) : "";
+  const decodedCode = splat ? decodeURIComponent(splat) : "";
 
   const record = useMemo(() => {
     if (!records) return null;

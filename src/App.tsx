@@ -48,7 +48,7 @@ const App = () => (
                 <Route path="/auth/callback" element={<AuthCallback />} />
                 <Route path="/" element={<RequireAuth><Index /></RequireAuth>} />
                 <Route path="/module/:moduleId" element={<RequireAuth><ModulePage /></RequireAuth>} />
-                <Route path="/record/:code" element={<RequireAuth><RecordDetail /></RequireAuth>} />
+                <Route path="/record/*" element={<RequireAuth><RecordDetail /></RequireAuth>} />
                 <Route path="/audit" element={<RequireAuth><AuditPage /></RequireAuth>} />
                 <Route path="/archive" element={<RequireAuth><ArchivePage /></RequireAuth>} />
                 <Route path="/risk-management" element={<RequireAuth><RiskManagementPage /></RequireAuth>} />
