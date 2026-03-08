@@ -20,6 +20,7 @@ const AdminAccounts = lazy(() => import("./pages/AdminAccounts"));
 const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
 const AuthCallback = lazy(() => import("./pages/AuthCallback"));
+const ActivityPage = lazy(() => import("./pages/ActivityPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
