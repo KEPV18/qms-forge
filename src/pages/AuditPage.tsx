@@ -6,6 +6,7 @@ import { Footer } from "@/components/layout/Footer";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { useQMSData } from "@/hooks/useQMSData";
 import { RecordsTable } from "@/components/records/RecordsTable";
+import { cn } from "@/lib/utils";
 import {
   ArrowLeft,
   ClipboardCheck,
@@ -15,11 +16,16 @@ import {
   Clock,
   AlertTriangle,
   Filter,
+  FileX,
+  CalendarClock,
+  Loader2,
+  ArrowRight,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQueryClient } from "@tanstack/react-query";
+import { normalizeCategory } from "@/lib/googleSheets";
 
 export default function AuditPage() {
   const navigate = useNavigate();
@@ -32,42 +38,37 @@ export default function AuditPage() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const tabParam = params.get("tab");
-    if (tabParam === "pending" || tabParam === "compliant" || tabParam === "issues") {
+    if (tabParam && ["pending", "compliant", "issues", "overdue", "never-filled"].includes(tabParam)) {
       setActiveTab(tabParam);
     }
   }, [location.search]);
 
   useEffect(() => {
     const handleToggle = (event: Event) => {
-      const customEvent = event as CustomEvent<boolean>;
-      setSidebarCollapsed(customEvent.detail);
+      setSidebarCollapsed((event as CustomEvent<boolean>).detail);
     };
     window.addEventListener('qms-sidebar-toggle', handleToggle as EventListener);
     return () => window.removeEventListener('qms-sidebar-toggle', handleToggle as EventListener);
   }, []);
 
-  const { data: records, isLoading, error, dataUpdatedAt } = useQMSData();
+  const { data: records, isLoading, error, dataUpdatedAt, refetch } = useQMSData();
 
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ["qms-data"] });
+    refetch();
   };
 
   const handleModuleChange = (newModuleId: string) => {
     setActiveModule(newModuleId);
-    if (newModuleId === "dashboard") {
-      navigate("/");
-    } else if (newModuleId !== "documents") {
-      navigate(`/module/${newModuleId}`);
-    }
+    if (newModuleId === "dashboard") navigate("/");
+    else if (newModuleId !== "documents") navigate(`/module/${newModuleId}`);
   };
 
-  // Categorize records by audit status at the individual FILE level
-  const { pendingRecords, compliantRecords, issueRecords, stats } = useMemo(() => {
+  const { pendingRecords, compliantRecords, issueRecords, overdueRecords, neverFilledRecords, stats } = useMemo(() => {
     if (!records) return {
-      pendingRecords: [],
-      compliantRecords: [],
-      issueRecords: [],
-      stats: { pending: 0, compliant: 0, issues: 0 }
+      pendingRecords: [], compliantRecords: [], issueRecords: [],
+      overdueRecords: [], neverFilledRecords: [],
+      stats: { pending: 0, compliant: 0, issues: 0, overdue: 0, neverFilled: 0, totalTemplates: 0, filledTemplatesCount: 0 }
     };
 
     const pending: any[] = [];
@@ -77,105 +78,85 @@ export default function AuditPage() {
     records.forEach(record => {
       const files = record.files || [];
       const reviews = record.fileReviews || {};
-
       files.forEach(file => {
         const review = reviews[file.id] || { status: 'pending_review', comment: '' };
-
         const auditItem = {
-          ...record,
-          fileId: file.id,
-          fileName: file.name,
-          fileLink: file.webViewLink,
-          fileStatus: review.status,
-          fileComment: review.comment,
-          fileReviewedBy: review.reviewedBy || record.reviewedBy || "",
-          isAtomic: true // Flag for RecordsTable
+          ...record, fileId: file.id, fileName: file.name, fileLink: file.webViewLink,
+          fileStatus: review.status, fileComment: review.comment,
+          fileReviewedBy: review.reviewedBy || record.reviewedBy || "", isAtomic: true
         };
-
-        if (review.status === 'approved') {
-          compliant.push(auditItem);
-        } else if (review.status === 'rejected') {
-          issuesList.push(auditItem);
-        } else {
-          pending.push(auditItem);
-        }
+        if (review.status === 'approved') compliant.push(auditItem);
+        else if (review.status === 'rejected') issuesList.push(auditItem);
+        else pending.push(auditItem);
       });
     });
 
-    const totalTemplates = records.length;
-    const filledTemplatesCount = records.filter(r => (r.actualRecordCount || 0) > 0).length;
+    // Overdue records
+    const overdue = records.filter(r => r.isOverdue);
+
+    // Never filled records (0 actual records)
+    const neverFilled = records.filter(r => (r.actualRecordCount || 0) === 0);
 
     return {
-      pendingRecords: pending,
-      compliantRecords: compliant,
-      issueRecords: issuesList,
+      pendingRecords: pending, compliantRecords: compliant, issueRecords: issuesList,
+      overdueRecords: overdue, neverFilledRecords: neverFilled,
       stats: {
-        pending: pending.length,
-        compliant: compliant.length,
-        issues: issuesList.length,
-        totalTemplates,
-        filledTemplatesCount
+        pending: pending.length, compliant: compliant.length, issues: issuesList.length,
+        overdue: overdue.length, neverFilled: neverFilled.length,
+        totalTemplates: records.length,
+        filledTemplatesCount: records.filter(r => (r.actualRecordCount || 0) > 0).length,
       }
     };
   }, [records]);
 
   const lastUpdated = dataUpdatedAt
-    ? new Date(dataUpdatedAt).toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-    })
+    ? new Date(dataUpdatedAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
     : null;
 
   const complianceRate = stats.totalTemplates > 0
-    ? Math.round((stats.filledTemplatesCount / stats.totalTemplates) * 100)
-    : 0;
+    ? Math.round((stats.filledTemplatesCount / stats.totalTemplates) * 100) : 0;
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    navigate(`/audit?tab=${value}`, { replace: true });
+  };
 
   return (
     <div className="min-h-screen bg-background">
       <Sidebar activeModule={activeModule} onModuleChange={handleModuleChange} />
 
-      <div className={`flex-1 flex flex-col ml-0 transition-all duration-300 ${sidebarCollapsed ? "md:ml-16" : "md:ml-64"}`}>
+      <div className={cn("flex-1 flex flex-col ml-0 transition-all duration-300", sidebarCollapsed ? "md:ml-[60px]" : "md:ml-60")}>
         <Header />
 
         <main className="flex-1">
-          <div className="p-6 space-y-6">
-            <Breadcrumbs
-              items={[
-                { label: "Dashboard", path: "/" },
-                { label: "Audit & Quality Control" }
-              ]}
-            />
-            {/* Page Header */}
-            <div className="flex items-start justify-between animate-fade-in">
-              <div className="flex items-start gap-4">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => navigate("/")}
-                  className="mt-1"
-                >
-                  <ArrowLeft className="w-5 h-5" />
+          <div className="max-w-[1400px] mx-auto p-6 md:p-8 space-y-6">
+            <Breadcrumbs items={[{ label: "Dashboard", path: "/" }, { label: "Audit Dashboard" }]} />
+
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Button variant="ghost" size="icon" onClick={() => navigate("/")} className="h-8 w-8">
+                  <ArrowLeft className="w-4 h-4" />
                 </Button>
                 <div>
-                  <div className="flex items-center gap-3 mb-1">
-                    <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center shadow-lg shadow-accent/10">
-                      <ClipboardCheck className="w-6 h-6 text-accent" />
-                    </div>
-                    <div>
-                      <h1 className="text-3xl font-bold text-foreground tracking-tight font-heading">Audit Dashboard</h1>
-                      <p className="text-[10px] text-muted-foreground font-black uppercase tracking-[0.2em] opacity-60">ISO 9001:2015 Compliance Review</p>
-                    </div>
-                  </div>
-                  {lastUpdated && (
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Last synced: {lastUpdated}
-                    </p>
-                  )}
+                  <h1 className="text-2xl font-bold text-foreground tracking-tight">Audit Dashboard</h1>
+                  <p className="text-xs text-muted-foreground">ISO 9001:2015 Compliance Review</p>
                 </div>
+              </div>
+              <div className="flex items-center gap-3">
+                {lastUpdated && (
+                  <span className="hidden sm:flex items-center gap-1.5 text-[10px] text-muted-foreground bg-muted/40 px-3 py-1.5 rounded-lg border border-border/50">
+                    <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                    Synced {lastUpdated}
+                  </span>
+                )}
+                <Button onClick={handleRefresh} variant="outline" size="sm" className="h-8 gap-2" disabled={isLoading}>
+                  {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                  Sync
+                </Button>
               </div>
             </div>
 
-            {/* Error Alert */}
             {error && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
@@ -184,120 +165,194 @@ export default function AuditPage() {
               </Alert>
             )}
 
-            {/* Stats Summary */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="glass-card rounded-2xl p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-muted/50 flex items-center justify-center">
-                  <Filter className="w-5 h-5 text-foreground/60" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground font-heading">{records?.length || 0}</p>
-                  <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Templates</p>
-                </div>
-              </div>
-              <div
-                className="glass-card rounded-2xl p-4 cursor-pointer hover:bg-warning/5 transition-all duration-300 card-hover-enhanced"
-                onClick={() => setActiveTab("pending")}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center">
-                    <Clock className="w-5 h-5 text-warning" />
+            {/* Stats row */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+              {[
+                { label: "Templates", value: records?.length || 0, icon: Filter, color: "text-foreground", bg: "bg-muted/50", tab: null },
+                { label: "Pending", value: stats.pending, icon: Clock, color: "text-warning", bg: "bg-warning/10", tab: "pending" },
+                { label: "Approved", value: stats.compliant, icon: CheckCircle, color: "text-success", bg: "bg-success/10", tab: "compliant" },
+                { label: "Issues", value: stats.issues, icon: AlertTriangle, color: "text-destructive", bg: "bg-destructive/10", tab: "issues" },
+                { label: "Overdue", value: stats.overdue, icon: CalendarClock, color: "text-destructive", bg: "bg-destructive/10", tab: "overdue" },
+                { label: "Never Filled", value: stats.neverFilled, icon: FileX, color: "text-warning", bg: "bg-warning/10", tab: "never-filled" },
+              ].map(s => (
+                <div
+                  key={s.label}
+                  className={cn(
+                    "bg-card rounded-xl border border-border p-4 flex items-center gap-3 transition-colors",
+                    s.tab && "cursor-pointer hover:shadow-sm",
+                    activeTab === s.tab && "ring-1 ring-primary/30"
+                  )}
+                  onClick={() => s.tab && handleTabChange(s.tab)}
+                >
+                  <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center", s.bg)}>
+                    <s.icon className={cn("w-4 h-4", s.color)} />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-warning font-heading">{stats.pending}</p>
-                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Pending</p>
+                    <p className={cn("text-xl font-bold", s.color)}>{s.value}</p>
+                    <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">{s.label}</p>
                   </div>
                 </div>
-              </div>
-              <div
-                className="glass-card rounded-2xl p-4 cursor-pointer hover:bg-success/5 transition-all duration-300 card-hover-enhanced"
-                onClick={() => setActiveTab("compliant")}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
-                    <CheckCircle className="w-5 h-5 text-success" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-success font-heading">{stats.compliant}</p>
-                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Approved</p>
-                  </div>
-                </div>
-              </div>
-              <div
-                className="glass-card rounded-2xl p-4 cursor-pointer hover:bg-destructive/5 transition-all duration-300 card-hover-enhanced"
-                onClick={() => setActiveTab("issues")}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center">
-                    <AlertTriangle className="w-5 h-5 text-destructive" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-destructive font-heading">{stats.issues}</p>
-                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Issues</p>
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
 
-            {/* Compliance Rate */}
-            <div className="glass-card rounded-2xl p-7 border-sidebar-border/50">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-bold text-foreground font-heading tracking-tight">Overall Compliance Rate</h2>
-                <span className="text-4xl font-bold text-success font-heading tracking-tighter">{complianceRate}%</span>
+            {/* Compliance bar */}
+            <div className="bg-card rounded-xl border border-border p-5">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-semibold text-foreground">Compliance Rate</span>
+                <span className="text-2xl font-bold text-success">{complianceRate}%</span>
               </div>
-              <div className="w-full bg-muted/30 rounded-full h-3 overflow-hidden border border-white/5">
-                <div
-                  className="bg-gradient-to-r from-success to-emerald-400 h-3 rounded-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(16,185,129,0.3)]"
-                  style={{ width: `${complianceRate}%` }}
-                />
+              <div className="w-full bg-muted/30 rounded-full h-2 overflow-hidden">
+                <div className="bg-success h-2 rounded-full transition-all duration-700" style={{ width: `${complianceRate}%` }} />
               </div>
-              <p className="text-[10px] text-muted-foreground mt-4 font-bold uppercase tracking-widest opacity-60">
-                {stats.filledTemplatesCount} of {stats.totalTemplates} form templates populated
+              <p className="text-[10px] text-muted-foreground mt-2">
+                {stats.filledTemplatesCount} of {stats.totalTemplates} templates populated
               </p>
             </div>
 
-            {/* Tabbed Records View */}
-            <div className="glass-card rounded-2xl overflow-hidden shadow-2xl border-border/50 animate-fade-in">
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <div className="bg-muted/30 px-6 py-2 border-b border-border/50">
-                  <TabsList className="bg-transparent h-14 p-0 gap-8">
-                    <TabsTrigger
-                      value="pending"
-                      className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-warning border-b-2 border-transparent data-[state=active]:border-warning rounded-none h-14 px-2 gap-2 font-bold uppercase tracking-widest text-[10px] transition-all"
-                    >
-                      <Clock className="w-4 h-4" />
-                      Pending ({pendingRecords.length})
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="compliant"
-                      className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-success border-b-2 border-transparent data-[state=active]:border-success rounded-none h-14 px-2 gap-2 font-bold uppercase tracking-widest text-[10px] transition-all"
-                    >
-                      <CheckCircle className="w-4 h-4" />
-                      Approved ({compliantRecords.length})
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="issues"
-                      className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-destructive border-b-2 border-transparent data-[state=active]:border-destructive rounded-none h-14 px-2 gap-2 font-bold uppercase tracking-widest text-[10px] transition-all"
-                    >
-                      <AlertTriangle className="w-4 h-4" />
-                      Issues ({issueRecords.length})
-                    </TabsTrigger>
+            {/* Tabs */}
+            <div className="bg-card rounded-xl border border-border overflow-hidden">
+              <Tabs value={activeTab} onValueChange={handleTabChange}>
+                <div className="px-5 py-2 border-b border-border overflow-x-auto">
+                  <TabsList className="bg-transparent h-11 p-0 gap-1">
+                    {[
+                      { value: "pending", label: "Pending", icon: Clock, count: pendingRecords.length, color: "data-[state=active]:text-warning data-[state=active]:border-warning" },
+                      { value: "compliant", label: "Approved", icon: CheckCircle, count: compliantRecords.length, color: "data-[state=active]:text-success data-[state=active]:border-success" },
+                      { value: "issues", label: "Issues", icon: AlertTriangle, count: issueRecords.length, color: "data-[state=active]:text-destructive data-[state=active]:border-destructive" },
+                      { value: "overdue", label: "Overdue", icon: CalendarClock, count: overdueRecords.length, color: "data-[state=active]:text-destructive data-[state=active]:border-destructive" },
+                      { value: "never-filled", label: "Never Filled", icon: FileX, count: neverFilledRecords.length, color: "data-[state=active]:text-warning data-[state=active]:border-warning" },
+                    ].map(t => (
+                      <TabsTrigger
+                        key={t.value}
+                        value={t.value}
+                        className={cn(
+                          "data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent rounded-none h-11 px-3 gap-1.5 text-[10px] font-bold uppercase tracking-wider transition-all",
+                          t.color
+                        )}
+                      >
+                        <t.icon className="w-3.5 h-3.5" />
+                        {t.label} ({t.count})
+                      </TabsTrigger>
+                    ))}
                   </TabsList>
                 </div>
 
-                <div className="p-1">
-                  <TabsContent value="pending" className="m-0 animate-in fade-in slide-in-from-top-2 duration-300">
-                    <RecordsTable records={pendingRecords} isLoading={isLoading} />
-                  </TabsContent>
+                <TabsContent value="pending" className="m-0">
+                  <RecordsTable records={pendingRecords} isLoading={isLoading} />
+                </TabsContent>
+                <TabsContent value="compliant" className="m-0">
+                  <RecordsTable records={compliantRecords} isLoading={isLoading} />
+                </TabsContent>
+                <TabsContent value="issues" className="m-0">
+                  <RecordsTable records={issueRecords} isLoading={isLoading} />
+                </TabsContent>
 
-                  <TabsContent value="compliant" className="m-0 animate-in fade-in slide-in-from-top-2 duration-300">
-                    <RecordsTable records={compliantRecords} isLoading={isLoading} />
-                  </TabsContent>
+                {/* Overdue tab */}
+                <TabsContent value="overdue" className="m-0">
+                  {overdueRecords.length === 0 ? (
+                    <div className="p-12 text-center">
+                      <CheckCircle className="w-10 h-10 text-success/30 mx-auto mb-3" />
+                      <p className="text-sm font-semibold text-foreground">No overdue records</p>
+                      <p className="text-xs text-muted-foreground mt-1">All records are up to date</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-border">
+                      {overdueRecords.map(record => (
+                        <div
+                          key={record.rowIndex}
+                          className="flex items-center justify-between px-5 py-3.5 hover:bg-muted/20 transition-colors cursor-pointer"
+                          onClick={() => {
+                            const mod = normalizeCategory(record.category);
+                            if (mod?.id) navigate(`/module/${mod.id}`);
+                          }}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center flex-shrink-0">
+                              <CalendarClock className="w-4 h-4 text-destructive" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-mono text-primary/70">{record.code}</span>
+                                <span className="text-xs font-semibold text-foreground truncate">{record.recordName}</span>
+                              </div>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-[10px] text-muted-foreground">{record.category}</span>
+                                {record.fillFrequency && (
+                                  <>
+                                    <span className="text-[10px] text-muted-foreground">·</span>
+                                    <span className="text-[10px] text-destructive font-semibold">Frequency: {record.fillFrequency}</span>
+                                  </>
+                                )}
+                                {record.lastFileDate && (
+                                  <>
+                                    <span className="text-[10px] text-muted-foreground">·</span>
+                                    <span className="text-[10px] text-muted-foreground">Last: {record.lastFileDate}</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <ArrowRight className="w-4 h-4 text-muted-foreground/30 flex-shrink-0" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
 
-                  <TabsContent value="issues" className="m-0 animate-in fade-in slide-in-from-top-2 duration-300">
-                    <RecordsTable records={issueRecords} isLoading={isLoading} />
-                  </TabsContent>
-                </div>
+                {/* Never Filled tab */}
+                <TabsContent value="never-filled" className="m-0">
+                  {neverFilledRecords.length === 0 ? (
+                    <div className="p-12 text-center">
+                      <CheckCircle className="w-10 h-10 text-success/30 mx-auto mb-3" />
+                      <p className="text-sm font-semibold text-foreground">All templates have records</p>
+                      <p className="text-xs text-muted-foreground mt-1">No empty templates found</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-border">
+                      {neverFilledRecords.map(record => (
+                        <div
+                          key={record.rowIndex}
+                          className="flex items-center justify-between px-5 py-3.5 hover:bg-muted/20 transition-colors cursor-pointer"
+                          onClick={() => navigate(`/record/${encodeURIComponent(record.code)}`)}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center flex-shrink-0">
+                              <FileX className="w-4 h-4 text-warning" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-mono text-primary/70">{record.code}</span>
+                                <span className="text-xs font-semibold text-foreground truncate">{record.recordName}</span>
+                              </div>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-[10px] text-muted-foreground">{record.category}</span>
+                                {record.description && (
+                                  <>
+                                    <span className="text-[10px] text-muted-foreground">·</span>
+                                    <span className="text-[10px] text-muted-foreground truncate max-w-[200px]">{record.description}</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {record.templateLink && (
+                              <a
+                                href={record.templateLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[9px] font-semibold text-primary hover:underline"
+                                onClick={e => e.stopPropagation()}
+                              >
+                                Template
+                              </a>
+                            )}
+                            <ArrowRight className="w-4 h-4 text-muted-foreground/30" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
               </Tabs>
             </div>
           </div>
