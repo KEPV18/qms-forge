@@ -100,13 +100,13 @@ export default function Index() {
     ? new Date(dataUpdatedAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
     : null;
 
-  const rejectedCount = (records ?? []).reduce((acc, r) => {
+  const rejectedCount = (records ?? []).filter(r => {
     const reviews = (r.fileReviews || {}) as Record<string, { status?: string }>;
-    Object.values(reviews).forEach(rev => {
-      if ((rev.status || "").toLowerCase() === "rejected") acc++;
-    });
-    return acc;
-  }, 0);
+    const statuses = Object.values(reviews).map(rev => (rev.status || "").toLowerCase());
+    const approvedCount = statuses.filter(s => s === "approved" || s === "✅" || s.includes("approved")).length;
+    const rejCount = statuses.filter(s => s === "rejected" || s.includes("invalid") || s === "❌").length;
+    return rejCount > 0 && rejCount >= approvedCount;
+  }).length;
 
   return (
     <div className="flex min-h-screen w-full bg-background">
