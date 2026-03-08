@@ -203,10 +203,10 @@ export default function AdminAccounts() {
   };
 
   const stats = [
-    { label: "إجمالي", value: users.length, icon: Users, color: "text-primary" },
-    { label: "نشط", value: activeUsers.length, icon: CheckCircle, color: "text-success" },
-    { label: "معلق", value: pendingUsers.length, icon: Clock, color: "text-warning" },
-    { label: "مسؤول", value: users.filter(u => u.role === "admin").length, icon: Shield, color: "text-destructive" },
+    { label: "Total", value: users.length, icon: Users, color: "text-primary" },
+    { label: "Active", value: activeUsers.length, icon: CheckCircle, color: "text-success" },
+    { label: "Pending", value: pendingUsers.length, icon: Clock, color: "text-warning" },
+    { label: "Admins", value: users.filter(u => u.role === "admin").length, icon: Shield, color: "text-destructive" },
   ];
 
   return (
