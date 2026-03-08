@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/oauth2callback",
+      "destination": "/api/auth/callback"
+    },
+    {
+      "source": "/((?!api/.*).*)",
+      "destination": "/index.html"
+    }
+  ]
+}
