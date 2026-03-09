@@ -1,56 +1,70 @@
-﻿import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, XCircle, Shield, Server, User, Loader2, RefreshCw, LogOut, Settings as SettingsIcon, AlertTriangle } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import {
+    CheckCircle, XCircle, Shield, Server, User, Loader2, LogOut,
+    Settings as SettingsIcon, AlertTriangle, Moon, Sun, Palette,
+    KeyRound, Bell, Monitor, Wifi, WifiOff, HardDrive, Eye, EyeOff,
+    Mail, UserCircle, Crown
+} from "lucide-react";
 import { checkDriveWritePermission } from "@/lib/driveService";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
+import { cn } from "@/lib/utils";
 
 interface SettingsModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
 }
 
+const ACCENT_COLORS = [
+    { id: 'blue', label: 'Blue', hsl: '221 83% 53%' },
+    { id: 'green', label: 'Green', hsl: '142 71% 45%' },
+    { id: 'purple', label: 'Purple', hsl: '262 83% 58%' },
+    { id: 'red', label: 'Red', hsl: '0 84% 60%' },
+    { id: 'orange', label: 'Orange', hsl: '25 95% 53%' },
+    { id: 'pink', label: 'Pink', hsl: '330 81% 60%' },
+    { id: 'gold', label: 'Gold', hsl: '45 93% 47%', adminOnly: true },
+];
+
+type TabId = 'account' | 'appearance' | 'diagnostics';
+
 export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     const { toast } = useToast();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const { user, logout, changePassword, updateUser } = useAuth();
+
+    const [activeTab, setActiveTab] = useState<TabId>(user?.role === 'admin' ? 'diagnostics' : 'account');
     const [driveStatus, setDriveStatus] = useState<'idle' | 'checking' | 'success' | 'error'>('idle');
     const [driveMessage, setDriveMessage] = useState("");
     const [serverStatus, setServerStatus] = useState<'idle' | 'checking' | 'online' | 'offline'>('idle');
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [oldPass, setOldPass] = useState("");
     const [newPass, setNewPass] = useState("");
+    const [showOldPass, setShowOldPass] = useState(false);
+    const [showNewPass, setShowNewPass] = useState(false);
     const [displayName, setDisplayName] = useState(user?.name || "");
     const [isEditingName, setIsEditingName] = useState(false);
     const [accentColor, setAccentColor] = useState(localStorage.getItem('accentColor') || 'blue');
-    const [sidebarCollapsed, setSidebarCollapsed] = useState(localStorage.getItem('sidebarCollapsed') === 'true');
 
-    // Sync displayName when user.name changes externally (e.g., admin update, profile refetch)
     useEffect(() => {
         if (user?.name) setDisplayName(user.name);
     }, [user?.name]);
 
     useEffect(() => {
-        // Check local storage or system preference
         const isDark = localStorage.getItem('theme') === 'dark' ||
             (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
         setIsDarkMode(isDark);
-        if (isDark) {
-            document.documentElement.classList.add('dark');
-        }
+        if (isDark) document.documentElement.classList.add('dark');
 
-        // Load accent color
         const savedAccent = localStorage.getItem('accentColor') || 'blue';
         setAccentColor(savedAccent);
         document.documentElement.setAttribute('data-accent', savedAccent);
@@ -75,39 +89,36 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
             if (result.success) {
                 setDriveStatus('success');
                 setDriveMessage(result.message);
-                toast({ title: "Drive Permission Verified", description: "Read/Write access confirmed.", className: "bg-success text-success-foreground" });
+                toast({ title: "Drive Permission Verified", description: "Read/Write access confirmed." });
             } else {
                 setDriveStatus('error');
                 setDriveMessage(result.message);
                 toast({ title: "Drive Permission Failed", description: result.message, variant: "destructive" });
             }
-        } catch (error) {
+        } catch {
             setDriveStatus('error');
             setDriveMessage("An unexpected error occurred.");
         }
     };
+
     const handleGoogleSignIn = () => {
         const isDev = import.meta.env.DEV;
-        const url = isDev ? "http://localhost:3001/api/auth" : "/api/auth";
-        window.location.href = url;
+        window.location.href = isDev ? "http://localhost:3001/api/auth" : "/api/auth";
     };
 
     const handleCheckServer = async () => {
         setServerStatus('checking');
-        // Simple ping to backend if available, or just verify auth endpoint
         try {
-            // For now, checks if we can hit the auth endpoint which should be up
             const response = await fetch('/api/auth?health=true');
-            if (response.ok) {
-                setServerStatus('online');
-                toast({ title: "Server Online", description: "Backend connection active.", className: "bg-success text-success-foreground" });
-            } else {
-                setServerStatus('offline');
-                toast({ title: "Server Connection Error", description: "Could not reach backend.", variant: "destructive" });
-            }
-        } catch (error) {
+            setServerStatus(response.ok ? 'online' : 'offline');
+            toast({
+                title: response.ok ? "Server Online" : "Server Error",
+                description: response.ok ? "Backend connection active." : "Could not reach backend.",
+                variant: response.ok ? "default" : "destructive",
+            });
+        } catch {
             setServerStatus('offline');
-            toast({ title: "Server Connection Failed", description: "Network error.", variant: "destructive" });
+            toast({ title: "Server Offline", description: "Network error.", variant: "destructive" });
         }
     };
 
@@ -115,6 +126,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
         logout();
         navigate("/login");
     };
+
     const handleChangePassword = () => {
         if (!user) return;
         const ok = changePassword(user.id, oldPass, newPass);
@@ -122,8 +134,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
             toast({ title: "Password not changed", description: "Old password incorrect", variant: "destructive" });
             return;
         }
-        setOldPass("");
-        setNewPass("");
+        setOldPass(""); setNewPass("");
         toast({ title: "Password updated", description: "Your password has been changed" });
     };
 
@@ -134,250 +145,357 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
         toast({ title: "Name updated", description: "Your display name has been changed" });
     };
 
-    const handleCancelNameEdit = () => {
-        setDisplayName(user?.name || "");
-        setIsEditingName(false);
-    };
-
     const handleAccentColorChange = (color: string) => {
         setAccentColor(color);
         localStorage.setItem('accentColor', color);
         document.documentElement.setAttribute('data-accent', color);
-        toast({ title: "Theme updated", description: `Accent color changed to ${color}` });
     };
 
-    const handleSidebarToggle = (collapsed: boolean) => {
-        setSidebarCollapsed(collapsed);
-        localStorage.setItem('sidebarCollapsed', collapsed.toString());
-        window.dispatchEvent(new CustomEvent('qms-sidebar-toggle', { detail: collapsed }));
-        toast({ title: "Sidebar updated", description: collapsed ? "Sidebar collapsed" : "Sidebar expanded" });
+    const tabs: { id: TabId; label: string; icon: React.ReactNode; adminOnly?: boolean }[] = [
+        { id: 'account', label: 'Account', icon: <User className="w-4 h-4" /> },
+        { id: 'appearance', label: 'Appearance', icon: <Palette className="w-4 h-4" /> },
+        { id: 'diagnostics', label: 'Diagnostics', icon: <Monitor className="w-4 h-4" />, adminOnly: true },
+    ];
+
+    const visibleTabs = tabs.filter(t => !t.adminOnly || user?.role === 'admin');
+
+    const getRoleColor = (role: string) => {
+        switch (role) {
+            case 'admin': return 'bg-destructive/10 text-destructive border-destructive/20';
+            case 'manager': return 'bg-warning/10 text-warning border-warning/20';
+            case 'auditor': return 'bg-info/10 text-info border-info/20';
+            default: return 'bg-muted text-muted-foreground border-border';
+        }
     };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2 text-xl">
-                        <SettingsIcon className="w-5 h-5" />
-                        Platform Settings & Diagnostics
-                    </DialogTitle>
-                    <DialogDescription>
-                        Manage your preferences and verify system health.
-                    </DialogDescription>
-                </DialogHeader>
+            <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden p-0 gap-0">
+                {/* Header */}
+                <div className="px-6 pt-6 pb-4">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2.5 text-lg">
+                            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                                <SettingsIcon className="w-4 h-4 text-primary" />
+                            </div>
+                            Settings
+                        </DialogTitle>
+                        <DialogDescription className="text-xs">
+                            Manage your account, preferences, and system diagnostics.
+                        </DialogDescription>
+                    </DialogHeader>
+                </div>
 
-                <Tabs defaultValue={user?.role === "admin" ? "diagnostics" : "account"} className="w-full">
-                    <TabsList className="grid w-full grid-cols-3">
-                        {user?.role === "admin" && <TabsTrigger value="diagnostics">Diagnostics</TabsTrigger>}
-                        <TabsTrigger value="account">Account</TabsTrigger>
-                        <TabsTrigger value="general">General</TabsTrigger>
-                    </TabsList>
+                {/* Tab Navigation */}
+                <div className="px-6 border-b border-border">
+                    <div className="flex gap-1">
+                        {visibleTabs.map(tab => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={cn(
+                                    "flex items-center gap-2 px-3 py-2.5 text-xs font-medium rounded-t-lg transition-all border-b-2 -mb-px",
+                                    activeTab === tab.id
+                                        ? "border-primary text-primary bg-primary/5"
+                                        : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                )}
+                            >
+                                {tab.icon}
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
 
-                    {/* DIAGNOSTICS TAB */}
-                    <TabsContent value="diagnostics" className="space-y-4 py-4">
-                        <div className="grid gap-4">
-                            {/* Drive Permission Check */}
-                            <Card>
-                                <CardHeader className="pb-2">
-                                    <div className="flex items-center justify-between">
-                                        <CardTitle className="text-base font-medium flex items-center gap-2">
-                                            <Shield className="w-4 h-4 text-blue-500" />
-                                            Google Drive Permissions
-                                        </CardTitle>
-                                        {driveStatus === 'success' && <Badge variant="default" className="bg-success">Verified</Badge>}
-                                        {driveStatus === 'error' && <Badge variant="destructive">Failed</Badge>}
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto px-6 py-5 max-h-[calc(85vh-180px)]">
+                    {/* ===== ACCOUNT TAB ===== */}
+                    {activeTab === 'account' && (
+                        <div className="space-y-6">
+                            {/* Profile Card */}
+                            {user && (
+                                <div className="flex items-start gap-4 p-4 rounded-xl bg-muted/30 border border-border/50">
+                                    <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                        <UserCircle className="w-7 h-7 text-primary" />
                                     </div>
-                                    <CardDescription>
-                                        Verifies that the QMS Platform can read and write files to your Google Drive.
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    {driveStatus === 'error' && (
-                                        <Alert variant="destructive" className="mb-4">
-                                            <AlertTriangle className="h-4 w-4" />
-                                            <AlertTitle>Permission Error</AlertTitle>
-                                            <AlertDescription>{driveMessage}</AlertDescription>
-                                        </Alert>
-                                    )}
-                                    {driveStatus === 'success' && (
-                                        <Alert className="mb-4 bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800">
-                                            <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-                                            <AlertTitle>Success</AlertTitle>
-                                            <AlertDescription>{driveMessage}</AlertDescription>
-                                        </Alert>
-                                    )}
-                                </CardContent>
-                                <CardFooter className="flex gap-2 flex-wrap">
-                                    <Button
-                                        variant={driveStatus === 'success' ? "outline" : "default"}
-                                        onClick={handleCheckDrive}
-                                        disabled={driveStatus === 'checking'}
-                                        className="w-full sm:w-auto"
-                                    >
-                                        {driveStatus === 'checking' && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                                        Run Permission Check
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        onClick={handleGoogleSignIn}
-                                        className="w-full sm:w-auto"
-                                    >
-                                        Connect Google Drive
-                                    </Button>
-                                </CardFooter>
-                            </Card>
-
-                            {/* Server Status Check */}
-                            <Card>
-                                <CardHeader className="pb-2">
-                                    <div className="flex items-center justify-between">
-                                        <CardTitle className="text-base font-medium flex items-center gap-2">
-                                            <Server className="w-4 h-4 text-purple-500" />
-                                            Server Connectivity
-                                        </CardTitle>
-                                        {serverStatus === 'online' && <Badge variant="default" className="bg-success">Online</Badge>}
-                                        {serverStatus === 'offline' && <Badge variant="destructive">Offline</Badge>}
-                                    </div>
-                                    <CardDescription>
-                                        Checks if the backend API server is reachable.
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    {serverStatus === 'offline' && (
-                                        <p className="text-sm text-destructive">Could not connect to the server. Please check your internet connection or try again later.</p>
-                                    )}
-                                </CardContent>
-                                <CardFooter>
-                                    <Button
-                                        variant="outline"
-                                        onClick={handleCheckServer}
-                                        disabled={serverStatus === 'checking'}
-                                        className="w-full sm:w-auto"
-                                    >
-                                        {serverStatus === 'checking' && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                                        Check Connectivity
-                                    </Button>
-                                </CardFooter>
-                            </Card>
-                        </div>
-                    </TabsContent>
-
-                    {/* ACCOUNT TAB */}
-                    <TabsContent value="account" className="space-y-4 py-4">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2"><User className="w-5 h-5" /> Account Information</CardTitle>
-                                <CardDescription>Manage your connected Google Account.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-6">
-                                <div className="space-y-1">
-                                    <Label>Session Status</Label>
-                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                        <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-                                        Active
+                                    <div className="flex-1 min-w-0">
+                                        {isEditingName ? (
+                                            <div className="flex gap-2">
+                                                <Input
+                                                    value={displayName}
+                                                    onChange={(e) => setDisplayName(e.target.value)}
+                                                    placeholder="Enter your name"
+                                                    className="h-8 text-sm"
+                                                    autoFocus
+                                                />
+                                                <Button size="sm" className="h-8 text-xs" onClick={handleSaveName}>Save</Button>
+                                                <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { setDisplayName(user.name); setIsEditingName(false); }}>Cancel</Button>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="font-bold text-sm">{user.name}</h3>
+                                                <button
+                                                    onClick={() => setIsEditingName(true)}
+                                                    className="text-[10px] text-primary hover:underline font-medium"
+                                                >
+                                                    Edit
+                                                </button>
+                                            </div>
+                                        )}
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <Mail className="w-3 h-3 text-muted-foreground" />
+                                            <span className="text-xs text-muted-foreground">{user.email}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2 mt-2">
+                                            <Badge variant="outline" className={cn("text-[10px] h-5 font-bold capitalize", getRoleColor(user.role))}>
+                                                {user.role === 'admin' && <Crown className="w-2.5 h-2.5 mr-1" />}
+                                                {user.role}
+                                            </Badge>
+                                            <div className="flex items-center gap-1">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                                                <span className="text-[10px] text-muted-foreground font-medium">Active Session</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                                {user && (
-                                    <div className="space-y-4">
+                            )}
+
+                            <Separator />
+
+                            {/* Password Section */}
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2">
+                                    <KeyRound className="w-4 h-4 text-muted-foreground" />
+                                    <Label className="text-sm font-semibold">Change Password</Label>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div className="relative">
+                                        <Input
+                                            placeholder="Current password"
+                                            type={showOldPass ? "text" : "password"}
+                                            value={oldPass}
+                                            onChange={(e) => setOldPass(e.target.value)}
+                                            className="pr-9 h-9 text-sm"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowOldPass(!showOldPass)}
+                                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                        >
+                                            {showOldPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                        </button>
+                                    </div>
+                                    <div className="relative">
+                                        <Input
+                                            placeholder="New password"
+                                            type={showNewPass ? "text" : "password"}
+                                            value={newPass}
+                                            onChange={(e) => setNewPass(e.target.value)}
+                                            className="pr-9 h-9 text-sm"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowNewPass(!showNewPass)}
+                                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                        >
+                                            {showNewPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                        </button>
+                                    </div>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleChangePassword}
+                                    disabled={!oldPass || !newPass}
+                                    className="text-xs"
+                                >
+                                    Update Password
+                                </Button>
+                            </div>
+
+                            <Separator />
+
+                            {/* Logout */}
+                            <Button variant="destructive" size="sm" onClick={handleLogout} className="w-full sm:w-auto">
+                                <LogOut className="w-3.5 h-3.5 mr-2" />
+                                Sign Out
+                            </Button>
+                        </div>
+                    )}
+
+                    {/* ===== APPEARANCE TAB ===== */}
+                    {activeTab === 'appearance' && (
+                        <div className="space-y-6">
+                            {/* Theme Toggle */}
+                            <div className="flex items-center justify-between p-4 rounded-xl bg-muted/30 border border-border/50">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                                        {isDarkMode ? <Moon className="w-4 h-4 text-primary" /> : <Sun className="w-4 h-4 text-primary" />}
+                                    </div>
+                                    <div>
+                                        <Label className="text-sm font-semibold">Dark Mode</Label>
+                                        <p className="text-[11px] text-muted-foreground">Switch between light and dark theme</p>
+                                    </div>
+                                </div>
+                                <Switch checked={isDarkMode} onCheckedChange={toggleDarkMode} />
+                            </div>
+
+                            {/* Accent Color */}
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2">
+                                    <Palette className="w-4 h-4 text-muted-foreground" />
+                                    <Label className="text-sm font-semibold">Accent Color</Label>
+                                </div>
+                                <div className="grid grid-cols-7 gap-2">
+                                    {ACCENT_COLORS.map((color) => {
+                                        if (color.adminOnly && user?.role !== 'admin') return null;
+                                        const isSelected = accentColor === color.id;
+                                        return (
+                                            <button
+                                                key={color.id}
+                                                onClick={() => handleAccentColorChange(color.id)}
+                                                className={cn(
+                                                    "group relative flex flex-col items-center gap-1.5 p-2 rounded-lg transition-all",
+                                                    isSelected ? "bg-primary/10 ring-2 ring-primary" : "hover:bg-muted/50"
+                                                )}
+                                                title={color.label}
+                                            >
+                                                <div
+                                                    className={cn(
+                                                        "w-7 h-7 rounded-full transition-transform",
+                                                        isSelected && "scale-110 ring-2 ring-offset-2 ring-offset-background"
+                                                    )}
+                                                    style={{ backgroundColor: `hsl(${color.hsl})`, boxShadow: isSelected ? `0 0 12px hsl(${color.hsl} / 0.4)` : undefined }}
+                                                />
+                                                <span className="text-[9px] font-medium text-muted-foreground">{color.label}</span>
+                                                {color.adminOnly && (
+                                                    <Crown className="w-2.5 h-2.5 text-warning absolute -top-0.5 -right-0.5" />
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ===== DIAGNOSTICS TAB ===== */}
+                    {activeTab === 'diagnostics' && user?.role === 'admin' && (
+                        <div className="space-y-4">
+                            {/* Google Drive */}
+                            <div className="rounded-xl border border-border overflow-hidden">
+                                <div className="flex items-center justify-between p-4 bg-muted/20">
+                                    <div className="flex items-center gap-3">
+                                        <div className={cn(
+                                            "w-9 h-9 rounded-lg flex items-center justify-center",
+                                            driveStatus === 'success' ? "bg-success/10" : driveStatus === 'error' ? "bg-destructive/10" : "bg-muted"
+                                        )}>
+                                            <HardDrive className={cn(
+                                                "w-4 h-4",
+                                                driveStatus === 'success' ? "text-success" : driveStatus === 'error' ? "text-destructive" : "text-muted-foreground"
+                                            )} />
+                                        </div>
                                         <div>
-                                            <Label>Name</Label>
-                                            {isEditingName ? (
-                                                <div className="flex gap-2 mt-1">
-                                                    <Input
-                                                        value={displayName}
-                                                        onChange={(e) => setDisplayName(e.target.value)}
-                                                        placeholder="Enter your name"
-                                                        className="flex-1"
-                                                    />
-                                                    <Button size="sm" onClick={handleSaveName}>Save</Button>
-                                                    <Button size="sm" variant="outline" onClick={handleCancelNameEdit}>Cancel</Button>
-                                                </div>
-                                            ) : (
-                                                <div className="flex items-center gap-2">
-                                                    <p className="text-sm font-medium">{user.name}</p>
-                                                    <Button size="sm" variant="ghost" onClick={() => setIsEditingName(true)}>Edit</Button>
-                                                </div>
-                                            )}
+                                            <h4 className="text-sm font-semibold">Google Drive</h4>
+                                            <p className="text-[11px] text-muted-foreground">Read & write permission status</p>
                                         </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div>
-                                                <Label>Email</Label>
-                                                <p className="text-sm font-medium">{user.email}</p>
-                                            </div>
-                                            <div>
-                                                <Label>Role</Label>
-                                                <p className="text-sm font-medium capitalize">{user.role}</p>
-                                            </div>
-                                        </div>
+                                    </div>
+                                    <StatusIndicator status={driveStatus === 'success' ? 'online' : driveStatus === 'error' ? 'offline' : driveStatus === 'checking' ? 'checking' : 'idle'} />
+                                </div>
+
+                                {(driveStatus === 'error' || driveStatus === 'success') && (
+                                    <div className={cn(
+                                        "px-4 py-3 text-xs flex items-start gap-2 border-t border-border",
+                                        driveStatus === 'error' ? "bg-destructive/5 text-destructive" : "bg-success/5 text-success"
+                                    )}>
+                                        {driveStatus === 'error' ? <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" /> : <CheckCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />}
+                                        <span>{driveMessage}</span>
                                     </div>
                                 )}
-                                <div className="space-y-2">
-                                    <Label>Change Password</Label>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        <Input placeholder="Old password" type="password" value={oldPass} onChange={(e) => setOldPass(e.target.value)} />
-                                        <Input placeholder="New password" type="password" value={newPass} onChange={(e) => setNewPass(e.target.value)} />
-                                    </div>
-                                    <Button className="mt-2" variant="outline" onClick={handleChangePassword}>Update Password</Button>
-                                </div>
-                            </CardContent>
-                            <CardFooter className="flex justify-end">
-                                <Button variant="destructive" onClick={handleLogout}>
-                                    <LogOut className="w-4 h-4 mr-2" />
-                                    Logout
-                                </Button>
-                            </CardFooter>
-                        </Card>
-                    </TabsContent>
 
-                    {/* GENERAL TAB */}
-                    <TabsContent value="general" className="space-y-4 py-4">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Interface Preferences</CardTitle>
-                                <CardDescription>Customize your workspace experience.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-6">
-                                <div className="flex items-center justify-between">
-                                    <div className="space-y-0.5">
-                                        <Label>Dark Mode</Label>
-                                        <p className="text-xs text-muted-foreground">Toggle dark theme.</p>
-                                    </div>
-                                    <Switch
-                                        checked={isDarkMode}
-                                        onCheckedChange={toggleDarkMode}
-                                    />
+                                <div className="p-3 border-t border-border flex gap-2">
+                                    <Button size="sm" variant="outline" onClick={handleCheckDrive} disabled={driveStatus === 'checking'} className="text-xs h-8">
+                                        {driveStatus === 'checking' && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}
+                                        Test Permissions
+                                    </Button>
+                                    <Button size="sm" variant="ghost" onClick={handleGoogleSignIn} className="text-xs h-8">
+                                        Reconnect
+                                    </Button>
                                 </div>
-                                <div className="space-y-3">
-                                    <div className="space-y-0.5">
-                                        <Label>Accent Color</Label>
-                                        <p className="text-xs text-muted-foreground">Choose your preferred accent color.</p>
-                                    </div>
-                                    <div className="flex gap-2 flex-wrap">
-                                        {['blue', 'green', 'purple', 'red', 'orange', 'pink', 'gold'].map((color) => {
-                                            if (color === 'gold' && user?.role !== 'admin') return null;
+                            </div>
 
-                                            return (
-                                                <button
-                                                    key={color}
-                                                    onClick={() => handleAccentColorChange(color)}
-                                                    className={`w-8 h-8 rounded-full border-2 transition-all ${accentColor === color ? 'border-gray-800 dark:border-white scale-110' : 'border-gray-300 dark:border-gray-600'
-                                                        }`}
-                                                    style={{ backgroundColor: `var(--${color}-500)` }}
-                                                    title={color.charAt(0).toUpperCase() + color.slice(1)}
-                                                />
-                                            );
-                                        })}
+                            {/* Server */}
+                            <div className="rounded-xl border border-border overflow-hidden">
+                                <div className="flex items-center justify-between p-4 bg-muted/20">
+                                    <div className="flex items-center gap-3">
+                                        <div className={cn(
+                                            "w-9 h-9 rounded-lg flex items-center justify-center",
+                                            serverStatus === 'online' ? "bg-success/10" : serverStatus === 'offline' ? "bg-destructive/10" : "bg-muted"
+                                        )}>
+                                            <Server className={cn(
+                                                "w-4 h-4",
+                                                serverStatus === 'online' ? "text-success" : serverStatus === 'offline' ? "text-destructive" : "text-muted-foreground"
+                                            )} />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-sm font-semibold">Backend Server</h4>
+                                            <p className="text-[11px] text-muted-foreground">API server connectivity</p>
+                                        </div>
                                     </div>
+                                    <StatusIndicator status={serverStatus === 'online' ? 'online' : serverStatus === 'offline' ? 'offline' : serverStatus === 'checking' ? 'checking' : 'idle'} />
                                 </div>
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
-                </Tabs>
 
-                <DialogFooter>
-                    <Button variant="ghost" onClick={() => onOpenChange(false)}>Close</Button>
-                </DialogFooter>
+                                {serverStatus === 'offline' && (
+                                    <div className="px-4 py-3 text-xs flex items-start gap-2 border-t border-border bg-destructive/5 text-destructive">
+                                        <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                                        <span>Could not reach backend server. Check your connection.</span>
+                                    </div>
+                                )}
+
+                                <div className="p-3 border-t border-border">
+                                    <Button size="sm" variant="outline" onClick={handleCheckServer} disabled={serverStatus === 'checking'} className="text-xs h-8">
+                                        {serverStatus === 'checking' && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}
+                                        Test Connection
+                                    </Button>
+                                </div>
+                            </div>
+
+                            {/* System Info */}
+                            <div className="rounded-xl border border-border p-4 bg-muted/10">
+                                <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">System Info</h4>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {[
+                                        { label: 'Platform', value: 'QMS v2.0' },
+                                        { label: 'Standard', value: 'ISO 9001:2015' },
+                                        { label: 'Theme', value: isDarkMode ? 'Dark' : 'Light' },
+                                        { label: 'Accent', value: accentColor.charAt(0).toUpperCase() + accentColor.slice(1) },
+                                    ].map(item => (
+                                        <div key={item.label}>
+                                            <p className="text-[10px] text-muted-foreground font-medium">{item.label}</p>
+                                            <p className="text-xs font-semibold">{item.value}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </DialogContent>
         </Dialog>
     );
+}
+
+function StatusIndicator({ status }: { status: 'idle' | 'checking' | 'online' | 'offline' }) {
+    if (status === 'checking') return <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />;
+    if (status === 'online') return (
+        <Badge variant="outline" className="bg-success/10 text-success border-success/20 text-[10px] h-5 font-bold gap-1">
+            <Wifi className="w-2.5 h-2.5" /> Online
+        </Badge>
+    );
+    if (status === 'offline') return (
+        <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20 text-[10px] h-5 font-bold gap-1">
+            <WifiOff className="w-2.5 h-2.5" /> Offline
+        </Badge>
+    );
+    return <Badge variant="outline" className="text-[10px] h-5 text-muted-foreground">Not Checked</Badge>;
 }
