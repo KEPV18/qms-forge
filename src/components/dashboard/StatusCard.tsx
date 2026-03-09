@@ -14,10 +14,26 @@ interface StatusCardProps {
 
 export function StatusCard({ title, value, subtitle, icon: Icon, trend, variant = "default", isLoading = false }: StatusCardProps) {
   const styles = {
-    default: { card: "border-border", icon: "bg-muted/60 text-foreground" },
-    success: { card: "border-success/20", icon: "bg-success/10 text-success" },
-    warning: { card: "border-warning/20", icon: "bg-warning/10 text-warning" },
-    destructive: { card: "border-destructive/20", icon: "bg-destructive/10 text-destructive" },
+    default: {
+      card: "border-border hover:border-primary/30",
+      icon: "bg-primary/10 text-primary",
+      glow: "group-hover:shadow-[0_4px_20px_-4px_hsl(var(--primary)/0.15)]",
+    },
+    success: {
+      card: "border-success/20 hover:border-success/40",
+      icon: "bg-success/10 text-success",
+      glow: "group-hover:shadow-[0_4px_20px_-4px_hsl(var(--success)/0.2)]",
+    },
+    warning: {
+      card: "border-warning/20 hover:border-warning/40",
+      icon: "bg-warning/10 text-warning",
+      glow: "group-hover:shadow-[0_4px_20px_-4px_hsl(var(--warning)/0.2)]",
+    },
+    destructive: {
+      card: "border-destructive/20 hover:border-destructive/40",
+      icon: "bg-destructive/10 text-destructive",
+      glow: "group-hover:shadow-[0_4px_20px_-4px_hsl(var(--destructive)/0.2)]",
+    },
   };
 
   if (isLoading) {
@@ -28,7 +44,7 @@ export function StatusCard({ title, value, subtitle, icon: Icon, trend, variant 
             <Skeleton className="h-3 w-20" />
             <Skeleton className="h-8 w-16" />
           </div>
-          <Skeleton className="w-10 h-10 rounded-lg" />
+          <Skeleton className="w-11 h-11 rounded-xl" />
         </div>
       </div>
     );
@@ -36,19 +52,20 @@ export function StatusCard({ title, value, subtitle, icon: Icon, trend, variant 
 
   return (
     <div className={cn(
-      "bg-card rounded-xl border p-5 hover:shadow-md transition-all duration-200 group cursor-pointer",
-      styles[variant].card
+      "bg-card rounded-xl border p-5 transition-all duration-300 group cursor-pointer",
+      styles[variant].card,
+      styles[variant].glow
     )}>
       <div className="flex items-start justify-between">
-        <div className="space-y-1.5">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{title}</p>
-          <p className="text-3xl font-bold text-foreground tracking-tight">
+        <div className="space-y-1">
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.12em]">{title}</p>
+          <p className="text-3xl font-extrabold text-foreground tracking-tight leading-none">
             {typeof value === "number" ? value.toLocaleString() : value}
           </p>
-          {subtitle && <p className="text-[10px] text-muted-foreground">{subtitle}</p>}
+          {subtitle && <p className="text-[10px] text-muted-foreground/70">{subtitle}</p>}
           {trend && (
             <div className={cn(
-              "inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded",
+              "inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md mt-1",
               trend.isPositive ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
             )}>
               {trend.isPositive ? "↗" : "↘"} {Math.abs(trend.value)}%
@@ -56,7 +73,7 @@ export function StatusCard({ title, value, subtitle, icon: Icon, trend, variant 
           )}
         </div>
         <div className={cn(
-          "w-10 h-10 rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform",
+          "w-11 h-11 rounded-xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110",
           styles[variant].icon
         )}>
           <Icon className="w-5 h-5" />
