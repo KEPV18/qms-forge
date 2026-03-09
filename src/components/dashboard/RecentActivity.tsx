@@ -12,16 +12,30 @@ interface RecentActivityProps {
 function getActivityType(record: QMSRecord): "created" | "approved" | "pending" | "issue" {
   const reviews = record.fileReviews || {};
   const reviewValues = Object.values(reviews) as Array<{ status?: string }>;
-  const statuses = reviewValues.map(r => (r?.status || "").toLowerCase());
+  // Filter out meta keys like "recordStatus", "lastUpdated" that aren't file reviews
+  const fileReviewEntries = reviewValues.filter(r => r && typeof r === "object" && "status" in r);
+  const statuses = fileReviewEntries.map(r => (r?.status || "").toLowerCase());
   const approvedCount = statuses.filter(s => s === "approved" || s === "✅" || s.includes("approved")).length;
   const rejectedCount = statuses.filter(s => s === "rejected" || s.includes("invalid") || s === "❌").length;
-  const hasPending = reviewValues.length === 0 ? false : statuses.some(s => s === "" || s === "pending" || s === "pending_review" || s.includes("under"));
+  const pendingCount = statuses.filter(s => s === "" || s === "pending" || s === "pending_review" || s.includes("under")).length;
   const auditStatus = (record.auditStatus || "").toLowerCase();
+
+  // Check audit status first
   if (auditStatus.includes("nc") || auditStatus.includes("issue")) return "issue";
   if (rejectedCount > 0 && rejectedCount >= approvedCount) return "issue";
+
+  // If audit says OK/✅, or all file reviews are approved, it's approved
+  const auditOk = auditStatus.includes("✅") || auditStatus.includes("ok");
+  if (auditOk || record.reviewed) return "approved";
+  if (approvedCount > 0 && pendingCount === 0 && rejectedCount === 0) return "approved";
+
+  // Only show pending if there are actually pending file reviews
   const hasRecords = (record.actualRecordCount || 0) > 0 || (record.lastSerial && record.lastSerial !== "No Files Yet");
-  if (hasRecords && (hasPending || approvedCount === 0)) return "pending";
-  if (record.reviewed || approvedCount > 0) return "approved";
+  if (hasRecords && pendingCount > 0) return "pending";
+
+  // Has records with all approved
+  if (hasRecords && approvedCount > 0) return "approved";
+
   return "created";
 }
 
