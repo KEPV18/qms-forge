@@ -158,6 +158,20 @@ export function QuickActions() {
       toast({ title: "فشل الرفع", description: e.message || "خطأ غير متوقع", variant: "destructive" });
     }
   };
+  const [isUpdatingReviewer, setIsUpdatingReviewer] = useState(false);
+
+  const handleBatchReviewer = async () => {
+    if (!records || records.length === 0) return;
+    setIsUpdatingReviewer(true);
+    try {
+      await batchUpdateReviewedBy(records, "Ahmed khaled");
+      toast({ title: "تم التحديث", description: "تم تعيين Ahmed khaled كمراجع لجميع السجلات" });
+    } catch (e: any) {
+      toast({ title: "فشل التحديث", description: e.message, variant: "destructive" });
+    } finally {
+      setIsUpdatingReviewer(false);
+    }
+  };
 
   return (
     <div className="bg-card rounded-lg border border-border p-5">
@@ -197,6 +211,16 @@ export function QuickActions() {
         >
           <Upload className="w-4 h-4" />
           <span>Upload Document</span>
+        </Button>
+
+        <Button
+          variant="outline"
+          className="justify-start gap-2 h-auto py-3 col-span-2"
+          onClick={handleBatchReviewer}
+          disabled={isUpdatingReviewer}
+        >
+          <UserCheck className="w-4 h-4" />
+          <span>{isUpdatingReviewer ? "جاري التحديث..." : "Set Reviewer: Ahmed khaled"}</span>
         </Button>
       </div>
 
