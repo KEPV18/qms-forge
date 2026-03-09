@@ -8,6 +8,7 @@ import {
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import qmsLogo from "@/assets/qms-logo.png";
 import { SettingsModal } from "@/components/settings/SettingsModal";
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
@@ -190,10 +191,10 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
       {/* Header */}
       <div className={cn("flex items-center border-b border-sidebar-border/40", collapsed ? "justify-center px-2 py-5" : "px-5 py-5 gap-3")}>
         <div
-          className="w-10 h-10 bg-gradient-to-br from-sidebar-primary to-sidebar-primary/60 rounded-xl flex items-center justify-center cursor-pointer hover:scale-105 transition-transform flex-shrink-0 shadow-lg shadow-sidebar-primary/20"
+          className="w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer hover:scale-105 transition-transform flex-shrink-0 overflow-hidden"
           onClick={() => { navigate("/"); onModuleChange("dashboard"); }}
         >
-          <span className="text-white font-black text-xs tracking-tight">QMS</span>
+          <img src={qmsLogo} alt="QMS Logo" className="w-10 h-10 object-contain" />
         </div>
         {!collapsed && (
           <div className="min-w-0 flex-1" onClick={() => { navigate("/"); onModuleChange("dashboard"); }}>
