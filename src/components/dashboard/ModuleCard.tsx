@@ -13,13 +13,13 @@ interface ModuleCardProps {
 }
 
 const moduleColorMap: Record<string, { gradient: string; text: string; bg: string; border: string; shadow: string }> = {
-  "module-sales":       { gradient: "from-[hsl(var(--module-sales))] to-[hsl(var(--module-sales)/0.7)]", text: "text-[hsl(var(--module-sales))]", bg: "bg-[hsl(var(--module-sales)/0.1)]", border: "border-[hsl(var(--module-sales)/0.2)]", shadow: "hover:shadow-[0_8px_30px_-8px_hsl(var(--module-sales)/0.3)]" },
-  "module-operations":  { gradient: "from-[hsl(var(--module-operations))] to-[hsl(var(--module-operations)/0.7)]", text: "text-[hsl(var(--module-operations))]", bg: "bg-[hsl(var(--module-operations)/0.1)]", border: "border-[hsl(var(--module-operations)/0.2)]", shadow: "hover:shadow-[0_8px_30px_-8px_hsl(var(--module-operations)/0.3)]" },
-  "module-quality":     { gradient: "from-[hsl(var(--module-quality))] to-[hsl(var(--module-quality)/0.7)]", text: "text-[hsl(var(--module-quality))]", bg: "bg-[hsl(var(--module-quality)/0.1)]", border: "border-[hsl(var(--module-quality)/0.2)]", shadow: "hover:shadow-[0_8px_30px_-8px_hsl(var(--module-quality)/0.3)]" },
-  "module-procurement": { gradient: "from-[hsl(var(--module-procurement))] to-[hsl(var(--module-procurement)/0.7)]", text: "text-[hsl(var(--module-procurement))]", bg: "bg-[hsl(var(--module-procurement)/0.1)]", border: "border-[hsl(var(--module-procurement)/0.2)]", shadow: "hover:shadow-[0_8px_30px_-8px_hsl(var(--module-procurement)/0.3)]" },
-  "module-hr":          { gradient: "from-[hsl(var(--module-hr))] to-[hsl(var(--module-hr)/0.7)]", text: "text-[hsl(var(--module-hr))]", bg: "bg-[hsl(var(--module-hr)/0.1)]", border: "border-[hsl(var(--module-hr)/0.2)]", shadow: "hover:shadow-[0_8px_30px_-8px_hsl(var(--module-hr)/0.3)]" },
-  "module-rnd":         { gradient: "from-[hsl(var(--module-rnd))] to-[hsl(var(--module-rnd)/0.7)]", text: "text-[hsl(var(--module-rnd))]", bg: "bg-[hsl(var(--module-rnd)/0.1)]", border: "border-[hsl(var(--module-rnd)/0.2)]", shadow: "hover:shadow-[0_8px_30px_-8px_hsl(var(--module-rnd)/0.3)]" },
-  "module-management":  { gradient: "from-[hsl(var(--module-management))] to-[hsl(var(--module-management)/0.7)]", text: "text-[hsl(var(--module-management))]", bg: "bg-[hsl(var(--module-management)/0.1)]", border: "border-[hsl(var(--module-management)/0.2)]", shadow: "hover:shadow-[0_8px_30px_-8px_hsl(var(--module-management)/0.3)]" },
+  "module-sales":       { gradient: "from-[hsl(var(--module-sales))] to-[hsl(var(--module-sales)/0.7)]", text: "text-[hsl(var(--module-sales))]", bg: "bg-[hsl(var(--module-sales)/0.08)]", border: "border-[hsl(var(--module-sales)/0.15)]", shadow: "hover:shadow-[0_12px_40px_-12px_hsl(var(--module-sales)/0.25)]" },
+  "module-operations":  { gradient: "from-[hsl(var(--module-operations))] to-[hsl(var(--module-operations)/0.7)]", text: "text-[hsl(var(--module-operations))]", bg: "bg-[hsl(var(--module-operations)/0.08)]", border: "border-[hsl(var(--module-operations)/0.15)]", shadow: "hover:shadow-[0_12px_40px_-12px_hsl(var(--module-operations)/0.25)]" },
+  "module-quality":     { gradient: "from-[hsl(var(--module-quality))] to-[hsl(var(--module-quality)/0.7)]", text: "text-[hsl(var(--module-quality))]", bg: "bg-[hsl(var(--module-quality)/0.08)]", border: "border-[hsl(var(--module-quality)/0.15)]", shadow: "hover:shadow-[0_12px_40px_-12px_hsl(var(--module-quality)/0.25)]" },
+  "module-procurement": { gradient: "from-[hsl(var(--module-procurement))] to-[hsl(var(--module-procurement)/0.7)]", text: "text-[hsl(var(--module-procurement))]", bg: "bg-[hsl(var(--module-procurement)/0.08)]", border: "border-[hsl(var(--module-procurement)/0.15)]", shadow: "hover:shadow-[0_12px_40px_-12px_hsl(var(--module-procurement)/0.25)]" },
+  "module-hr":          { gradient: "from-[hsl(var(--module-hr))] to-[hsl(var(--module-hr)/0.7)]", text: "text-[hsl(var(--module-hr))]", bg: "bg-[hsl(var(--module-hr)/0.08)]", border: "border-[hsl(var(--module-hr)/0.15)]", shadow: "hover:shadow-[0_12px_40px_-12px_hsl(var(--module-hr)/0.25)]" },
+  "module-rnd":         { gradient: "from-[hsl(var(--module-rnd))] to-[hsl(var(--module-rnd)/0.7)]", text: "text-[hsl(var(--module-rnd))]", bg: "bg-[hsl(var(--module-rnd)/0.08)]", border: "border-[hsl(var(--module-rnd)/0.15)]", shadow: "hover:shadow-[0_12px_40px_-12px_hsl(var(--module-rnd)/0.25)]" },
+  "module-management":  { gradient: "from-[hsl(var(--module-management))] to-[hsl(var(--module-management)/0.7)]", text: "text-[hsl(var(--module-management))]", bg: "bg-[hsl(var(--module-management)/0.08)]", border: "border-[hsl(var(--module-management)/0.15)]", shadow: "hover:shadow-[0_12px_40px_-12px_hsl(var(--module-management)/0.25)]" },
 };
 
 const defaultColor = { gradient: "from-primary to-primary/70", text: "text-primary", bg: "bg-primary/10", border: "border-primary/20", shadow: "" };
@@ -33,7 +33,7 @@ export function ModuleCard({ title, description, icon: Icon, moduleClass, stats,
 
   if (isLoading) {
     return (
-      <div className="bg-card rounded-xl border border-border p-5 space-y-3">
+      <div className="bg-card rounded-xl border border-border/50 p-5 space-y-3">
         <div className="flex items-center gap-3">
           <Skeleton className="h-12 w-12 rounded-xl" />
           <div className="space-y-1.5 flex-1">
@@ -49,20 +49,19 @@ export function ModuleCard({ title, description, icon: Icon, moduleClass, stats,
 
   return (
     <div className={cn(
-      "relative bg-card rounded-xl border overflow-hidden group cursor-pointer transition-all duration-300",
-      "hover:-translate-y-1",
+      "relative bg-card rounded-xl border overflow-hidden group cursor-pointer transition-all duration-300 card-lift",
       colors.border,
       colors.shadow
     )}>
       {/* Colored top bar */}
-      <div className={cn("h-1.5 w-full bg-gradient-to-r", colors.gradient)} />
+      <div className={cn("h-1 w-full bg-gradient-to-r", colors.gradient)} />
 
       <div className="p-5 flex flex-col h-full">
         {/* Header with large icon */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className={cn(
-              "w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110",
+              "w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg",
               colors.bg
             )}>
               <Icon className={cn("w-6 h-6", colors.text)} />
@@ -100,7 +99,7 @@ export function ModuleCard({ title, description, icon: Icon, moduleClass, stats,
           </div>
         </div>
 
-        {/* Compliance bar */}
+        {/* Compliance bar - gradient */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
@@ -110,11 +109,11 @@ export function ModuleCard({ title, description, icon: Icon, moduleClass, stats,
               {complianceRate}%
             </span>
           </div>
-          <div className="h-2 w-full rounded-full bg-muted/40 overflow-hidden">
+          <div className="h-2 w-full rounded-full bg-muted/30 overflow-hidden">
             <div
               className={cn(
                 "h-full rounded-full transition-all duration-700 ease-out",
-                complianceRate >= 80 ? "bg-gradient-to-r from-success to-success/70" : complianceRate >= 50 ? "bg-gradient-to-r from-warning to-warning/70" : "bg-gradient-to-r from-destructive to-destructive/70"
+                complianceRate >= 80 ? "bg-gradient-to-r from-success/80 to-success" : complianceRate >= 50 ? "bg-gradient-to-r from-warning/80 to-warning" : "bg-gradient-to-r from-destructive/80 to-destructive"
               )}
               style={{ width: `${complianceRate}%` }}
             />

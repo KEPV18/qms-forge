@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { searchProjectDrive, DriveSearchResult } from "@/lib/driveService";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 export function Header() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -14,6 +15,9 @@ export function Header() {
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const userInitials = (user?.name || "U").slice(0, 2).toUpperCase();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -69,36 +73,36 @@ export function Header() {
   };
 
   const searchBar = (
-    <div className="relative w-full focus-within:ring-2 focus-within:ring-primary/20 rounded-lg transition-all duration-300" ref={dropdownRef}>
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
+    <div className="relative w-full focus-within:ring-2 focus-within:ring-primary/20 rounded-full transition-all duration-300" ref={dropdownRef}>
+      <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
       <Input
         placeholder="Search files and folders..."
-        className="pl-10 bg-background/50 border-border/50 rounded-lg shadow-sm focus-visible:ring-0 focus-visible:border-primary/50 transition-all"
+        className="pl-11 pr-4 bg-muted/40 border-transparent rounded-full shadow-none focus-visible:ring-0 focus-visible:bg-background focus-visible:border-border/50 transition-all h-10"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
         onFocus={() => searchTerm.length >= 2 && setShowDropdown(true)}
       />
       {isSearching && (
-        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
+        <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
       )}
 
       {/* Results Dropdown */}
       {showDropdown && (
-        <div className="absolute top-full left-0 w-full mt-2 bg-card border border-border rounded-lg shadow-xl overflow-hidden animate-fade-in z-50">
+        <div className="absolute top-full left-0 w-full mt-2 bg-card border border-border/50 rounded-xl shadow-xl overflow-hidden animate-fade-up z-50">
           <div className="max-h-[400px] overflow-y-auto">
             {results.length > 0 ? (
               <>
-                <div className="px-3 py-2 text-xs font-semibold text-muted-foreground bg-muted/30 border-b border-border">
+                <div className="px-4 py-2 text-xs font-semibold text-muted-foreground bg-muted/30 border-b border-border/50">
                   {results.length} results found
                 </div>
                 {results.map((file) => (
                   <div
                     key={file.id}
                     onClick={() => window.open(file.webViewLink, '_blank')}
-                    className="px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer border-b border-border last:border-0"
+                    className="px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer border-b border-border/30 last:border-0"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-background/60 flex items-center justify-center border border-border">
+                      <div className="w-8 h-8 rounded-lg bg-background/60 flex items-center justify-center border border-border/50">
                         {getFileIcon(file.mimeType)}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -143,7 +147,7 @@ export function Header() {
   );
 
   return (
-    <header className="h-14 md:h-16 bg-card/60 backdrop-blur-2xl border-b border-border/50 sticky top-0 z-40 transition-all duration-300">
+    <header className="h-14 md:h-16 bg-card/70 backdrop-blur-2xl border-b border-border/30 sticky top-0 z-40 transition-all duration-300">
       <div className="flex items-center h-full px-4 md:px-6 gap-3">
         {/* Spacer for mobile hamburger */}
         <div className="w-10 md:hidden" />
@@ -153,22 +157,28 @@ export function Header() {
           {searchBar}
         </div>
 
-        {/* Notification Bell */}
-        <div className="ml-auto flex items-center gap-1">
+        {/* Right section */}
+        <div className="ml-auto flex items-center gap-2">
           <NotificationBell />
           {/* Mobile search toggle */}
           <button
-            className="md:hidden p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            className="md:hidden p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
             onClick={() => setShowMobileSearch(!showMobileSearch)}
           >
             <Search className="w-5 h-5" />
           </button>
+          {/* User avatar */}
+          <div className="hidden md:flex items-center gap-2 ml-1">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/15">
+              <span className="text-[10px] font-bold text-primary">{userInitials}</span>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Mobile search expanded */}
       {showMobileSearch && (
-        <div className="md:hidden px-4 pb-3 border-b border-border/50 bg-card/80 backdrop-blur-xl">
+        <div className="md:hidden px-4 pb-3 border-b border-border/30 bg-card/80 backdrop-blur-xl">
           {searchBar}
         </div>
       )}

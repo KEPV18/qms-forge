@@ -13,6 +13,14 @@ import { useQMSData, useAuditSummary } from "@/hooks/useQMSData";
 import { searchProjectDrive, DriveSearchResult } from "@/lib/driveService";
 import { uploadFileToDrive, createDriveFolder } from "@/lib/driveService";
 import { batchUpdateReviewedBy } from "@/lib/googleSheets";
+import { cn } from "@/lib/utils";
+
+const quickActionItems = [
+  { id: "risk", label: "New Risk", icon: Plus, color: "bg-primary/10 text-primary hover:bg-primary/15 border-primary/15" },
+  { id: "audit", label: "Start Audit", icon: ClipboardCheck, color: "bg-success/10 text-success hover:bg-success/15 border-success/15" },
+  { id: "capa", label: "Log CAPA", icon: AlertTriangle, color: "bg-warning/10 text-warning hover:bg-warning/15 border-warning/15" },
+  { id: "upload", label: "Upload File", icon: Upload, color: "bg-info/10 text-info hover:bg-info/15 border-info/15" },
+];
 
 export function QuickActions() {
   const navigate = useNavigate();
@@ -173,57 +181,49 @@ export function QuickActions() {
     }
   };
 
+  const actionHandlers: Record<string, () => void> = {
+    risk: () => setRiskOpen(true),
+    audit: () => setAuditOpen(true),
+    capa: () => setCapaOpen(true),
+    upload: () => setUploadOpen(true),
+  };
+
   return (
-    <div className="bg-card rounded-lg border border-border p-5">
-      <h3 className="font-semibold text-foreground mb-4">Quick Actions</h3>
-      <div className="grid grid-cols-2 gap-3">
-        <Button
-          variant="default"
-          className="justify-start gap-2 h-auto py-3"
-          onClick={() => setRiskOpen(true)}
-        >
-          <Plus className="w-4 h-4" />
-          <span>New Risk / Process</span>
-        </Button>
-
-        <Button
-          variant="outline"
-          className="justify-start gap-2 h-auto py-3"
-          onClick={() => setAuditOpen(true)}
-        >
-          <ClipboardCheck className="w-4 h-4" />
-          <span>Start Audit</span>
-        </Button>
-
-        <Button
-          variant="outline"
-          className="justify-start gap-2 h-auto py-3"
-          onClick={() => setCapaOpen(true)}
-        >
-          <AlertTriangle className="w-4 h-4" />
-          <span>Log CAPA</span>
-        </Button>
-
-        <Button
-          variant="outline"
-          className="justify-start gap-2 h-auto py-3"
-          onClick={() => setUploadOpen(true)}
-        >
-          <Upload className="w-4 h-4" />
-          <span>Upload Document</span>
-        </Button>
-
-        <Button
-          variant="outline"
-          className="justify-start gap-2 h-auto py-3 col-span-2"
+    <div className="bg-card rounded-xl border border-border/50 overflow-hidden">
+      <div className="px-5 py-4 border-b border-border/50">
+        <h3 className="text-sm font-bold text-foreground">Quick Actions</h3>
+        <p className="text-[10px] text-muted-foreground mt-0.5">Common operations</p>
+      </div>
+      <div className="p-4 grid grid-cols-2 gap-2">
+        {quickActionItems.map(item => {
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.id}
+              onClick={actionHandlers[item.id]}
+              className={cn(
+                "flex flex-col items-center gap-2 p-4 rounded-xl border transition-all duration-200 hover:scale-[1.02]",
+                item.color
+              )}
+            >
+              <Icon className="w-5 h-5" />
+              <span className="text-[11px] font-semibold">{item.label}</span>
+            </button>
+          );
+        })}
+      </div>
+      <div className="px-4 pb-4">
+        <button
           onClick={handleBatchReviewer}
           disabled={isUpdatingReviewer}
+          className="w-full flex items-center justify-center gap-2 p-3 rounded-xl border border-border/50 text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-all duration-200 text-[11px] font-semibold"
         >
           <UserCheck className="w-4 h-4" />
           <span>{isUpdatingReviewer ? "جاري التحديث..." : "Set Reviewer: Ahmed khaled"}</span>
-        </Button>
+        </button>
       </div>
 
+      {/* Dialogs - same as before */}
       <Dialog open={riskOpen} onOpenChange={setRiskOpen}>
         <DialogContent>
           <DialogHeader>
@@ -424,30 +424,32 @@ export function QuickActions() {
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-2">
-              <Label>Search Folder</Label>
+              <Label>Search for Folder</Label>
               <div className="flex gap-2">
-                <Input placeholder="Type folder name" value={folderSearchTerm} onChange={(e) => setFolderSearchTerm(e.target.value)} />
-                <Button variant="outline" onClick={handleSearchFolders}>{isSearchingFolders ? "..." : "Search"}</Button>
+                <Input placeholder="Search..." value={folderSearchTerm} onChange={e => setFolderSearchTerm(e.target.value)} />
+                <Button variant="outline" onClick={handleSearchFolders} disabled={isSearchingFolders}>
+                  {isSearchingFolders ? "..." : "Search"}
+                </Button>
               </div>
-              <div className="max-h-32 overflow-auto space-y-2">
-                {folderResults.map(fr => (
-                  <button
-                    key={fr.id}
-                    className="w-full text-left p-2 rounded border hover:bg-muted"
-                    onClick={() => setUploadTarget({ ...uploadTarget, folderLink: `https://drive.google.com/folders/${fr.id}` })}
-                  >
-                    {fr.name}
-                  </button>
-                ))}
-              </div>
+              {folderResults.length > 0 && (
+                <div className="border rounded-md max-h-32 overflow-auto">
+                  {folderResults.map(f => (
+                    <button key={f.id} className="w-full text-left px-3 py-2 text-sm hover:bg-muted" onClick={() => {
+                      setUploadTarget({ ...uploadTarget, folderLink: f.webViewLink });
+                      setFolderSearchTerm(f.name);
+                      setFolderResults([]);
+                    }}>{f.name}</button>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="space-y-2">
-              <Label>Or create new folder</Label>
-              <Input placeholder="New folder name" value={uploadTarget.newFolderName} onChange={(e) => setUploadTarget({ ...uploadTarget, newFolderName: e.target.value })} />
+              <Label>Or Create New Folder</Label>
+              <Input placeholder="New folder name..." value={uploadTarget.newFolderName} onChange={e => setUploadTarget({ ...uploadTarget, newFolderName: e.target.value })} />
             </div>
             <div className="space-y-2">
-              <Label>Choose file</Label>
-              <Input type="file" onChange={(e) => setUploadFile(e.target.files?.[0] || null)} />
+              <Label>Select File</Label>
+              <Input type="file" onChange={e => setUploadFile(e.target.files?.[0] || null)} />
             </div>
             <div className="flex justify-end">
               <Button onClick={submitUpload}>Upload</Button>

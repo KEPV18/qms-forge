@@ -119,19 +119,19 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
         <button
           onClick={() => handleNavClick(item)}
           className={cn(
-            "w-full flex items-center gap-3 rounded-lg text-[13px] transition-all duration-200 relative group",
+            "w-full flex items-center gap-3 rounded-xl text-[13px] transition-all duration-200 relative group",
             collapsed ? "justify-center p-2.5 mx-auto" : "px-3 py-2.5",
             isActive
-              ? "bg-sidebar-primary/15 text-sidebar-primary font-semibold"
-              : "text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+              ? "bg-gradient-to-r from-sidebar-primary/20 to-sidebar-primary/5 text-sidebar-primary font-semibold shadow-sm shadow-sidebar-primary/10"
+              : "text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent/80"
           )}
         >
           {isActive && !collapsed && (
-            <div className="absolute left-0 top-1 bottom-1 w-[3px] bg-sidebar-primary rounded-full" />
+            <div className="absolute left-0 top-1 bottom-1 w-[3px] bg-gradient-to-b from-sidebar-primary to-sidebar-primary/50 rounded-full" />
           )}
           <Icon className={cn(
-            "w-[18px] h-[18px] flex-shrink-0 transition-colors",
-            isActive ? "text-sidebar-primary" : "text-sidebar-foreground/40 group-hover:text-sidebar-foreground/70"
+            "w-[18px] h-[18px] flex-shrink-0 transition-all duration-200",
+            isActive ? "text-sidebar-primary drop-shadow-[0_0_6px_hsl(var(--sidebar-primary)/0.4)]" : "text-sidebar-foreground/40 group-hover:text-sidebar-foreground/70"
           )} />
           {!collapsed && (
             <>
@@ -144,12 +144,12 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
         </button>
 
         {!collapsed && item.children && isExpanded && (
-          <div className="ml-7 mt-0.5 space-y-0.5 border-l-2 border-sidebar-border pl-3">
+          <div className="ml-7 mt-0.5 space-y-0.5 border-l-2 border-sidebar-primary/15 pl-3">
             {item.children.map((child) => (
               <button
                 key={child.id}
                 onClick={() => handleChildClick(item.id, child)}
-                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-sidebar-foreground/40 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-sidebar-foreground/40 hover:text-sidebar-foreground hover:bg-sidebar-accent/60 transition-all duration-150"
               >
                 {child.code && <span className="font-mono text-[10px] text-sidebar-primary/70">{child.code}</span>}
                 <span className="truncate">{child.label}</span>
@@ -175,10 +175,10 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
   };
 
   const SectionLabel = ({ icon: SIcon, label }: { icon: React.ElementType; label: string }) => {
-    if (collapsed) return <div className="my-3 mx-3 border-t border-sidebar-border/30" />;
+    if (collapsed) return <div className="my-3 mx-3 border-t border-sidebar-border/20" />;
     return (
-      <div className="flex items-center gap-2 px-3 pt-5 pb-2">
-        <SIcon className="w-3.5 h-3.5 text-sidebar-foreground/20" />
+      <div className="flex items-center gap-2 px-3 pt-6 pb-2">
+        <SIcon className="w-3.5 h-3.5 text-sidebar-primary/30" />
         <span className="text-[10px] font-bold text-sidebar-foreground/25 uppercase tracking-[0.15em]">{label}</span>
       </div>
     );
@@ -189,9 +189,9 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
   const sidebarContent = (isMobile: boolean) => (
     <>
       {/* Header */}
-      <div className={cn("flex items-center border-b border-sidebar-border/40", collapsed ? "justify-center px-2 py-5" : "px-5 py-5 gap-3")}>
+      <div className={cn("flex items-center border-b border-sidebar-border/20", collapsed ? "justify-center px-2 py-5" : "px-5 py-5 gap-3")}>
         <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer hover:scale-105 transition-transform flex-shrink-0 overflow-hidden"
+          className="w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer hover:scale-110 transition-all duration-300 flex-shrink-0 overflow-hidden shadow-lg shadow-sidebar-primary/10"
           onClick={() => { navigate("/"); onModuleChange("dashboard"); }}
         >
           <img src={qmsLogo} alt="QMS Logo" className="w-10 h-10 object-contain" />
@@ -199,11 +199,11 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
         {!collapsed && (
           <div className="min-w-0 flex-1" onClick={() => { navigate("/"); onModuleChange("dashboard"); }}>
             <h1 className="font-bold text-sm text-sidebar-foreground cursor-pointer tracking-tight">QMS Suite</h1>
-            <p className="text-[9px] text-sidebar-foreground/25 font-bold uppercase tracking-[0.2em]">ISO 9001</p>
+            <p className="text-[9px] text-sidebar-primary/40 font-bold uppercase tracking-[0.2em]">ISO 9001</p>
           </div>
         )}
         {!collapsed && !isMobile && (
-          <button onClick={toggleSidebar} className="p-1.5 rounded-lg text-sidebar-foreground/20 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors">
+          <button onClick={toggleSidebar} className="p-1.5 rounded-lg text-sidebar-foreground/20 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-all duration-200">
             <PanelLeftClose className="w-4 h-4" />
           </button>
         )}
@@ -216,7 +216,7 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
 
       {collapsed && (
         <div className="flex justify-center py-3">
-          <button onClick={toggleSidebar} className="p-1.5 rounded-lg text-sidebar-foreground/20 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors">
+          <button onClick={toggleSidebar} className="p-1.5 rounded-lg text-sidebar-foreground/20 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-all duration-200">
             <PanelLeftOpen className="w-4 h-4" />
           </button>
         </div>
@@ -245,13 +245,13 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className={cn("border-t border-sidebar-border/30", collapsed ? "p-2" : "p-4 space-y-3")}>
+      <div className={cn("border-t border-sidebar-border/20", collapsed ? "p-2" : "p-4 space-y-3")}>
         <div className={cn("flex items-center", collapsed ? "flex-col gap-1" : "gap-1")}>
           <Tooltip delayDuration={0}>
             <TooltipTrigger asChild>
               <button
                 onClick={() => setIsSettingsOpen(true)}
-                className="p-2 rounded-lg text-sidebar-foreground/30 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+                className="p-2 rounded-lg text-sidebar-foreground/30 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-all duration-200"
               >
                 <Settings className="w-4 h-4" />
               </button>
@@ -264,7 +264,7 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
               <TooltipTrigger asChild>
                 <button
                   onClick={logout}
-                  className="p-2 rounded-lg text-sidebar-foreground/30 hover:text-destructive hover:bg-destructive/10 transition-colors ml-auto"
+                  className="p-2 rounded-lg text-sidebar-foreground/30 hover:text-destructive hover:bg-destructive/10 transition-all duration-200 ml-auto"
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
@@ -276,12 +276,12 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
 
         {/* User card */}
         <div className={cn(
-          "flex items-center rounded-xl",
-          collapsed ? "justify-center p-2 bg-sidebar-accent/50" : "gap-3 px-3 py-3 bg-sidebar-accent/60 border border-sidebar-border/30"
+          "flex items-center rounded-xl transition-all duration-200",
+          collapsed ? "justify-center p-2 bg-sidebar-accent/50" : "gap-3 px-3 py-3 bg-gradient-to-r from-sidebar-accent/80 to-sidebar-accent/40 border border-sidebar-border/20"
         )}>
           <Tooltip delayDuration={0}>
             <TooltipTrigger asChild>
-              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-sidebar-primary/30 to-sidebar-primary/10 flex items-center justify-center flex-shrink-0 border border-sidebar-primary/20">
+              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-sidebar-primary/40 to-sidebar-primary/15 flex items-center justify-center flex-shrink-0 border border-sidebar-primary/20 shadow-sm shadow-sidebar-primary/10">
                 <span className="text-[11px] font-bold text-sidebar-primary">{userInitials}</span>
               </div>
             </TooltipTrigger>
@@ -309,7 +309,7 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
     <TooltipProvider>
       <button
         onClick={() => setIsMobileOpen(true)}
-        className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-card border border-border shadow-lg hover:bg-muted transition-colors"
+        className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-xl bg-card/90 backdrop-blur-xl border border-border/50 shadow-lg hover:bg-muted transition-all duration-200"
         aria-label="Open menu"
       >
         <Menu className="w-5 h-5 text-foreground" />
@@ -320,14 +320,14 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
       )}
 
       <aside className={cn(
-        "md:hidden fixed left-0 top-0 h-screen z-50 w-72 bg-sidebar border-r border-sidebar-border flex flex-col transition-transform duration-300 ease-in-out",
+        "md:hidden fixed left-0 top-0 h-screen z-50 w-72 sidebar-gradient border-r border-sidebar-border/30 flex flex-col transition-transform duration-300 ease-in-out",
         isMobileOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         {sidebarContent(true)}
       </aside>
 
       <aside className={cn(
-        "hidden md:flex flex-col h-screen fixed left-0 top-0 z-50 transition-all duration-300 bg-sidebar border-r border-sidebar-border",
+        "hidden md:flex flex-col h-screen fixed left-0 top-0 z-50 transition-all duration-300 sidebar-gradient border-r border-sidebar-border/30",
         isCollapsed ? "w-[60px]" : "w-60"
       )}>
         {sidebarContent(false)}

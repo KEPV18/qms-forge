@@ -128,8 +128,8 @@ export default function Index() {
         <main className="flex-1 overflow-auto">
           <div className="max-w-[1400px] mx-auto p-4 md:p-6 lg:p-8 space-y-8">
 
-            {/* Hero Section - Bold gradient */}
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary via-primary/90 to-primary/70 p-8 md:p-10 shadow-xl shadow-primary/10">
+            {/* Hero Section - Mesh gradient */}
+            <div className="relative overflow-hidden rounded-2xl mesh-gradient animated-gradient p-8 md:p-10 shadow-xl shadow-primary/10">
               <div className="relative z-10 flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2 mb-2">

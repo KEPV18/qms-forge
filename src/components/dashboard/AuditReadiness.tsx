@@ -1,5 +1,4 @@
 import { CheckCircle, Clock, AlertTriangle, Shield, RefreshCw } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { ModuleStats } from "@/lib/googleSheets";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,9 +13,9 @@ interface AuditReadinessProps {
 }
 
 const statusConfig = {
-  compliant: { icon: CheckCircle, color: "text-success", bg: "bg-success" },
-  pending: { icon: Clock, color: "text-warning", bg: "bg-warning" },
-  attention: { icon: AlertTriangle, color: "text-destructive", bg: "bg-destructive" },
+  compliant: { icon: CheckCircle, color: "text-success", bg: "bg-success", ring: "ring-success/20" },
+  pending: { icon: Clock, color: "text-warning", bg: "bg-warning", ring: "ring-warning/20" },
+  attention: { icon: AlertTriangle, color: "text-destructive", bg: "bg-destructive", ring: "ring-destructive/20" },
 };
 
 function getModuleStatus(s: ModuleStats): "compliant" | "pending" | "attention" {
@@ -30,10 +29,28 @@ function getModuleProgress(s: ModuleStats): number {
   return Math.round((s.compliantFormsCount / s.formsCount) * 100);
 }
 
+// Circular progress component
+function CircularProgress({ value, size = 36, strokeWidth = 3, className }: { value: number; size?: number; strokeWidth?: number; className?: string }) {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (value / 100) * circumference;
+  const color = value >= 80 ? "hsl(var(--success))" : value >= 50 ? "hsl(var(--warning))" : "hsl(var(--destructive))";
+
+  return (
+    <div className={cn("relative flex items-center justify-center", className)} style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="hsl(var(--muted))" strokeWidth={strokeWidth} opacity={0.3} />
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={color} strokeWidth={strokeWidth} strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round" className="transition-all duration-700 ease-out" />
+      </svg>
+      <span className="absolute text-[9px] font-bold text-foreground">{value}%</span>
+    </div>
+  );
+}
+
 export function AuditReadiness({ moduleStats, complianceRate, isLoading = false, onRefresh, emptyFormsCount = 0 }: AuditReadinessProps) {
   if (isLoading) {
     return (
-      <div className="bg-card rounded-xl border border-border p-5">
+      <div className="bg-card rounded-xl border border-border/50 p-5">
         <Skeleton className="h-4 w-32 mb-4" />
         {[1, 2, 3].map(i => <Skeleton key={i} className="h-6 w-full mb-3" />)}
       </div>
@@ -44,8 +61,8 @@ export function AuditReadiness({ moduleStats, complianceRate, isLoading = false,
   const displayCompliance = validModules.length > 0 ? Math.max(0, Math.min(100, complianceRate)) : 0;
 
   return (
-    <div className="bg-card rounded-xl border border-border overflow-hidden">
-      <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+    <div className="bg-card rounded-xl border border-border/50 overflow-hidden">
+      <div className="px-5 py-4 border-b border-border/50 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center">
             <Shield className="w-4 h-4 text-success" />
@@ -65,7 +82,7 @@ export function AuditReadiness({ moduleStats, complianceRate, isLoading = false,
         </div>
       </div>
 
-      <div className="p-5 space-y-4">
+      <div className="p-5 space-y-3">
         {moduleStats.length === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-4">Loading modules...</p>
         ) : (
@@ -76,21 +93,20 @@ export function AuditReadiness({ moduleStats, complianceRate, isLoading = false,
             const progress = getModuleProgress(module);
 
             return (
-              <div key={module.id} className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Icon className={cn("w-3 h-3", config.color)} />
-                    <span className="text-xs font-semibold text-foreground truncate max-w-[130px]">{module.name}</span>
+              <div key={module.id} className="flex items-center gap-3 group">
+                <CircularProgress value={progress} size={36} strokeWidth={3} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-foreground truncate">{module.name}</span>
+                    <Icon className={cn("w-3 h-3 flex-shrink-0", config.color)} />
                   </div>
-                  <span className="text-[10px] font-bold text-muted-foreground">{progress}%</span>
+                  {(module.issuesCount > 0 || module.pendingCount > 0) && (
+                    <div className="flex gap-2 text-[9px] mt-0.5">
+                      {module.pendingCount > 0 && <span className="text-warning font-semibold">{module.pendingCount} pending</span>}
+                      {module.issuesCount > 0 && <span className="text-destructive font-semibold">{module.issuesCount} issues</span>}
+                    </div>
+                  )}
                 </div>
-                <Progress value={progress} className="h-1 rounded-full bg-muted/30" />
-                {(module.issuesCount > 0 || module.pendingCount > 0) && (
-                  <div className="flex gap-2 text-[9px]">
-                    {module.pendingCount > 0 && <span className="text-warning font-semibold">{module.pendingCount} pending</span>}
-                    {module.issuesCount > 0 && <span className="text-destructive font-semibold">{module.issuesCount} issues</span>}
-                  </div>
-                )}
               </div>
             );
           })
