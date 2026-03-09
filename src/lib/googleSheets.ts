@@ -368,6 +368,42 @@ export async function updateSheetCell(
   }
 }
 
+export async function batchUpdateReviewedBy(
+  records: QMSRecord[],
+  reviewerName: string
+): Promise<boolean> {
+  const accessToken = await getAccessToken();
+  if (!accessToken) throw new Error("No access token available.");
+
+  const data = records
+    .filter(r => r.code && r.rowIndex)
+    .map(r => ({
+      range: `'${SHEET_NAME}'!N${r.rowIndex}`,
+      values: [[reviewerName]],
+    }));
+
+  if (data.length === 0) return false;
+
+  const url = `${SHEETS_API_BASE}/${SPREADSHEET_ID}/values:batchUpdate`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({
+      valueInputOption: "USER_ENTERED",
+      data,
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error?.message || response.statusText);
+  }
+  return true;
+}
+
 export function calculateModuleStats(records: QMSRecord[]): ModuleStats[] {
   const moduleMap = new Map<string, ModuleStats>();
 
