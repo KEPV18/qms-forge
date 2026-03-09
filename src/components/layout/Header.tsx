@@ -1,4 +1,5 @@
-import { Search, Bell, FileText, Folder, Layout, FileCode, CheckCircle, ExternalLink, Table, Loader2, Menu } from "lucide-react";
+import { Search, FileText, Folder, Layout, FileCode, CheckCircle, ExternalLink, Table, Loader2, Menu } from "lucide-react";
+import { NotificationBell } from "./NotificationBell";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
