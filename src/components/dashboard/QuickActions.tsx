@@ -12,6 +12,7 @@ import { addCAPA } from "@/lib/capaRegisterService";
 import { useQMSData, useAuditSummary } from "@/hooks/useQMSData";
 import { searchProjectDrive, DriveSearchResult } from "@/lib/driveService";
 import { uploadFileToDrive, createDriveFolder } from "@/lib/driveService";
+import { batchUpdateReviewedBy } from "@/lib/googleSheets";
 
 export function QuickActions() {
   const navigate = useNavigate();
