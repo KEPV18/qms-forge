@@ -1,4 +1,5 @@
-import { Search, Bell, FileText, Folder, Layout, FileCode, CheckCircle, ExternalLink, Table, Loader2, Menu } from "lucide-react";
+import { Search, FileText, Folder, Layout, FileCode, CheckCircle, ExternalLink, Table, Loader2, Menu } from "lucide-react";
+import { NotificationBell } from "./NotificationBell";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
@@ -152,13 +153,17 @@ export function Header() {
           {searchBar}
         </div>
 
-        {/* Mobile search toggle */}
-        <button
-          className="md:hidden ml-auto p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-          onClick={() => setShowMobileSearch(!showMobileSearch)}
-        >
-          <Search className="w-5 h-5" />
-        </button>
+        {/* Notification Bell */}
+        <div className="ml-auto flex items-center gap-1">
+          <NotificationBell />
+          {/* Mobile search toggle */}
+          <button
+            className="md:hidden p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            onClick={() => setShowMobileSearch(!showMobileSearch)}
+          >
+            <Search className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       {/* Mobile search expanded */}

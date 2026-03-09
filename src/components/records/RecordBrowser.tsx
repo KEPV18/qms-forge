@@ -11,7 +11,7 @@ import { formatTimeAgo } from "@/lib/googleSheets";
 import { EditMetadataModal } from "./EditMetadataModal";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { useNotifications } from "@/hooks/useNotifications";
+import { useNotifications, getAdminUserIds } from "@/hooks/useNotifications";
 
 interface RecordBrowserProps {
     record: QMSRecord;
@@ -38,14 +38,18 @@ export function RecordBrowser({ record, isFlat = false }: RecordBrowserProps) {
 
             await moveFileToArchive(fileId, folderId);
 
-            // Add notification
-            addNotification({
-                type: 'archive',
-                title: 'Record Archived',
-                message: `${fileName} moved to archive. Click to manage archived files.`,
-                link: '/archive',
-                data: { fileId, originalParentId: folderId }
-            });
+            // Notify all admins
+            const adminIds = await getAdminUserIds();
+            if (adminIds.length > 0) {
+                await addNotification({
+                    type: 'archive',
+                    title: 'File Deleted',
+                    message: `"${fileName}" from ${record.recordName} (${record.code}) was deleted.`,
+                    link: '/archive',
+                    data: { fileId, originalParentId: folderId, recordCode: record.code },
+                    targetUserIds: adminIds,
+                });
+            }
 
             toast({
                 title: "Record Archived",
