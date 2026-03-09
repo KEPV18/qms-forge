@@ -1,98 +1,117 @@
 import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface AppNotification {
     id: string;
-    type: 'archive' | 'info' | 'success';
+    type: string;
     title: string;
     message: string;
-    timestamp: number;
+    created_at: string;
     read: boolean;
     link?: string;
     data?: any;
+    created_by?: string;
 }
-
-const STORAGE_KEY = 'qms_notifications';
-const EVENT_KEY = 'qms-notification-update';
 
 export function useNotifications() {
     const [notifications, setNotifications] = useState<AppNotification[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    // Helper to load current state
-    const loadFromStorage = useCallback(() => {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-            try {
-                return JSON.parse(stored);
-            } catch (e) {
-                console.error("Failed to parse notifications", e);
-                return [];
-            }
+    const fetchNotifications = useCallback(async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data, error } = await supabase
+            .from('notifications')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(50);
+
+        if (!error && data) {
+            setNotifications(data as AppNotification[]);
         }
-        return [];
+        setLoading(false);
     }, []);
 
-    // Initial load and event listener
+    // Initial load + realtime subscription
     useEffect(() => {
-        // Initial load
-        setFiles(loadFromStorage());
+        fetchNotifications();
 
-        // Listen for updates from other components
-        const handleUpdate = () => {
-            setFiles(loadFromStorage());
+        const channel = supabase
+            .channel('notifications-realtime')
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'notifications',
+            }, () => {
+                fetchNotifications();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
         };
+    }, [fetchNotifications]);
 
-        window.addEventListener(EVENT_KEY, handleUpdate);
-        return () => window.removeEventListener(EVENT_KEY, handleUpdate);
-    }, [loadFromStorage]);
+    const addNotification = async (notif: {
+        type: string;
+        title: string;
+        message: string;
+        link?: string;
+        data?: any;
+        targetUserIds: string[]; // who should receive it
+    }) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        const rows = notif.targetUserIds.map(uid => ({
+            user_id: uid,
+            type: notif.type,
+            title: notif.title,
+            message: notif.message,
+            link: notif.link || null,
+            data: notif.data || null,
+            created_by: user?.id || null,
+        }));
 
-    // Internal setter that also triggers the event
-    const updateNotifications = (newNotifs: AppNotification[]) => {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(newNotifs));
-        setNotifications(newNotifs); // Update local state immediately
-        window.dispatchEvent(new Event(EVENT_KEY)); // Notify others
+        await supabase.from('notifications').insert(rows);
     };
 
-    const addNotification = (notif: Omit<AppNotification, 'id' | 'timestamp' | 'read'>) => {
-        const current = loadFromStorage();
-        const newNotif: AppNotification = {
-            ...notif,
-            id: Math.random().toString(36).substring(2, 9),
-            timestamp: Date.now(),
-            read: false
-        };
-        updateNotifications([newNotif, ...current]);
+    const markAsRead = async (id: string) => {
+        await supabase.from('notifications').update({ read: true }).eq('id', id);
+        setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     };
 
-    const markAsRead = (id: string) => {
-        const current = loadFromStorage();
-        const updated = current.map((n: AppNotification) => n.id === id ? { ...n, read: true } : n);
-        updateNotifications(updated);
+    const removeNotification = async (id: string) => {
+        await supabase.from('notifications').delete().eq('id', id);
+        setNotifications(prev => prev.filter(n => n.id !== id));
     };
 
-    const removeNotification = (id: string) => {
-        const current = loadFromStorage();
-        const updated = current.filter((n: AppNotification) => n.id !== id);
-        updateNotifications(updated);
+    const clearAll = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        await supabase.from('notifications').delete().eq('user_id', user.id);
+        setNotifications([]);
     };
-
-    const clearAll = () => {
-        updateNotifications([]);
-    };
-
-    // Need to define setFiles as setNotifications wrapper for the useEffect above
-    // Actually, let's just use setNotifications directly in useEffect
-    function setFiles(data: AppNotification[]) {
-        setNotifications(data);
-    }
 
     const unreadCount = notifications.filter(n => !n.read).length;
 
     return {
         notifications,
         unreadCount,
+        loading,
         addNotification,
         markAsRead,
         removeNotification,
-        clearAll
+        clearAll,
+        refetch: fetchNotifications,
     };
+}
+
+/** Helper: fetch all admin user IDs */
+export async function getAdminUserIds(): Promise<string[]> {
+    const { data } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'admin');
+    return (data || []).map(r => r.user_id);
 }
