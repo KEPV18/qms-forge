@@ -37,11 +37,14 @@ export default function AuditPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { user } = useAuth();
   const [activeModule, setActiveModule] = useState("quality");
   const [activeTab, setActiveTab] = useState("pending");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(localStorage.getItem('sidebarCollapsed') === 'true');
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
