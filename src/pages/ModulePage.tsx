@@ -511,15 +511,28 @@ export default function ModulePage() {
                               <AlertCircle className="w-10 h-10 text-muted-foreground/20 mb-3" />
                               <p className="text-sm font-medium text-muted-foreground/60">No records filled yet</p>
                               <p className="text-[10px] text-muted-foreground/40 mt-1 uppercase tracking-wider">Awaiting first submission</p>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="mt-4 gap-2 opacity-0 group-hover/row:opacity-100 transition-opacity"
-                                onClick={() => setIsAddRecordModalOpen(true)}
-                              >
-                                <Settings className="w-3 h-3" />
-                                Add First Record
-                              </Button>
+                              <div className="flex gap-2 mt-4">
+                                {record.folderLink && !record.folderLink.includes("No Files Yet") && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="gap-2"
+                                    onClick={() => window.open(record.folderLink, '_blank')}
+                                  >
+                                    <FolderOpen className="w-3 h-3" />
+                                    Open Folder
+                                  </Button>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="gap-2 opacity-0 group-hover/row:opacity-100 transition-opacity"
+                                  onClick={() => setIsAddRecordModalOpen(true)}
+                                >
+                                  <Settings className="w-3 h-3" />
+                                  Add First Record
+                                </Button>
+                              </div>
                             </div>
                           )}
                         </div>
