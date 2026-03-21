@@ -235,7 +235,7 @@ export default function ProceduresPage() {
               </div>
 
               {/* iframe Preview */}
-              <div className={cn("rounded-xl border border-border overflow-hidden bg-card flex-1", isFullscreen ? "h-[calc(100vh-80px)]" : "h-[calc(100vh-180px)]")}>
+              <div className={cn("rounded-xl border border-border overflow-hidden bg-card flex-1", isFullscreen ? "h-[calc(100vh-80px)]" : "h-[calc(100vh-120px)]")}>
                 <iframe
                   key={selectedFile.id}
                   src={getPreviewUrl(selectedFile)}
