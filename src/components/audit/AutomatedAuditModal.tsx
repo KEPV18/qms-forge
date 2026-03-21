@@ -133,12 +133,18 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
       
       toast({ 
         title: "Renaming Complete", 
-        description: `Successfully renamed ${successCount} items in Google Drive.` 
+        description: `Successfully renamed ${successCount} items. Syncing with Drive...` 
       });
       
+      // Invalidate the records cache to reflect new names eventually
+      queryClient.invalidateQueries({ queryKey: ["qms-data"] });
+      
+      // Add a 2.5 second delay so Google Drive API has time to index the new names
+      await new Promise(resolve => setTimeout(resolve, 2500));
+
       // Clear selection and re-run audit to verify
       setSelectedFixes(new Set());
-      handleStartAudit();
+      await handleStartAudit();
     } catch (error: any) {
       toast({ title: "Fix Failed", description: error.message, variant: "destructive" });
     } finally {
@@ -284,12 +290,21 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
                       <p className="text-muted-foreground mt-2">All Phase 1 (Links/Names) and Phase 2 (Sequences) are fully intact.</p>
                     </div>
                   ) : (
-                    results.filter(r => r.issues.length > 0).map(result => (
+                    results.filter(r => r.issues.length > 0).map(result => {
+                      const originalRecord = records.find(r => r.code === result.recordCode);
+                      const isAlreadyLogged = originalRecord?.auditStatus === "Rejected";
+                      
+                      return (
                       <div key={result.recordCode} className="p-5 rounded-xl border border-border bg-card shadow-sm space-y-3">
                         <div className="flex items-center justify-between gap-3 mb-2">
                           <div className="flex items-center gap-2">
                              <span className="text-xs font-mono font-bold bg-muted border border-border px-2 py-1 rounded">{result.recordCode}</span>
                              <h4 className="font-bold text-foreground truncate">{result.recordName}</h4>
+                             {isAlreadyLogged && (
+                                <Badge variant="secondary" className="ml-2 h-5 text-[9px] bg-muted/80 text-muted-foreground border-transparent">
+                                  ✅ Logged in Dashboard
+                                </Badge>
+                             )}
                           </div>
                           <div className="flex gap-1">
                               {result.templateStatus !== 'valid' && <Badge variant="destructive" className="h-4 text-[7px]">PHASE 1: LINK</Badge>}
@@ -339,7 +354,8 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
                           })}
                         </ul>
                       </div>
-                    ))
+                    );
+                   })
                   )}
                 </div>
               </ScrollArea>
