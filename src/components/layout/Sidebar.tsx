@@ -34,6 +34,7 @@ const moduleItems: NavItem[] = [
 ];
 
 const toolItems: NavItem[] = [
+  { id: "iso-manual", label: "ISO 9001 Manual", icon: FileCheck, path: "/iso-manual" },
   { id: "procedures", label: "Procedures", icon: BookOpen, path: "/procedures" },
   { id: "risk", label: "Risk & Process", icon: AlertTriangle, path: "/risk-management" },
   { id: "activity", label: "Activity Log", icon: Activity, path: "/activity" },
