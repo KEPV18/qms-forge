@@ -1,12 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, CheckCircle, Loader2, FileText, Check, AlertTriangle, FileX, PlayCircle, Save } from "lucide-react";
+import {
+  AlertCircle, CheckCircle, Loader2, AlertTriangle,
+  PlayCircle, Save, Download, ChevronDown, ChevronRight, Timer,
+  Zap, Shield, Info, CheckCheck, XCircle,
+} from "lucide-react";
 import { QMSRecord, updateSheetCell } from "@/lib/googleSheets";
 import { renameDriveFile } from "@/lib/driveService";
-import { runAutomatedAudit, AuditRecordResult } from "@/lib/auditCheckService";
+import { runAutomatedAudit, AuditRecordResult, AuditFullResult, AuditIssue, IssueSeverity } from "@/lib/auditCheckService";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -17,52 +21,93 @@ interface AutomatedAuditModalProps {
   records: QMSRecord[];
 }
 
+type FilterTab = 'all' | 'critical' | 'warning' | 'info';
+
 export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAuditModalProps) {
   const [isRunning, setIsRunning] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0, currentCode: "" });
-  const [results, setResults] = useState<AuditRecordResult[] | null>(null);
+  const [auditResult, setAuditResult] = useState<AuditFullResult | null>(null);
   const [isApplying, setIsApplying] = useState(false);
   const [selectedFixes, setSelectedFixes] = useState<Set<string>>(new Set());
   const [isFixing, setIsFixing] = useState(false);
+  const [filterTab, setFilterTab] = useState<FilterTab>('all');
+  const [showCompliant, setShowCompliant] = useState(false);
+  const [collapsedCards, setCollapsedCards] = useState<Set<string>>(new Set());
+  const [liveIssueCount, setLiveIssueCount] = useState(0);
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [startTimestamp, setStartTimestamp] = useState<number | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  // Timer for elapsed time during scan
+  useEffect(() => {
+    if (!isRunning || !startTimestamp) return;
+    const interval = setInterval(() => {
+      setElapsedTime(Math.round((Date.now() - startTimestamp) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isRunning, startTimestamp]);
+
   useEffect(() => {
     if (!isOpen) {
-      // Reset state on close
       setTimeout(() => {
         setIsRunning(false);
         setProgress({ current: 0, total: 0, currentCode: "" });
-        setResults(null);
+        setAuditResult(null);
+        setFilterTab('all');
+        setShowCompliant(false);
+        setCollapsedCards(new Set());
+        setLiveIssueCount(0);
+        setElapsedTime(0);
+        setStartTimestamp(null);
       }, 300);
     }
   }, [isOpen]);
 
+  const results = auditResult?.records ?? null;
+  const summary = auditResult?.summary ?? null;
+
   const handleStartAudit = async () => {
     setIsRunning(true);
-    setResults(null);
+    setAuditResult(null);
+    setLiveIssueCount(0);
+    setStartTimestamp(Date.now());
+    setElapsedTime(0);
     try {
-      const auditResults = await runAutomatedAudit(records, (current, total, recordCode) => {
+      let issueAccumulator = 0;
+      const fullResult = await runAutomatedAudit(records, (current, total, recordCode, liveIssues) => {
         setProgress({ current, total, currentCode: recordCode });
+        if (liveIssues && liveIssues.length > 0) {
+          issueAccumulator += liveIssues.filter(i => i.severity !== 'info').length;
+          setLiveIssueCount(issueAccumulator);
+        }
       });
-      setResults(auditResults);
+      setAuditResult(fullResult);
+
+      // Auto-collapse records with more than 3 issues
+      const autoCollapsed = new Set<string>();
+      fullResult.records.forEach(r => {
+        if (r.issues.length > 3) autoCollapsed.add(r.recordCode);
+      });
+      setCollapsedCards(autoCollapsed);
     } catch (error) {
       console.error("Audit failed:", error);
+      toast({ title: "Audit Failed", description: (error as Error).message, variant: "destructive" });
     } finally {
       setIsRunning(false);
+      setStartTimestamp(null);
     }
   };
 
   const handleApplyResults = async () => {
     if (!results) return;
     setIsApplying(true);
-    
+
     try {
       const recordsWithIssues = results.filter(r => r.suggestedStatus === 'rejected');
       const cleanRecords = results.filter(r => r.suggestedStatus === 'approved');
       let updatedCount = 0;
-      
-      // Only update "clean" records if they currently have an 'auditIssues' field (meaning they were previously flagged)
+
       const recordsToClear = cleanRecords.filter(cr => {
         const original = records.find(r => r.code === cr.recordCode);
         const reviews = original?.fileReviews as any;
@@ -75,33 +120,27 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
         return;
       }
 
-      // 1. Mark Issues
       for (const res of recordsWithIssues) {
         const original = records.find(r => r.code === res.recordCode);
         if (!original) continue;
-        
         const currentReviews = original.fileReviews || {};
         const updatedMetadata = {
           ...currentReviews,
           recordStatus: 'rejected',
           lastAuditDate: new Date().toISOString(),
-          auditIssues: res.issues
+          auditIssues: res.issues.map(i => i.message),
         };
-        
         await updateSheetCell(original.rowIndex, 'P', JSON.stringify(updatedMetadata));
         updatedCount++;
       }
 
-      // 2. Clear resolved issues
       for (const res of recordsToClear) {
         const original = records.find(r => r.code === res.recordCode);
         if (!original) continue;
-        
         const currentReviews = { ...(original.fileReviews as any) };
-        delete (currentReviews as any).recordStatus;
-        delete (currentReviews as any).auditIssues;
-        (currentReviews as any).lastAuditDate = new Date().toISOString();
-        
+        delete currentReviews.recordStatus;
+        delete currentReviews.auditIssues;
+        currentReviews.lastAuditDate = new Date().toISOString();
         await updateSheetCell(original.rowIndex, 'P', JSON.stringify(currentReviews));
         updatedCount++;
       }
@@ -121,34 +160,74 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
     if (selectedFixes.size === 0 || !results) return;
     setIsFixing(true);
     let successCount = 0;
-    
+
     try {
       const fixesToApply = results.flatMap(r => r.suggestedFixes || [])
-                                 .filter(f => selectedFixes.has(f.id));
-      
+        .filter(f => selectedFixes.has(f.id));
+
       for (const fix of fixesToApply) {
         const success = await renameDriveFile(fix.id, fix.suggestedName);
         if (success) successCount++;
       }
-      
-      toast({ 
-        title: "Renaming Complete", 
-        description: `Successfully renamed ${successCount} items. Syncing with Drive...` 
-      });
-      
-      // Invalidate the records cache to reflect new names eventually
-      queryClient.invalidateQueries({ queryKey: ["qms-data"] });
-      
-      // Add a 2.5 second delay so Google Drive API has time to index the new names
-      await new Promise(resolve => setTimeout(resolve, 2500));
 
-      // Clear selection and re-run audit to verify
+      toast({
+        title: "Renaming Complete",
+        description: `Successfully renamed ${successCount} items. Syncing with Drive...`
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["qms-data"] });
+      await new Promise(resolve => setTimeout(resolve, 2500));
       setSelectedFixes(new Set());
       await handleStartAudit();
     } catch (error: any) {
       toast({ title: "Fix Failed", description: error.message, variant: "destructive" });
     } finally {
       setIsFixing(false);
+    }
+  };
+
+  // ─── Export Report ───
+  const handleExportReport = useCallback(() => {
+    if (!auditResult) return;
+    const report = {
+      generatedAt: new Date().toISOString(),
+      summary: auditResult.summary,
+      records: auditResult.records.map(r => ({
+        code: r.recordCode,
+        name: r.recordName,
+        category: r.category,
+        templateStatus: r.templateStatus,
+        folderStatus: r.folderStatus,
+        sequenceStatus: r.sequenceStatus,
+        namingStatus: r.namingStatus,
+        status: r.suggestedStatus,
+        filesChecked: r.filesChecked,
+        missingSerials: r.missingSerials,
+        issues: r.issues.map(i => ({ message: i.message, severity: i.severity, phase: i.phase })),
+        suggestedFixes: r.suggestedFixes || [],
+      })),
+    };
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `audit-report-${new Date().toISOString().split("T")[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Report Exported" });
+  }, [auditResult, toast]);
+
+  // ─── Select All / Deselect All ───
+  const allFixIds = useMemo(() => {
+    if (!results) return [];
+    return results.flatMap(r => r.suggestedFixes || []).map(f => f.id);
+  }, [results]);
+
+  const handleSelectAllFixes = () => {
+    if (selectedFixes.size === allFixIds.length) {
+      setSelectedFixes(new Set());
+    } else {
+      setSelectedFixes(new Set(allFixIds));
     }
   };
 
@@ -159,34 +238,94 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
     setSelectedFixes(next);
   };
 
+  const toggleCollapse = (code: string) => {
+    const next = new Set(collapsedCards);
+    if (next.has(code)) next.delete(code);
+    else next.add(code);
+    setCollapsedCards(next);
+  };
+
+  // ─── Computed Stats ───
   const getPercentage = () => {
     if (progress.total === 0) return 0;
     return Math.round((progress.current / progress.total) * 100);
   };
 
-  const issuesCount = results ? results.filter(r => r.issues.length > 0).length : 0;
+  const eta = useMemo(() => {
+    if (!isRunning || progress.current === 0 || elapsedTime === 0) return null;
+    const perRecord = elapsedTime / progress.current;
+    const remaining = (progress.total - progress.current) * perRecord;
+    return Math.max(1, Math.round(remaining));
+  }, [isRunning, progress, elapsedTime]);
+
   const compliantCount = results ? results.filter(r => r.issues.length === 0).length : 0;
-  
-  // Exclude empty sequences from broken sequence count or count them separately
   const brokenSequenceCount = results ? results.filter(r => r.sequenceStatus === 'broken').length : 0;
-  const invalidLinksCount = results ? results.filter(r => r.templateStatus === 'invalid' || r.folderStatus === 'invalid').length : 0;
+
+  // Filtered results by severity
+  const filteredResults = useMemo(() => {
+    if (!results) return [];
+
+    let filtered = showCompliant ? results : results.filter(r => r.issues.length > 0);
+
+    if (filterTab !== 'all') {
+      filtered = filtered.filter(r =>
+        r.issues.some(i => i.severity === filterTab) || (showCompliant && r.issues.length === 0)
+      );
+    }
+
+    return filtered;
+  }, [results, filterTab, showCompliant]);
+
+  // Severity counts
+  const severityCounts = useMemo(() => {
+    if (!results) return { critical: 0, warning: 0, info: 0 };
+    const all = results.flatMap(r => r.issues);
+    return {
+      critical: all.filter(i => i.severity === 'critical').length,
+      warning: all.filter(i => i.severity === 'warning').length,
+      info: all.filter(i => i.severity === 'info').length,
+    };
+  }, [results]);
+
+  const formatTime = (seconds: number) => {
+    if (seconds < 60) return `${seconds}s`;
+    return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+  };
+
+  const severityIcon = (severity: IssueSeverity) => {
+    switch (severity) {
+      case 'critical': return <XCircle className="w-4 h-4 mt-0.5 text-destructive shrink-0" />;
+      case 'warning': return <AlertTriangle className="w-4 h-4 mt-0.5 text-orange-500 shrink-0" />;
+      case 'info': return <Info className="w-4 h-4 mt-0.5 text-blue-400 shrink-0" />;
+    }
+  };
+
+  const severityBadge = (severity: IssueSeverity) => {
+    const styles = {
+      critical: "bg-red-100 text-red-700 border-red-200",
+      warning: "bg-orange-100 text-orange-700 border-orange-200",
+      info: "bg-blue-100 text-blue-600 border-blue-200",
+    };
+    return <Badge variant="secondary" className={cn("h-4 text-[7px] ml-1", styles[severity])}>{severity.toUpperCase()}</Badge>;
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && !isRunning && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden bg-background">
+      <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0 overflow-hidden bg-background">
         <div className="p-6 border-b border-border bg-card">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl">
-              <AlertCircle className="w-5 h-5 text-primary" />
+              <Shield className="w-5 h-5 text-primary" />
               Automated System Audit
             </DialogTitle>
             <DialogDescription>
-              Validate template links, record folders, and verify sequential serial numbers across all {records.length} registered QMS documents.
+              Validate template links, record folders, file naming, and sequential serial numbers across all {records.length} QMS documents.
             </DialogDescription>
           </DialogHeader>
         </div>
 
         <div className="flex-1 overflow-hidden flex flex-col relative min-h-0">
+          {/* ═══ START SCREEN ═══ */}
           {!isRunning && !results && (
             <div className="flex-1 p-12 flex flex-col items-center justify-center text-center space-y-6">
               <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
@@ -195,15 +334,16 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
               <div className="max-w-md">
                 <h3 className="text-lg font-bold">Ready to Start Audit</h3>
                 <p className="text-sm text-muted-foreground mt-2">
-                  This process will individually check every template file and folder in Google Drive. It will fetch all records to ensure there are no missing files in your serial sequences (e.g. F/XX-001, 002, 004). This might take 1-3 minutes depending on your internet connection and API limits.
+                  This process runs 3 phases: <strong>Link Integrity</strong>, <strong>Sequence Validation</strong>, and <strong>Naming Convention</strong> checks. Records are processed in parallel batches for speed.
                 </p>
               </div>
               <Button onClick={handleStartAudit} className="h-12 px-8 text-base bg-primary hover:bg-primary/90 text-primary-foreground gap-2">
-                <PlayCircle className="w-5 h-5" /> Start Automated Audit
+                <Zap className="w-5 h-5" /> Start Automated Audit
               </Button>
             </div>
           )}
 
+          {/* ═══ RUNNING SCREEN ═══ */}
           {isRunning && (
             <div className="flex-1 p-12 flex flex-col items-center justify-center text-center space-y-8">
               <div className="relative w-24 h-24 flex items-center justify-center">
@@ -212,206 +352,345 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
                   {getPercentage()}%
                 </div>
               </div>
-              
+
               <div className="w-full max-w-md space-y-3">
                 <div className="flex justify-between text-sm font-semibold">
                   <span className="text-muted-foreground">Scanning Google Drive...</span>
                   <span className="font-mono text-primary">{progress.currentCode}</span>
                 </div>
                 <div className="h-3 bg-muted/50 rounded-full overflow-hidden w-full border border-border">
-                  <div 
+                  <div
                     className="h-full bg-primary transition-all duration-300 rounded-full"
                     style={{ width: `${getPercentage()}%` }}
                   />
                 </div>
-                <p className="text-xs text-muted-foreground font-mono">
-                  Processed {progress.current} of {progress.total} forms
-                </p>
+                <div className="flex justify-between text-xs text-muted-foreground font-mono">
+                  <span>Processed {progress.current} of {progress.total} forms</span>
+                  <span className="flex items-center gap-1">
+                    <Timer className="w-3 h-3" />
+                    {formatTime(elapsedTime)}
+                    {eta && <span className="text-muted-foreground/60"> · ~{formatTime(eta)} left</span>}
+                  </span>
+                </div>
+
+                {/* Live issue counter */}
+                {liveIssueCount > 0 && (
+                  <div className="mt-4 p-3 bg-destructive/5 border border-destructive/20 rounded-lg flex items-center gap-2 text-sm">
+                    <AlertCircle className="w-4 h-4 text-destructive" />
+                    <span className="text-destructive font-semibold">{liveIssueCount}</span>
+                    <span className="text-muted-foreground">issues found so far</span>
+                  </div>
+                )}
               </div>
             </div>
           )}
 
+          {/* ═══ RESULTS SCREEN ═══ */}
           {results && (
-            <div className="flex-1 flex flex-col min-h-0 bg-muted/10">
-              <div className="p-6 grid grid-cols-5 gap-3 bg-card border-b border-border">
-                <div className="p-3 rounded-xl border border-border bg-background flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
+            <div className="flex-1 flex flex-col min-h-0 bg-muted/10 overflow-hidden">
+              {/* Summary Banner */}
+              {summary && (
+                <div className="px-6 py-3 bg-card border-b border-border flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold",
+                      summary.healthScore >= 80 ? "bg-green-500/10 text-green-600" :
+                        summary.healthScore >= 50 ? "bg-orange-500/10 text-orange-600" :
+                          "bg-red-500/10 text-red-600"
+                    )}>
+                      {summary.healthScore}%
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-sm">
+                        {summary.healthScore >= 80 ? "System Health: Good" :
+                          summary.healthScore >= 50 ? "System Health: Needs Attention" :
+                            "System Health: Critical"}
+                      </h4>
+                      <p className="text-[10px] text-muted-foreground flex items-center gap-2">
+                        <span className="flex items-center gap-1"><Timer className="w-3 h-3" /> {formatTime(summary.duration)}</span>
+                        <span>·</span>
+                        <span>{summary.apiCallsMade} API calls</span>
+                        <span>·</span>
+                        <span>{summary.totalFiles} files checked</span>
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="text-xl font-bold font-heading">{compliantCount}</h4>
-                    <p className="text-[8px] uppercase font-bold text-muted-foreground">Compliant</p>
+
+                  {/* Export & Select All */}
+                  <div className="flex items-center gap-2">
+                    {allFixIds.length > 0 && (
+                      <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={handleSelectAllFixes}>
+                        <CheckCheck className="w-3 h-3" />
+                        {selectedFixes.size === allFixIds.length ? "Deselect All" : `Select All (${allFixIds.length})`}
+                      </Button>
+                    )}
+                    <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={handleExportReport}>
+                      <Download className="w-3 h-3" /> Export
+                    </Button>
                   </div>
                 </div>
-                <div className="p-3 rounded-xl border border-border bg-background flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center">
-                    <FileX className="w-4 h-4 text-red-500" />
+              )}
+
+              {/* Stats Cards */}
+              <div className="p-4 grid grid-cols-5 gap-2 bg-card border-b border-border">
+                <div className="p-2.5 rounded-xl border border-border bg-background flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-green-500/10 flex items-center justify-center">
+                    <CheckCircle className="w-3.5 h-3.5 text-green-500" />
                   </div>
                   <div>
-                    <h4 className="text-xl font-bold font-heading">{results ? results.filter(r => r.templateStatus !== 'valid').length : 0}</h4>
-                    <p className="text-[8px] uppercase font-bold text-muted-foreground">Link Issues</p>
+                    <h4 className="text-lg font-bold font-heading">{compliantCount}</h4>
+                    <p className="text-[7px] uppercase font-bold text-muted-foreground">Compliant</p>
                   </div>
                 </div>
-                <div className="p-3 rounded-xl border border-border bg-background flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                    <AlertTriangle className="w-4 h-4 text-orange-500" />
+                <div className="p-2.5 rounded-xl border border-border bg-background flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-red-500/10 flex items-center justify-center">
+                    <XCircle className="w-3.5 h-3.5 text-red-500" />
                   </div>
                   <div>
-                    <h4 className="text-xl font-bold font-heading">{results ? results.filter(r => r.folderStatus === 'wrong_name').length : 0}</h4>
-                    <p className="text-[8px] uppercase font-bold text-muted-foreground">Name Issues</p>
+                    <h4 className="text-lg font-bold font-heading">{severityCounts.critical}</h4>
+                    <p className="text-[7px] uppercase font-bold text-muted-foreground">Critical</p>
                   </div>
                 </div>
-                <div className="p-3 rounded-xl border border-border bg-background flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                    <FileText className="w-4 h-4 text-purple-500" />
+                <div className="p-2.5 rounded-xl border border-border bg-background flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                    <AlertTriangle className="w-3.5 h-3.5 text-orange-500" />
                   </div>
                   <div>
-                    <h4 className="text-xl font-bold font-heading">{results ? results.filter(r => r.templateStatus === 'duplicate' || r.folderStatus === 'duplicate').length : 0}</h4>
-                    <p className="text-[8px] uppercase font-bold text-muted-foreground">Duplicates</p>
+                    <h4 className="text-lg font-bold font-heading">{severityCounts.warning}</h4>
+                    <p className="text-[7px] uppercase font-bold text-muted-foreground">Warnings</p>
                   </div>
                 </div>
-                <div className="p-3 rounded-xl border border-border bg-background flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                    <AlertCircle className="w-4 h-4 text-orange-500" />
+                <div className="p-2.5 rounded-xl border border-border bg-background flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                    <Info className="w-3.5 h-3.5 text-blue-400" />
                   </div>
                   <div>
-                    <h4 className="text-xl font-bold font-heading">{brokenSequenceCount}</h4>
-                    <p className="text-[8px] uppercase font-bold text-muted-foreground">Seq Gaps</p>
+                    <h4 className="text-lg font-bold font-heading">{severityCounts.info}</h4>
+                    <p className="text-[7px] uppercase font-bold text-muted-foreground">Info</p>
+                  </div>
+                </div>
+                <div className="p-2.5 rounded-xl border border-border bg-background flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                    <AlertCircle className="w-3.5 h-3.5 text-orange-500" />
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-bold font-heading">{brokenSequenceCount}</h4>
+                    <p className="text-[7px] uppercase font-bold text-muted-foreground">Seq Gaps</p>
                   </div>
                 </div>
               </div>
 
-              <ScrollArea className="flex-1 h-full p-6">
-                <div className="space-y-4">
-                  {results.filter(r => r.issues.length > 0).length === 0 ? (
+              {/* Filter Tabs */}
+              <div className="px-6 py-2 border-b border-border bg-card flex items-center justify-between">
+                <div className="flex items-center gap-1">
+                  {([
+                    { key: 'all' as FilterTab, label: 'All Issues', count: results.filter(r => r.issues.length > 0).length },
+                    { key: 'critical' as FilterTab, label: 'Critical', count: new Set(results.filter(r => r.issues.some(i => i.severity === 'critical')).map(r => r.recordCode)).size },
+                    { key: 'warning' as FilterTab, label: 'Warnings', count: new Set(results.filter(r => r.issues.some(i => i.severity === 'warning')).map(r => r.recordCode)).size },
+                    { key: 'info' as FilterTab, label: 'Info', count: new Set(results.filter(r => r.issues.some(i => i.severity === 'info')).map(r => r.recordCode)).size },
+                  ]).map(tab => (
+                    <button
+                      key={tab.key}
+                      onClick={() => setFilterTab(tab.key)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all",
+                        filterTab === tab.key
+                          ? "bg-primary/10 text-primary border border-primary/20"
+                          : "text-muted-foreground hover:bg-muted/50"
+                      )}
+                    >
+                      {tab.label} ({tab.count})
+                    </button>
+                  ))}
+                </div>
+                <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={showCompliant}
+                    onChange={e => setShowCompliant(e.target.checked)}
+                    className="w-3 h-3 accent-primary"
+                  />
+                  Show Compliant
+                </label>
+              </div>
+
+              {/* Results List */}
+              <div className="flex-1 min-h-0 overflow-hidden">
+                <ScrollArea className="h-full w-full">
+                  <div className="p-6 space-y-3">
+                  {filteredResults.length === 0 ? (
                     <div className="text-center p-12 bg-background rounded-xl border border-border">
                       <CheckCircle className="w-12 h-12 text-success mx-auto mb-4" />
-                      <h3 className="text-xl font-bold">Audit Completed Successfully</h3>
-                      <p className="text-muted-foreground mt-2">All Phase 1 (Links/Names) and Phase 2 (Sequences) are fully intact.</p>
+                      <h3 className="text-xl font-bold">
+                        {filterTab === 'all' ? "Audit Completed Successfully" : `No ${filterTab} issues found`}
+                      </h3>
+                      <p className="text-muted-foreground mt-2">All checks passed for this filter.</p>
                     </div>
                   ) : (
-                    results.filter(r => r.issues.length > 0).map(result => {
+                    filteredResults.map(result => {
                       const originalRecord = records.find(r => r.code === result.recordCode);
                       const isAlreadyLogged = originalRecord?.auditStatus === "Rejected";
-                      
+                      const isCollapsed = collapsedCards.has(result.recordCode);
+                      const isCompliant = result.issues.length === 0;
+
+                      // Filter issues by current severity tab
+                      const visibleIssues = filterTab === 'all'
+                        ? result.issues
+                        : result.issues.filter(i => i.severity === filterTab);
+
                       return (
-                      <div key={result.recordCode} className="p-5 rounded-xl border border-border bg-card shadow-sm space-y-3">
-                        <div className="flex items-center justify-between gap-3 mb-2">
-                          <div className="flex items-center gap-2">
-                             <span className="text-xs font-mono font-bold bg-muted border border-border px-2 py-1 rounded">{result.recordCode}</span>
-                             <h4 className="font-bold text-foreground truncate">{result.recordName}</h4>
-                             {isAlreadyLogged && (
-                                <Badge variant="secondary" className="ml-2 h-5 text-[9px] bg-muted/80 text-muted-foreground border-transparent">
-                                  ✅ Logged in Dashboard
+                        <div key={result.recordCode} className={cn(
+                          "rounded-xl border bg-card shadow-sm overflow-hidden transition-all",
+                          isCompliant ? "border-green-200/50 bg-green-50/30" : "border-border"
+                        )}>
+                          {/* Card Header */}
+                          <div
+                            className="flex items-center justify-between gap-3 px-5 py-3 cursor-pointer hover:bg-muted/30 transition-colors"
+                            onClick={() => toggleCollapse(result.recordCode)}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              {isCompliant ? (
+                                <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
+                              ) : isCollapsed ? (
+                                <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+                              )}
+                              <span className="text-xs font-mono font-bold bg-muted border border-border px-2 py-0.5 rounded">{result.recordCode}</span>
+                              <h4 className="font-bold text-sm text-foreground truncate">{result.recordName}</h4>
+                              {isAlreadyLogged && (
+                                <Badge variant="secondary" className="ml-1 h-4 text-[8px] bg-muted/80 text-muted-foreground border-transparent">
+                                  ✅ Logged
                                 </Badge>
-                             )}
+                              )}
+                              {result.error && (
+                                <Badge variant="destructive" className="ml-1 h-4 text-[8px]">API ERROR</Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {result.filesChecked > 0 && (
+                                <span className="text-[9px] text-muted-foreground font-mono">{result.filesChecked} files</span>
+                              )}
+                              {!isCompliant && (
+                                <Badge variant="outline" className="h-5 text-[9px] font-bold">
+                                  {result.issues.length} issue{result.issues.length !== 1 ? 's' : ''}
+                                </Badge>
+                              )}
+                              {result.templateStatus !== 'valid' && result.templateStatus !== 'missing_link' && (
+                                <Badge variant="destructive" className="h-4 text-[7px]">LINK</Badge>
+                              )}
+                              {result.folderStatus === 'wrong_name' && (
+                                <Badge variant="secondary" className="h-4 text-[7px] bg-orange-100 text-orange-700 border-orange-200">NAME</Badge>
+                              )}
+                              {result.sequenceStatus === 'broken' && (
+                                <Badge variant="outline" className="h-4 text-[7px] border-orange-500 text-orange-600">SEQ</Badge>
+                              )}
+                              {result.namingStatus === 'invalid' && (
+                                <Badge variant="secondary" className="h-4 text-[7px] bg-blue-100 text-blue-600 border-blue-200">P3</Badge>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex gap-1">
-                              {result.templateStatus !== 'valid' && <Badge variant="destructive" className="h-4 text-[7px]">PHASE 1: LINK</Badge>}
-                              {result.folderStatus === 'wrong_name' && <Badge variant="secondary" className="h-4 text-[7px] bg-orange-100 text-orange-700 border-orange-200">PHASE 1: NAME</Badge>}
-                              {result.sequenceStatus === 'broken' && <Badge variant="outline" className="h-4 text-[7px] border-orange-500 text-orange-600">PHASE 2: SEQ</Badge>}
-                          </div>
-                        </div>
-                        
-                        <ul className="space-y-2 pl-2">
-                          {result.issues.map((issue, idx) => {
-                            const isWarning = issue.startsWith("Warning:");
-                            const isMissingSeq = issue.includes("Missing records in sequence");
-                            
-                            return (
-                              <li key={idx} className="flex items-start gap-2 text-sm text-foreground/80">
-                                {isWarning ? (
-                                  <AlertTriangle className="w-4 h-4 mt-0.5 text-warning shrink-0" />
-                                ) : isMissingSeq ? (
-                                  <div className="w-4 h-4 mt-0.5 rounded-full bg-orange-500/20 flex items-center justify-center shrink-0">
-                                    <span className="text-[8px] font-bold text-orange-600">SEQ</span>
-                                  </div>
-                                ) : (
-                                  <AlertCircle className="w-4 h-4 mt-0.5 text-destructive shrink-0" />
-                                )}
-                                <div className="flex-1">
-                                    <span>{issue}</span>
-                                    {result.suggestedFixes?.find(f => issue.includes(f.currentName)) && (
+
+                          {/* Card Body (collapsible) */}
+                          {!isCollapsed && !isCompliant && visibleIssues.length > 0 && (
+                            <div className="px-5 pb-4 pt-1 border-t border-border/50">
+                              <ul className="space-y-2">
+                                {visibleIssues.map((issue, idx) => {
+                                  const matchedFix = result.suggestedFixes?.find(f => issue.message.includes(f.currentName));
+                                  return (
+                                  <li key={idx} className="flex items-start gap-2 text-sm text-foreground/80">
+                                    {severityIcon(issue.severity)}
+                                    <div className="flex-1">
+                                      <span>{issue.message}</span>
+                                      {severityBadge(issue.severity)}
+                                      <Badge variant="outline" className="h-4 text-[7px] ml-1 opacity-50">P{issue.phase}</Badge>
+
+                                      {/* Suggested fix UI */}
+                                      {matchedFix && (
                                         <div className="mt-2 p-2 bg-background border border-border rounded flex items-center justify-between gap-3">
-                                            <div className="flex items-center gap-2">
-                                                <input 
-                                                    type="checkbox" 
-                                                    checked={selectedFixes.has(result.suggestedFixes.find(f => issue.includes(f.currentName))!.id)}
-                                                    onChange={() => toggleFixSelection(result.suggestedFixes!.find(f => issue.includes(f.currentName))!.id)}
-                                                    className="w-4 h-4 accent-primary"
-                                                />
-                                                <div className="text-xs">
-                                                    <span className="text-muted-foreground line-through block italic">{result.suggestedFixes.find(f => issue.includes(f.currentName))?.currentName}</span>
-                                                    <span className="text-primary font-bold block mt-1">➜ {result.suggestedFixes.find(f => issue.includes(f.currentName))?.suggestedName}</span>
-                                                </div>
+                                          <div className="flex items-center gap-2">
+                                            <input
+                                              type="checkbox"
+                                              checked={selectedFixes.has(matchedFix.id)}
+                                              onChange={() => toggleFixSelection(matchedFix.id)}
+                                              className="w-4 h-4 accent-primary"
+                                            />
+                                            <div className="text-xs">
+                                              <span className="text-muted-foreground line-through block italic">{matchedFix.currentName}</span>
+                                              <span className="text-primary font-bold block mt-1">➜ {matchedFix.suggestedName}</span>
                                             </div>
-                                            <Badge variant="outline" className="text-[9px] h-4">SUGGESTED NAME</Badge>
+                                          </div>
+                                          <Badge variant="outline" className="text-[9px] h-4">SUGGESTED NAME</Badge>
                                         </div>
-                                    )}
-                                </div>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      </div>
-                    );
-                   })
+                                      )}
+                                    </div>
+                                  </li>
+                                  );
+                                })}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
                   )}
                 </div>
-              </ScrollArea>
+                </ScrollArea>
+              </div>
             </div>
           )}
         </div>
-        
+
+        {/* ═══ FOOTER ═══ */}
         <div className="p-4 border-t border-border bg-muted/20 flex justify-between items-center">
           <div className="text-[10px] text-muted-foreground max-w-sm">
             {results && results.filter(r => r.suggestedStatus === 'rejected').length > 0 && (
-                <p>Found manual discrepancies. Clicking "Apply" will mark these forms as having issues in your main dashboard.</p>
+              <p>Found discrepancies. "Apply" will mark these in your dashboard.</p>
             )}
           </div>
           <div className="flex gap-2">
             {selectedFixes.size > 0 && (
-                <Button 
-                    variant="default" 
-                    className="bg-primary hover:bg-primary/90 text-white gap-2"
-                    onClick={handleFixNames}
-                    disabled={isFixing}
-                >
-                    {isFixing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    Fix Selected ({selectedFixes.size})
-                </Button>
+              <Button
+                variant="default"
+                className="bg-primary hover:bg-primary/90 text-white gap-2"
+                onClick={handleFixNames}
+                disabled={isFixing}
+              >
+                {isFixing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                Fix Selected ({selectedFixes.size})
+              </Button>
             )}
             {results && results.length > 0 && (results.some(r => r.suggestedStatus === 'rejected') || results.some(r => {
-                const original = records.find(rec => rec.code === r.recordCode);
-                const reviews = original?.fileReviews as any;
-                return reviews?.recordStatus === 'rejected' && r.suggestedStatus === 'approved';
+              const original = records.find(rec => rec.code === r.recordCode);
+              const reviews = original?.fileReviews as any;
+              return reviews?.recordStatus === 'rejected' && r.suggestedStatus === 'approved';
             })) && (
-                <Button 
-                    variant="default" 
-                    className="bg-orange-600 hover:bg-orange-700 text-white gap-2"
-                    onClick={handleApplyResults}
-                    disabled={isApplying || isFixing}
+                <Button
+                  variant="default"
+                  className="bg-orange-600 hover:bg-orange-700 text-white gap-2"
+                  onClick={handleApplyResults}
+                  disabled={isApplying || isFixing}
                 >
-                    {isApplying ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                    Apply Audit Results
+                  {isApplying ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                  Apply Results
                 </Button>
-            )}
+              )}
             {results && results.length > 0 && (
-                <Button 
-                    variant="outline" 
-                    className="gap-2"
-                    onClick={() => {
-                        setResults(null);
-                        handleStartAudit();
-                    }}
-                    disabled={isRunning || isApplying}
-                >
-                    <PlayCircle className="w-4 h-4" />
-                    Re-run Audit
-                </Button>
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={() => {
+                  setAuditResult(null);
+                  handleStartAudit();
+                }}
+                disabled={isRunning || isApplying}
+              >
+                <PlayCircle className="w-4 h-4" />
+                Re-run
+              </Button>
             )}
             <Button variant="outline" onClick={onClose} disabled={isRunning || isApplying}>
-                Close
+              Close
             </Button>
           </div>
         </div>
