@@ -207,9 +207,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log("[TRACE] Syncing profile & role for:", authUserId);
       const [profileRes, roleRes] = await withRetry(() => Promise.all([
-        withTimeout<any>(supabase!.from("profiles").select("*").eq("user_id", authUserId).maybeSingle(), 5000),
-        withTimeout<any>(supabase!.from("user_roles").select("role").eq("user_id", authUserId).maybeSingle(), 5000),
-      ]), 1, 1000, true); // Abort retry if it's a Timeout (Supabase is likely down)
+        withTimeout<any>(supabase!.from("profiles").select("*").eq("user_id", authUserId).maybeSingle(), 15000),
+        withTimeout<any>(supabase!.from("user_roles").select("role").eq("user_id", authUserId).maybeSingle(), 15000),
+      ]), 1, 1000, false); // Do NOT abort on timeout, try one more time
 
       const profile = profileRes?.data;
       const roleData = roleRes?.data;

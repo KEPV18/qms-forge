@@ -330,7 +330,7 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
               Automated System Audit
             </DialogTitle>
             <DialogDescription>
-              Validate template links, record folders, file naming, and sequential serial numbers across all {records.length} QMS documents.
+              Validate template links, record folders, file naming, and sequential formatting across all {records.length} QMS Forms and their underlying records & files.
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -345,7 +345,7 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
               <div className="max-w-md">
                 <h3 className="text-lg font-bold">Ready to Start Audit</h3>
                 <p className="text-sm text-muted-foreground mt-2">
-                  This process runs 3 phases: <strong>Link Integrity</strong>, <strong>Sequence Validation</strong>, and <strong>Naming Convention</strong> checks. Records are processed in parallel batches for speed.
+                  This process runs 3 phases: <strong>Link Integrity</strong>, <strong>Sequence Validation</strong>, and <strong>Naming Convention & Format</strong> checks on all {records.length} Forms and their extracted files/records.
                 </p>
               </div>
               <Button onClick={handleStartAudit} className="h-12 px-8 text-base bg-primary hover:bg-primary/90 text-primary-foreground gap-2">
@@ -376,7 +376,7 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
                   />
                 </div>
                 <div className="flex justify-between text-xs text-muted-foreground font-mono">
-                  <span>Processed {progress.current} of {progress.total} forms</span>
+                  <span>Processed {progress.current} of {progress.total} Forms & Records</span>
                   <span className="flex items-center gap-1">
                     <Timer className="w-3 h-3" />
                     {formatTime(elapsedTime)}

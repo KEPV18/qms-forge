@@ -310,6 +310,30 @@ async function auditSingleRecord(
                 const dupList = dupFiles.map(([name, count]) => `"${name}" (×${count})`).join(', ');
                 result.issues.push({ message: `Duplicate file names in folder: ${dupList}`, severity: 'warning', phase: 3 });
               }
+
+              // File Format Validation (صيغ الملفات)
+              const validExtensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.jpg', '.jpeg', '.png', '.csv', '.txt'];
+              const googleMimeTypes = ['application/vnd.google-apps.document', 'application/vnd.google-apps.spreadsheet', 'application/vnd.google-apps.presentation'];
+              
+              const invalidFormatFiles = folderFiles.filter(f => {
+                const nameLow = f.name.toLowerCase();
+                if (nameLow.startsWith('~$')) return true; // Temp Word file (invalid record)
+                
+                const hasValidExt = validExtensions.some(ext => nameLow.endsWith(ext));
+                const isGoogleDoc = f.mimeType ? googleMimeTypes.includes(f.mimeType) : false;
+                
+                // If it has no valid extension and is not a native Google doc, it's flagged
+                return !hasValidExt && !isGoogleDoc;
+              });
+
+              if (invalidFormatFiles.length > 0) {
+                const formatList = invalidFormatFiles.map(f => f.name).join(', ');
+                result.issues.push({
+                  message: `Invalid or unrecognized file format detected: ${formatList}`,
+                  severity: 'warning',
+                  phase: 3
+                });
+              }
             }
           }
         }
