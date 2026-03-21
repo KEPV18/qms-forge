@@ -54,6 +54,7 @@ const App = () => (
                 <Route path="/archive" element={<RequireAuth><ArchivePage /></RequireAuth>} />
                 <Route path="/risk-management" element={<RequireAuth><RiskManagementPage /></RequireAuth>} />
                 <Route path="/activity" element={<RequireAuth><ActivityPage /></RequireAuth>} />
+                <Route path="/procedures" element={<RequireAuth><ProceduresPage /></RequireAuth>} />
                 <Route path="/admin/accounts" element={<RequireRole roles={["admin"]}><AdminAccounts /></RequireRole>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
