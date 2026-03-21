@@ -130,13 +130,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return Promise.race([promise, timeout]) as Promise<T>;
   };
 
-  const withRetry = async <T,>(fn: () => Promise<T>, retries: number = 1, delayMs: number = 1000): Promise<T> => {
+  const withRetry = async <T,>(fn: () => Promise<T>, retries: number = 1, delayMs: number = 1000, abortOnTimeout: boolean = false): Promise<T> => {
     for (let i = 0; i <= retries; i++) {
       try {
         return await fn();
-      } catch (err) {
-        if (i === retries) throw err;
-        console.warn(`[AUTH] Retry ${i + 1}/${retries} after error:`, (err as Error).message);
+      } catch (err: any) {
+        if (i === retries || (abortOnTimeout && err.message === "Timeout")) throw err;
+        console.warn(`[AUTH] Retry ${i + 1}/${retries} after error:`, err.message);
         await new Promise(r => setTimeout(r, delayMs));
       }
     }
@@ -209,10 +209,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const [profileRes, roleRes] = await withRetry(() => Promise.all([
         withTimeout<any>(supabase!.from("profiles").select("*").eq("user_id", authUserId).maybeSingle(), 5000),
         withTimeout<any>(supabase!.from("user_roles").select("role").eq("user_id", authUserId).maybeSingle(), 5000),
-      ]));
+      ]), 1, 1000, true); // Abort retry if it's a Timeout (Supabase is likely down)
 
-      const profile = profileRes.data;
-      const roleData = roleRes.data;
+      const profile = profileRes?.data;
+      const roleData = roleRes?.data;
 
       if (profile) {
         const isActive = !!(profile.is_active ?? false);
@@ -253,8 +253,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser({ id: authUserId, name: email.split("@")[0] || "User", email, password: "", role: "user", active: true });
         }
       }
-    } catch (err) {
-      console.error("[AUTH] Profile sync failed:", err);
+    } catch (err: any) {
+      console.warn("[AUTH] Profile sync failed, continuing offline/cache mode:", err.message);
+      // We do NOT set supabaseDisabled here to avoid remounting issues, 
+      // just gracefully use the cached optimistic session.
     } finally {
       isFetchingRef.current = null;
     }
@@ -300,11 +302,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (session) {
             // Sync profile in background (non-blocking)
             syncUserProfile(session).catch(err => {
-              console.warn("[AUTH] Background sync failed, using cache:", err.message);
+              console.warn("[AUTH] Background sync failed, using cache.");
             });
             if (!cached) {
               // No cache - we need to wait for first sync
-              await syncUserProfile(session);
+              await syncUserProfile(session).catch(() => {});
             }
           } else {
             setUser(null);
