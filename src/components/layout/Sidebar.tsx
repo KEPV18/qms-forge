@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, Settings, ClipboardCheck, ShoppingCart,
   GraduationCap, Lightbulb, Building2, ChevronRight, Shield, Archive,
   AlertTriangle, PanelLeftClose, PanelLeftOpen, LogOut, Menu, X,
-  Layers, Wrench, Activity, BookOpen
+  Layers, Wrench, Activity, BookOpen, FileCheck
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -34,6 +34,7 @@ const moduleItems: NavItem[] = [
 ];
 
 const toolItems: NavItem[] = [
+  { id: "iso-manual", label: "ISO 9001 Manual", icon: FileCheck, path: "/iso-manual" },
   { id: "procedures", label: "Procedures", icon: BookOpen, path: "/procedures" },
   { id: "risk", label: "Risk & Process", icon: AlertTriangle, path: "/risk-management" },
   { id: "activity", label: "Activity Log", icon: Activity, path: "/activity" },

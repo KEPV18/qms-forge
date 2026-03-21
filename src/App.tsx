@@ -22,6 +22,7 @@ const Register = lazy(() => import("./pages/Register"));
 const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 const ActivityPage = lazy(() => import("./pages/ActivityPage"));
 const ProceduresPage = lazy(() => import("./pages/ProceduresPage"));
+const ISOManualPage = lazy(() => import("./pages/ISOManualPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -55,6 +56,7 @@ const App = () => (
                 <Route path="/risk-management" element={<RequireAuth><RiskManagementPage /></RequireAuth>} />
                 <Route path="/activity" element={<RequireAuth><ActivityPage /></RequireAuth>} />
                 <Route path="/procedures" element={<RequireAuth><ProceduresPage /></RequireAuth>} />
+                <Route path="/iso-manual" element={<RequireAuth><ISOManualPage /></RequireAuth>} />
                 <Route path="/admin/accounts" element={<RequireRole roles={["admin"]}><AdminAccounts /></RequireRole>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
