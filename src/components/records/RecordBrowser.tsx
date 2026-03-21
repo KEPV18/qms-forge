@@ -6,7 +6,7 @@ import { listFolderFiles, parseSerialFromFilename, extractFolderId, moveFileToAr
 import { parseStatusFromAuditField } from "@/lib/statusService";
 import type { DriveFile } from "@/lib/driveService";
 import type { QMSRecord } from "@/lib/googleSheets";
-import { ExternalLink, FileText, Loader2, FolderOpen, Settings, Trash2 } from "lucide-react";
+import { ExternalLink, FileText, Loader2, FolderOpen, Settings, Trash2, Briefcase, CalendarClock, UserCheck, CalendarDays } from "lucide-react";
 import { formatTimeAgo } from "@/lib/googleSheets";
 import { EditMetadataModal } from "./EditMetadataModal";
 import { useToast } from "@/hooks/use-toast";
@@ -188,105 +188,141 @@ export function RecordBrowser({ record, isFlat = false }: RecordBrowserProps) {
                                 return (
                                     <div
                                         key={file.id}
-                                        className="flex flex-col p-4 bg-card rounded-xl border border-border/50 hover:border-sidebar-primary/30 transition-all gap-3"
+                                        className="group relative bg-card/40 backdrop-blur-xl border border-border/40 hover:border-sidebar-primary/40 rounded-3xl p-5 md:p-6 transition-all duration-500 shadow-sm hover:shadow-2xl hover:-translate-y-1 overflow-hidden"
                                     >
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3 flex-1 min-w-0">
-                                                <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                                                    <FileText className="w-4 h-4 text-foreground" />
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2 mb-0.5">
-                                                        <span className="font-bold text-sm truncate">{file.name}</span>
-                                                        {(() => {
-                                                            const review = record.fileReviews?.[file.id] || { status: 'pending_review' };
-                                                            return <StatusBadge status={review.status as any} size="sm" />;
-                                                        })()}
+                                        {/* Subtle Background Glow */}
+                                        <div className="absolute inset-0 bg-gradient-to-br from-sidebar-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                                        
+                                        <div className="relative z-10">
+                                            {/* Header */}
+                                            <div className="flex flex-col md:flex-row md:items-start justify-between gap-5 mb-6">
+                                                <div className="flex items-start gap-4 flex-1 min-w-0">
+                                                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-sidebar-primary/20 to-sidebar-primary/5 flex items-center justify-center shrink-0 shadow-inner border border-sidebar-primary/10 group-hover:scale-105 transition-transform duration-500">
+                                                        <FileText className="w-6 h-6 text-sidebar-primary" />
                                                     </div>
-                                                    <div className="text-[10px] text-muted-foreground flex items-center gap-2 font-medium flex-wrap">
-                                                        {serial && <span className="text-sidebar-primary font-mono font-bold">{serial}</span>}
-                                                        <span>•</span>
-                                                        <span className="bg-sidebar-primary/10 text-sidebar-primary px-1.5 py-0.5 rounded font-bold uppercase tracking-tighter">
-                                                            {record.fileReviews?.[file.id]?.project || "General / All Company"}
-                                                        </span>
-                                                        <span>•</span>
-                                                        <span className="font-bold">M{record.fileReviews?.[file.id]?.targetMonth || (new Date(file.createdTime).getMonth() + 1)} / {record.fileReviews?.[file.id]?.targetYear || new Date(file.createdTime).getFullYear()}</span>
-                                                        <span>•</span>
-                                                        <span>{formatTimeAgo(file.createdTime)}</span>
+                                                    <div className="flex-1 min-w-0 pt-0.5">
+                                                        <h4 className="text-base font-bold text-foreground line-clamp-1 group-hover:text-sidebar-primary transition-colors duration-300">{file.name}</h4>
+                                                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                                            {serial && <span className="text-[10px] font-mono font-bold bg-background/80 shadow-sm px-2 py-0.5 rounded-md border border-border/50">{serial}</span>}
+                                                            {(() => {
+                                                                const review = record.fileReviews?.[file.id] || { status: 'pending_review' };
+                                                                return <StatusBadge status={review.status as any} size="sm" />;
+                                                            })()}
+                                                            <span className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
+                                                                <CalendarDays className="w-3 h-3" />
+                                                                {formatTimeAgo(file.createdTime)}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                {/* Actions */}
+                                                <div className="flex items-center gap-2 shrink-0 self-start bg-background/50 rounded-xl p-1 border border-border/40 shadow-sm transition-opacity opacity-80 group-hover:opacity-100">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-8 gap-1.5 text-xs font-semibold hover:bg-sidebar-primary/10 hover:text-sidebar-primary rounded-lg transition-colors"
+                                                        onClick={() => window.open(file.webViewLink, '_blank')}
+                                                    >
+                                                        <ExternalLink className="w-3.5 h-3.5" />
+                                                        Open
+                                                    </Button>
+                                                    <div className="w-px h-4 bg-border/50 mx-0.5" />
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded-lg transition-colors"
+                                                        onClick={() => handleArchive(file.id, file.name)}
+                                                        disabled={isLoading}
+                                                        title="Delete File"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </Button>
+                                                </div>
+                                            </div>
+
+                                            {/* Metadata Grid (Premium Style) */}
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-muted/20 rounded-2xl p-4 border border-border/40 relative overflow-hidden">
+                                                <div className="absolute inset-0 bg-background/20 backdrop-blur-3xl pointer-events-none" />
+                                                <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-background/80 transition-colors relative z-10 border border-transparent hover:border-border/50 shadow-sm hover:shadow">
+                                                    <div className="w-8 h-8 rounded-lg bg-sidebar-primary/10 flex items-center justify-center shrink-0">
+                                                        <Briefcase className="w-4 h-4 text-sidebar-primary" />
+                                                    </div>
+                                                    <div className="min-w-0 pt-0.5">
+                                                        <p className="text-[9px] uppercase font-bold text-muted-foreground tracking-widest mb-0.5">Project</p>
+                                                        <p className="text-xs font-bold text-foreground truncate">
+                                                            {record.fileReviews?.[file.id]?.project || "General"}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-background/80 transition-colors relative z-10 border border-transparent hover:border-border/50 shadow-sm hover:shadow">
+                                                    <div className="w-8 h-8 rounded-lg bg-info/10 flex items-center justify-center shrink-0">
+                                                        <CalendarClock className="w-4 h-4 text-info" />
+                                                    </div>
+                                                    <div className="min-w-0 pt-0.5">
+                                                        <p className="text-[9px] uppercase font-bold text-muted-foreground tracking-widest mb-0.5">Target Period</p>
+                                                        <p className="text-xs font-bold text-foreground">
+                                                            M{record.fileReviews?.[file.id]?.targetMonth || "—"} / {record.fileReviews?.[file.id]?.targetYear || "—"}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-background/80 transition-colors relative z-10 border border-transparent hover:border-border/50 shadow-sm hover:shadow">
+                                                    <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center shrink-0">
+                                                        <UserCheck className="w-4 h-4 text-success" />
+                                                    </div>
+                                                    <div className="min-w-0 pt-0.5">
+                                                        <p className="text-[9px] uppercase font-bold text-muted-foreground tracking-widest mb-0.5">Reviewed By</p>
+                                                        <p className="text-xs font-bold text-foreground truncate">
+                                                            {record.fileReviews?.[file.id]?.reviewedBy || record.reviewedBy || "—"}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-background/80 transition-colors relative z-10 border border-transparent hover:border-border/50 shadow-sm hover:shadow">
+                                                    <div className="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center shrink-0">
+                                                        <CalendarDays className="w-4 h-4 text-warning" />
+                                                    </div>
+                                                    <div className="min-w-0 pt-0.5">
+                                                        <p className="text-[9px] uppercase font-bold text-muted-foreground tracking-widest mb-0.5">Review Date</p>
+                                                        <p className="text-xs font-bold text-foreground">
+                                                            {(() => {
+                                                                const review = record.fileReviews?.[file.id];
+                                                                const rawDate = review?.reviewDate || review?.date || record.reviewDate;
+                                                                if (!rawDate) return "—";
+                                                                const d = new Date(rawDate);
+                                                                if (isNaN(d.getTime())) return rawDate;
+                                                                return d.toLocaleDateString();
+                                                            })()}
+                                                        </p>
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div className="flex gap-2">
+
+                                            {/* Audit Notes & Settings */}
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-5 mt-5 border-t border-border/40">
+                                                <div className="flex-1 min-w-0 relative">
+                                                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary/50 to-primary/10 rounded-full" />
+                                                    <div className="pl-4">
+                                                        <p className="text-[9px] uppercase font-bold text-muted-foreground tracking-widest mb-1.5 flex items-center gap-1.5">
+                                                            <FileText className="w-3 h-3 text-primary/70" />
+                                                            Audit Notes
+                                                        </p>
+                                                        <p className="text-sm text-foreground/90 leading-relaxed font-medium line-clamp-2">
+                                                            {record.fileReviews?.[file.id]?.comment?.trim() || <span className="text-muted-foreground italic font-normal">No additional notes provided.</span>}
+                                                        </p>
+                                                    </div>
+                                                </div>
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
-                                                    className="h-8 text-xs font-medium hover:bg-sidebar-primary/10 hover:text-sidebar-primary"
-                                                    onClick={() => window.open(file.webViewLink, '_blank')}
+                                                    className="h-10 px-4 gap-2 text-xs shrink-0 font-bold bg-background shadow-sm hover:shadow-md text-primary border-primary/20 hover:border-primary/50 hover:bg-primary/5 self-start sm:self-center transition-all rounded-xl"
+                                                    onClick={() => setEditingFile({ id: file.id, name: file.name })}
                                                 >
-                                                    Open Record
-                                                </Button>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="h-8 text-xs font-medium hover:bg-destructive/10 hover:text-destructive text-muted-foreground"
-                                                    onClick={() => handleArchive(file.id, file.name)}
-                                                    disabled={isLoading}
-                                                >
-                                                    Delete File
+                                                    <Settings className="w-4 h-4" />
+                                                    Edit Metadata
                                                 </Button>
                                             </div>
-                                        </div>
-
-                                        {/* Audit Details */}
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 px-3 py-2 bg-muted/20 rounded-lg border border-border/30">
-                                            <div>
-                                                <p className="text-[9px] uppercase font-bold text-muted-foreground tracking-wider mb-0.5">Project</p>
-                                                <p className="text-[11px] font-bold text-sidebar-primary truncate">
-                                                    {record.fileReviews?.[file.id]?.project || "General"}
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <p className="text-[9px] uppercase font-bold text-muted-foreground tracking-wider mb-0.5">Target Period</p>
-                                                <p className="text-[11px] font-bold">
-                                                    M{record.fileReviews?.[file.id]?.targetMonth || "—"} / {record.fileReviews?.[file.id]?.targetYear || "—"}
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <p className="text-[9px] uppercase font-bold text-muted-foreground tracking-wider mb-0.5">Reviewed By</p>
-                                                <p className="text-[11px] font-bold truncate">{record.fileReviews?.[file.id]?.reviewedBy || record.reviewedBy || "—"}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-[9px] uppercase font-bold text-muted-foreground tracking-wider mb-0.5">Review Date</p>
-                                                <p className="text-[11px] font-bold">
-                                                    {(() => {
-                                                        const review = record.fileReviews?.[file.id];
-                                                        const rawDate = review?.reviewDate || review?.date || record.reviewDate;
-                                                        if (!rawDate) return "—";
-                                                        
-                                                        const d = new Date(rawDate);
-                                                        if (isNaN(d.getTime())) return rawDate; // Show raw string if parsing fails
-                                                        return d.toLocaleDateString();
-                                                    })()}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="px-3 py-2 bg-muted/10 rounded-lg border border-border/30">
-                                            <p className="text-[9px] uppercase font-bold text-muted-foreground tracking-wider mb-0.5">Audit Notes</p>
-                                            <p className="text-xs font-medium break-words">
-                                                {record.fileReviews?.[file.id]?.comment?.trim() || "—"}
-                                            </p>
-                                        </div>
-
-                                        <div className="flex gap-2">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="flex-1 h-8 text-[11px] font-bold gap-2"
-                                                onClick={() => setEditingFile({ id: file.id, name: file.name })}
-                                            >
-                                                <Settings className="w-3 h-3" />
-                                                Edit Metadata
-                                            </Button>
                                         </div>
                                     </div>
                                 );

@@ -3,9 +3,10 @@ import {
   LayoutDashboard, Users, Settings, ClipboardCheck, ShoppingCart,
   GraduationCap, Lightbulb, Building2, ChevronRight, Shield, Archive,
   AlertTriangle, PanelLeftClose, PanelLeftOpen, LogOut, Menu, X,
-  Layers, Wrench, Activity, BookOpen, FileCheck
+  Layers, Wrench, Activity, BookOpen, FileCheck, Briefcase
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useQMSData } from "@/hooks/useQMSData";
+import { useState, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import qmsLogo from "@/assets/qms-logo.png";
@@ -54,6 +55,23 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { user, logout, loading } = useAuth();
+  const { data: records } = useQMSData();
+
+  const projects = useMemo(() => {
+    if (!records) return [];
+    const projs = new Set<string>();
+    records.forEach(r => {
+      if (r.fileReviews && r.files) {
+        const existingFileIds = new Set(r.files.map(f => f.id));
+        Object.entries(r.fileReviews).forEach(([fileId, review]: [string, any]) => {
+          if (!existingFileIds.has(fileId)) return;
+          const name = (review.project === "General / All Company" || !review.project) ? "General" : review.project;
+          projs.add(name);
+        });
+      }
+    });
+    return Array.from(projs).sort();
+  }, [records]);
 
   useEffect(() => {
     const pathModule = location.pathname.split("/module/")[1];
@@ -94,12 +112,19 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
     if (item.path) {
       navigate(item.path);
       if (item.path.startsWith("/module/")) onModuleChange(item.id);
+      if (item.path.startsWith("/audit?project=")) onModuleChange("quality");
     }
   };
 
-  const handleChildClick = (parentId: string, child: { code?: string }) => {
-    if (child.code) navigate(`/record/${encodeURIComponent(child.code)}`);
-    else navigate(`/module/${parentId}`);
+  const handleChildClick = (parentId: string, child: { id: string, label: string; code?: string }) => {
+    if (parentId === "projects-all" && child.code) {
+      navigate(`/project/${encodeURIComponent(child.code)}`);
+      onModuleChange("projects-all");
+    } else if (child.code) {
+      navigate(`/record/${encodeURIComponent(child.code)}`);
+    } else {
+      navigate(`/module/${parentId}`);
+    }
   };
 
   const getActiveState = (item: NavItem): boolean => {
@@ -232,6 +257,27 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
         <div className="space-y-0.5">
           {moduleItems.map(item => <NavItemButton key={item.id} item={item} />)}
         </div>
+
+        {projects.length > 0 && (
+          <>
+            <SectionLabel icon={Briefcase} label="Projects" />
+            <div className="space-y-0.5 px-0.5">
+              <NavItemButton 
+                item={{ 
+                  id: "projects-all", 
+                  label: "All Projects", 
+                  icon: Briefcase,
+                  path: "/projects",
+                  children: projects.map(p => ({ 
+                    id: `proj-${p}`, 
+                    label: p,
+                    code: p // using code field to store project name for handling
+                  })) 
+                }} 
+              />
+            </div>
+          </>
+        )}
 
         <SectionLabel icon={Wrench} label="Tools" />
         <div className="space-y-0.5">

@@ -27,6 +27,8 @@ import {
   Download,
   Upload,
   PlayCircle,
+  LayoutGrid,
+  List
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -44,17 +46,28 @@ export default function AuditPage() {
   const [activeModule, setActiveModule] = useState("quality");
   const [activeTab, setActiveTab] = useState("pending");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(localStorage.getItem('sidebarCollapsed') === 'true');
+  const [viewMode, setViewMode] = useState<"card" | "compact">("compact");
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [projectFilter, setProjectFilter] = useState("all");
+  const [yearFilter, setYearFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState("");
   const [bulkLoading, setBulkLoading] = useState(false);
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const tabParam = params.get("tab");
+    const projectParam = params.get("project");
+    const yearParam = params.get("year");
+    const searchParam = params.get("search");
+
     if (tabParam && ["pending", "compliant", "issues", "overdue", "never-filled"].includes(tabParam)) {
       setActiveTab(tabParam);
     }
+    if (projectParam) setProjectFilter(projectParam);
+    if (yearParam) setYearFilter(yearParam);
+    if (searchParam) setSearch(searchParam);
   }, [location.search]);
 
   useEffect(() => {
@@ -180,10 +193,27 @@ export default function AuditPage() {
     else if (newModuleId !== "documents") navigate(`/module/${newModuleId}`);
   };
 
-  // All unique categories
-  const categories = useMemo(() => {
-    if (!records) return [];
-    return [...new Set(records.map(r => r.category))].filter(Boolean).sort();
+  // All unique categories, projects, years
+  const { categories, projects, years } = useMemo(() => {
+    if (!records) return { categories: [], projects: [], years: [] };
+    const cats = new Set<string>();
+    const projs = new Set<string>();
+    const yrs = new Set<string>();
+
+    records.forEach(r => {
+      if (r.category) cats.add(r.category);
+      if (r.fileReviews) {
+        Object.values(r.fileReviews).forEach((review: any) => {
+          if (review.project) projs.add(review.project);
+          if (review.targetYear) yrs.add(review.targetYear.toString());
+        });
+      }
+    });
+    return {
+      categories: Array.from(cats).sort(),
+      projects: Array.from(projs).sort(),
+      years: Array.from(yrs).sort().reverse()
+    };
   }, [records]);
 
   // Filtered data
@@ -236,10 +266,20 @@ export default function AuditPage() {
           fileStatus: effectiveStatus, 
           fileComment: review.comment || (recordLevelStatus === 'rejected' ? "Automated Audit detected issues in this form." : ""),
           fileReviewedBy: review.reviewedBy || record.reviewedBy || "", 
+          fileTargetYear: review.targetYear ? review.targetYear.toString() : "2026",
+          fileProject: review.project || "General",
           isAtomic: true
         };
 
-        if (!matchesSearch(auditItem) || !matchesCategory(auditItem)) return;
+        const rawProject = auditItem.fileProject || "General";
+        const normalizedProject = (rawProject === "General / All Company") ? "General" : rawProject;
+        const matchesProject = projectFilter === "all" || normalizedProject === projectFilter;
+        const matchesYear = yearFilter === "all" || auditItem.fileTargetYear === yearFilter;
+        // dateFilter matches reviewDate
+        const itemReviewDate = auditItem.reviewDate || review.reviewDate || "";
+        const matchesDate = !dateFilter || itemReviewDate.startsWith(dateFilter) || itemReviewDate.includes(dateFilter);
+
+        if (!matchesSearch(auditItem) || !matchesCategory(auditItem) || !matchesProject || !matchesYear || !matchesDate) return;
         
         if (effectiveStatus === 'approved') compliant.push(auditItem);
         else if (effectiveStatus === 'rejected') issuesList.push(auditItem);
@@ -247,7 +287,13 @@ export default function AuditPage() {
       });
     });
 
-    const filteredRecords = records.filter(r => matchesSearch(r) && matchesCategory(r));
+    const filteredRecords = records.filter(r => {
+      const isMatch = matchesSearch(r) && matchesCategory(r);
+      // For parent records, strictly matching file reviews is tricky, so we mostly apply name/category search,
+      // but let's apply project/year if possible to the parent if they want. 
+      // Given the list is mostly atomic, it's fine.
+      return isMatch;
+    });
     const overdue = filteredRecords.filter(r => r.isOverdue);
     const neverFilled = filteredRecords.filter(r => (r.actualRecordCount || 0) === 0);
 
@@ -351,9 +397,9 @@ export default function AuditPage() {
             <Breadcrumbs items={[{ label: "Dashboard", path: "/" }, { label: "Audit Dashboard" }]} />
 
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <Button variant="ghost" size="icon" onClick={() => navigate("/")} className="h-8 w-8">
+                <Button variant="ghost" size="icon" onClick={() => navigate("/")} className="h-8 w-8 shrink-0">
                   <ArrowLeft className="w-4 h-4" />
                 </Button>
                 <div>
@@ -361,30 +407,30 @@ export default function AuditPage() {
                   <p className="text-xs text-muted-foreground">ISO 9001:2015 Compliance Review</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap overflow-x-auto pb-1">
                 {lastUpdated && (
-                  <span className="hidden sm:flex items-center gap-1.5 text-[10px] text-muted-foreground bg-muted/40 px-3 py-1.5 rounded-lg border border-border/50">
+                  <span className="hidden lg:flex items-center gap-1.5 text-[10px] text-muted-foreground bg-muted/40 px-3 py-1.5 rounded-lg border border-border/50 shrink-0">
                     <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
                     Synced {lastUpdated}
                   </span>
                 )}
                 
-                <Button onClick={() => setIsAuditModalOpen(true)} className="h-8 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-[10px] sm:text-xs">
+                <Button onClick={() => setIsAuditModalOpen(true)} className="h-8 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-[10px] sm:text-xs shrink-0">
                   <PlayCircle className="w-4 h-4" />
                   <span className="hidden sm:inline">Run Audit</span>
                 </Button>
 
-                <Button onClick={handleExportMetadata} variant="outline" size="sm" className="h-8 gap-1.5 text-xs" disabled={!records || records.length === 0}>
+                <Button onClick={handleExportMetadata} variant="outline" size="sm" className="h-8 gap-1.5 text-xs shrink-0" disabled={!records || records.length === 0}>
                   <Download className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">Backup</span>
                 </Button>
-                <Button onClick={handleImportMetadata} variant="outline" size="sm" className="h-8 gap-1.5 text-xs" disabled={bulkLoading}>
+                <Button onClick={handleImportMetadata} variant="outline" size="sm" className="h-8 gap-1.5 text-xs shrink-0" disabled={bulkLoading}>
                   <Upload className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">Restore</span>
                 </Button>
-                <Button onClick={handleRefresh} variant="outline" size="sm" className="h-8 gap-2" disabled={isLoading}>
+                <Button onClick={handleRefresh} variant="outline" size="sm" className="h-8 gap-2 shrink-0" disabled={isLoading}>
                   {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-                  Sync
+                  <span className="hidden sm:inline">Sync</span>
                 </Button>
               </div>
             </div>
@@ -451,6 +497,14 @@ export default function AuditPage() {
               categoryFilter={categoryFilter}
               onCategoryChange={setCategoryFilter}
               categories={categories}
+              projectFilter={projectFilter}
+              onProjectChange={setProjectFilter}
+              projects={projects}
+              yearFilter={yearFilter}
+              onYearChange={setYearFilter}
+              years={years}
+              dateFilter={dateFilter}
+              onDateChange={setDateFilter}
               onExportCSV={handleExportCSV}
               totalFiltered={totalFilteredCount}
               totalAll={stats.pending + stats.compliant + stats.issues}
@@ -459,8 +513,8 @@ export default function AuditPage() {
             {/* Tabs */}
             <div className="bg-card rounded-xl border border-border overflow-hidden">
               <Tabs value={activeTab} onValueChange={handleTabChange}>
-                <div className="px-5 py-2 border-b border-border overflow-x-auto">
-                  <TabsList className="bg-transparent h-11 p-0 gap-1">
+                <div className="px-5 py-2 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-3 overflow-x-auto overflow-y-hidden">
+                  <TabsList className="bg-transparent h-11 p-0 gap-1 shrink-0">
                     {[
                       { value: "pending", label: "Pending", icon: Clock, count: pendingRecords.length, color: "data-[state=active]:text-warning data-[state=active]:border-warning" },
                       { value: "compliant", label: "Approved", icon: CheckCircle, count: compliantRecords.length, color: "data-[state=active]:text-success data-[state=active]:border-success" },
@@ -481,6 +535,28 @@ export default function AuditPage() {
                       </TabsTrigger>
                     ))}
                   </TabsList>
+                  
+                  {/* View Toggle */}
+                  <div className="hidden sm:flex items-center bg-muted/40 rounded-lg p-0.5 border border-border/50 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn("h-8 w-10 mx-0 flex-shrink-0 p-0 rounded-md", viewMode === "compact" && "bg-background shadow-sm text-primary")}
+                      onClick={() => setViewMode("compact")}
+                      title="List View"
+                    >
+                      <List className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn("h-8 w-10 mx-0 flex-shrink-0 p-0 rounded-md", viewMode === "card" && "bg-background shadow-sm text-primary")}
+                      onClick={() => setViewMode("card")}
+                      title="Card View"
+                    >
+                      <LayoutGrid className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
 
                 <TabsContent value="pending" className="m-0">
@@ -506,7 +582,7 @@ export default function AuditPage() {
                       </Button>
                     </div>
                   )}
-                  <RecordsTable records={pendingRecords} isLoading={isLoading} />
+                  <RecordsTable records={pendingRecords} isLoading={isLoading} variant={viewMode === "card" ? "default" : "compact"} />
                 </TabsContent>
                 <TabsContent value="compliant" className="m-0">
                   {compliantRecords.length > 0 && (
@@ -523,7 +599,9 @@ export default function AuditPage() {
                       </Button>
                     </div>
                   )}
-                  <RecordsTable records={compliantRecords} isLoading={isLoading} />
+                  <div className="bg-muted/10 p-2 sm:p-4 rounded-b-xl min-h-[500px]">
+                     <RecordsTable records={compliantRecords} isLoading={isLoading} variant={viewMode === "card" ? "default" : "compact"} />
+                  </div>
                 </TabsContent>
                 <TabsContent value="issues" className="m-0">
                   {issueRecords.length > 0 && (
@@ -549,7 +627,7 @@ export default function AuditPage() {
                       </Button>
                     </div>
                   )}
-                  <RecordsTable records={issueRecords} isLoading={isLoading} />
+                  <RecordsTable records={issueRecords} isLoading={isLoading} variant={viewMode === "card" ? "default" : "compact"} />
                 </TabsContent>
 
                 {/* Overdue tab */}

@@ -52,6 +52,7 @@ import { FormDetailsModal } from "./FormDetailsModal";
 interface RecordsTableProps {
   records: QMSRecord[];
   isLoading?: boolean;
+  variant?: "default" | "compact";
 }
 
 function getAuditStatusBadge(status: string) {
@@ -65,7 +66,7 @@ function getAuditStatusBadge(status: string) {
 
 import { RecordCard } from "./RecordCard";
 
-export function RecordsTable({ records, isLoading = false }: RecordsTableProps) {
+export function RecordsTable({ records, isLoading = false, variant = "default" }: RecordsTableProps) {
   const navigate = useNavigate();
   const updateRecord = useUpdateRecord();
   const deleteRecord = useDeleteRecord();
@@ -143,8 +144,13 @@ export function RecordsTable({ records, isLoading = false }: RecordsTableProps) 
   }
 
   return (
-    <div className="p-6">
-      <div className="grid grid-cols-1 gap-6 max-w-4xl mx-auto">
+    <div className={cn("container mx-auto", variant === "compact" ? "p-2 sm:p-4" : "p-6")}>
+      <div className={cn(
+        "grid gap-4",
+        variant === "compact" 
+          ? "grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 w-full" 
+          : "grid-cols-1 max-w-4xl mx-auto gap-6"
+      )}>
         {records.map((record: any) => (
           <RecordCard
             key={(record as any).isAtomic ? `file-${(record as any).fileId}` : `${record.code}-${record.rowIndex}`}
@@ -153,6 +159,7 @@ export function RecordsTable({ records, isLoading = false }: RecordsTableProps) 
             onDelete={handleDelete}
             onUpdateStatus={handleUpdateStatus}
             isUpdating={updatingRows[(record as any).isAtomic ? `file-${(record as any).fileId}` : `${record.rowIndex}-audit`]}
+            variant={variant}
           />
         ))}
       </div>
