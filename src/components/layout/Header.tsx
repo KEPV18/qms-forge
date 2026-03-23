@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { getAccessToken } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
+import logoImg from "@/assets/logo.png";
 
 export function Header() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -170,6 +171,17 @@ export function Header() {
         {/* Desktop search */}
         <div className="hidden md:flex items-center gap-4 flex-1 max-w-xl relative group">
           {searchBar}
+        </div>
+
+        {/* Global Branding Center */}
+        <div className="hidden lg:flex items-center gap-4 px-8 h-full border-x border-border/10">
+          <div className="w-12 h-12 rounded-xl bg-white p-2 border border-border/50 shadow-lg shadow-black/5 transition-all hover:scale-105 hover:rotate-3 duration-500 flex-shrink-0">
+            <img src={logoImg} alt="Vezloo" className="w-full h-full object-contain" />
+          </div>
+          <div className="flex flex-col justify-center">
+            <span className="text-[11px] font-black text-primary/60 uppercase tracking-[0.3em] leading-none mb-1.5 animate-pulse">Official Platform</span>
+            <span className="text-xl md:text-2xl font-black text-foreground tracking-tighter leading-none bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-transparent">Vezloo Group</span>
+          </div>
         </div>
 
         {/* Right section */}

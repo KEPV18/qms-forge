@@ -10,6 +10,7 @@ import { useState, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import qmsLogo from "@/assets/qms-logo.png";
+import logoImg from "@/assets/logo.png";
 import { SettingsModal } from "@/components/settings/SettingsModal";
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
@@ -226,7 +227,7 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
         {!collapsed && (
           <div className="min-w-0 flex-1" onClick={() => { navigate("/"); onModuleChange("dashboard"); }}>
             <h1 className="font-bold text-sm text-sidebar-foreground cursor-pointer tracking-tight">QMS Suite</h1>
-            <p className="text-[9px] text-sidebar-primary/40 font-bold uppercase tracking-[0.2em]">ISO 9001</p>
+            <p className="text-[9px] text-sidebar-primary/40 font-bold uppercase tracking-[0.2em]">ISO 9001:2015</p>
           </div>
         )}
         {!collapsed && !isMobile && (
@@ -347,6 +348,19 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
             </div>
           )}
         </div>
+
+        {/* Vezloo Branding Badge */}
+        {!collapsed && (
+          <div className="mt-4 p-3 rounded-xl bg-sidebar-primary/5 border border-sidebar-primary/10 flex items-center gap-3 animate-fade-in group/brand uppercase">
+            <div className="w-8 h-8 rounded-lg bg-white p-1.5 shadow-sm border border-sidebar-border/50 group-hover/brand:scale-110 transition-transform duration-300">
+               <img src={logoImg} alt="Vezloo" className="w-full h-full object-contain" />
+            </div>
+            <div>
+              <p className="text-[10px] text-sidebar-foreground/30 font-bold uppercase tracking-wider leading-tight">Founded by</p>
+              <p className="text-[12px] font-black text-sidebar-primary tracking-tight leading-tight">Vezloo Group</p>
+            </div>
+          </div>
+        )}
       </div>
 
       <SettingsModal open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />

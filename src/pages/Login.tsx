@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Lock, Mail, Loader2, Eye, EyeOff, AlertCircle, ArrowRight } from "lucide-react";
+import logoImg from "@/assets/logo.png";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -74,9 +75,16 @@ export default function Login() {
           <span className="text-primary-foreground font-black text-[10px] tracking-tighter">QMS</span>
         </div>
         <div>
-          <div className="text-xl font-black text-foreground tracking-tighter">Solaris</div>
-          <div className="text-[8px] text-muted-foreground font-black uppercase tracking-[0.3em] opacity-50">Enterprise Suite</div>
+          <div className="text-xl font-black text-foreground tracking-tighter">QMS Suite</div>
+          <div className="text-[8px] text-muted-foreground font-black uppercase tracking-[0.3em] opacity-50">ISO 9001:2015</div>
         </div>
+      </div>
+
+      {/* Corporate Branding */}
+      <div className="absolute top-8 right-8 flex items-center gap-2 opacity-60 hover:opacity-100 transition-opacity duration-300">
+        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Founded by</span>
+        <img src={logoImg} alt="Vezloo" className="w-6 h-6 object-contain" />
+        <span className="text-xs font-black text-foreground">Vezloo Group</span>
       </div>
 
       <Card className="w-full max-w-[420px] shadow-2xl shadow-primary/5 border-border/40 rounded-3xl overflow-hidden animate-scale-in bg-card/95 backdrop-blur-xl">
@@ -90,8 +98,8 @@ export default function Login() {
               <Lock className="w-6 h-6 text-primary-foreground" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold tracking-tight">Welcome back</CardTitle>
-          <CardDescription className="text-muted-foreground text-sm mt-1">Sign in to your QMS account</CardDescription>
+          <CardTitle className="text-2xl font-bold tracking-tight">Welcome to Vezloo QMS</CardTitle>
+          <CardDescription className="text-muted-foreground text-sm mt-1">Sign in to your enterprise quality account</CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-4 px-7 pb-4" onKeyDown={handleKeyDown}>
@@ -199,7 +207,7 @@ export default function Login() {
       </Card>
 
       <div className="absolute bottom-8 text-[10px] font-bold uppercase tracking-[0.4em] text-muted-foreground/30">
-        Solaris QMS Platform v9.0
+        Vezloo QMS Platform v2.5.0
       </div>
     </div>
   );
