@@ -187,31 +187,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const authUserId = session.user.id;
     const email = session.user.email || "";
 
-    // OPTIMISTIC: Use cached role immediately if valid to prevent UI flickering
+    // Debounce: skip if synced within last 10 seconds for same user
+    const now = Date.now();
+    if (isFetchingRef.current === authUserId || (now - lastSyncTimestampRef.current < 10000)) {
+      // Still use cache optimistically
+      const cached = loadSession();
+      if (cached && cached.userId === authUserId && !user) {
+        setUser({
+          id: authUserId,
+          name: cached.displayName || email.split("@")[0] || "User",
+          email, password: "", role: cached.role, active: true, lastLoginAt: Date.now(),
+        });
+      }
+      return;
+    }
+    isFetchingRef.current = authUserId;
+    lastSyncTimestampRef.current = now;
+
+    // OPTIMISTIC: Use cached role immediately
     const cached = loadSession();
     if (cached && cached.userId === authUserId) {
-      // console.log("[AUTH] Using cached role optimistically:", cached.role);
       setUser({
         id: authUserId,
         name: cached.displayName || email.split("@")[0] || "User",
-        email: email,
-        password: "",
-        role: cached.role,
-        active: true,
-        lastLoginAt: Date.now(),
+        email, password: "", role: cached.role, active: true, lastLoginAt: Date.now(),
       });
     }
 
-    // Guard against redundant parallel fetches for the same user
-    if (isFetchingRef.current === authUserId) return;
-    isFetchingRef.current = authUserId;
-
     try {
-      // console.log("[TRACE] Syncing profile & role for:", authUserId);
       const [profileRes, roleRes] = await withRetry(() => Promise.all([
-        withTimeout<any>(supabase!.from("profiles").select("*").eq("user_id", authUserId).maybeSingle(), 15000),
-        withTimeout<any>(supabase!.from("user_roles").select("role").eq("user_id", authUserId).maybeSingle(), 15000),
-      ]), 1, 1000, false); // Do NOT abort on timeout, try one more time
+        withTimeout<any>(supabase!.from("profiles").select("*").eq("user_id", authUserId).maybeSingle(), 8000),
+        withTimeout<any>(supabase!.from("user_roles").select("role").eq("user_id", authUserId).maybeSingle(), 8000),
+      ]), 1, 1000, false);
 
       const profile = profileRes?.data;
       const roleData = roleRes?.data;
@@ -230,39 +237,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const appUser: AppUser = {
           id: authUserId,
           name: profile.display_name || email.split("@")[0] || "User",
-          email: email,
-          password: "",
-          role: appRole,
-          active: isActive,
+          email, password: "", role: appRole, active: isActive,
           lastLoginAt: profile.last_login ? new Date(profile.last_login).getTime() : Date.now(),
         };
 
         setUser(appUser);
         saveSession(appUser.id, appUser.role, appUser.name);
-        setUsers(prev => {
-          if (prev.some(u => u.id === appUser.id)) return prev;
-          return [appUser, ...prev];
-        });
-
-        // Trigger background full fetch if not already done
+        setUsers(prev => prev.some(u => u.id === appUser.id) ? prev : [appUser, ...prev]);
         fetchFullUsersList();
       } else {
-        console.warn("[AUTH] No profile found in Supabase.");
-        if (email === "admin@local") {
-          // Special case for the built-in admin if it's being migrated or used
-          setUser({ id: authUserId, name: "admin", email, password: "", role: "admin", active: true });
-        } else {
-          setUser({ id: authUserId, name: email.split("@")[0] || "User", email, password: "", role: "user", active: true });
-        }
+        const fallbackUser: AppUser = {
+          id: authUserId,
+          name: email.split("@")[0] || "User",
+          email, password: "", role: "user", active: true,
+        };
+        setUser(fallbackUser);
       }
     } catch (err: any) {
-      console.warn("[AUTH] Profile sync failed, continuing offline/cache mode:", err.message);
-      // We do NOT set supabaseDisabled here to avoid remounting issues, 
-      // just gracefully use the cached optimistic session.
+      console.warn("[AUTH] Profile sync failed, using cache:", err.message);
     } finally {
       isFetchingRef.current = null;
     }
-  }, [fetchFullUsersList]);
+  }, [fetchFullUsersList, user]);
 
   React.useEffect(() => {
     let mounted = true;
