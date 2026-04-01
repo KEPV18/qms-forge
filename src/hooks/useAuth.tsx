@@ -260,14 +260,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [fetchFullUsersList, user]);
 
+  // Keep ref in sync
+  syncUserProfileRef.current = syncUserProfile;
+
   React.useEffect(() => {
     let mounted = true;
+    let bootstrapDone = false;
 
     const bootstrap = async () => {
-      // console.log("[AUTH] Initializing session...");
-
       if (!supabase || supabaseDisabled) {
-        // console.log("[AUTH] Supabase disabled, using local fallback.");
         const local = loadUsersLocal();
         const sessionData = loadSession();
         if (sessionData && local.length > 0) {
@@ -280,56 +281,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        // 1. Restore from cache immediately to avoid loading spinner
         const cached = loadSession();
         if (cached) {
           setUser({
             id: cached.userId,
             name: cached.displayName || "User",
-            email: "",
-            password: "",
-            role: cached.role,
-            active: true,
+            email: "", password: "", role: cached.role, active: true,
           });
           setLoading(false);
         }
 
-        // 2. Get actual session and sync in background
         const { data: { session } } = await supabase.auth.getSession();
-        if (mounted) {
-          if (session) {
-            // Sync profile in background (non-blocking)
-            syncUserProfile(session).catch(err => {
-              console.warn("[AUTH] Background sync failed, using cache.");
-            });
-            if (!cached) {
-              // No cache - we need to wait for first sync
-              await syncUserProfile(session).catch(() => {});
-            }
-          } else {
-            setUser(null);
-            saveSession(null);
-          }
-          if (mounted) setLoading(false);
+        if (mounted && session) {
+          await syncUserProfileRef.current?.(session).catch(() => {});
+        } else if (mounted && !session) {
+          setUser(null);
+          saveSession(null);
         }
+        if (mounted) setLoading(false);
       } catch (err) {
         console.error("[AUTH] Bootstrap failed:", err);
         if (mounted) setLoading(false);
       }
+      bootstrapDone = true;
     };
 
     bootstrap();
 
-    // 2. Set up listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // console.log("[AUTH] Auth state change:", event);
+      if (!mounted) return;
+      if (event === 'INITIAL_SESSION') return;
+      if (!bootstrapDone && event === 'SIGNED_IN') return;
+
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-        if (mounted) await syncUserProfile(session);
+        await syncUserProfileRef.current?.(session);
       } else if (event === 'SIGNED_OUT') {
-        if (mounted) {
-          setUser(null);
-          saveSession(null);
-        }
+        setUser(null);
+        saveSession(null);
       }
     });
 
@@ -337,7 +325,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [supabase, supabaseDisabled, syncUserProfile]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supabaseDisabled]);
 
   const reloadUsers = React.useCallback(async () => {
     const run = async () => {
