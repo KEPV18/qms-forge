@@ -121,6 +121,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = React.useState<boolean>(true);
   const [supabaseDisabled, setSupabaseDisabled] = React.useState(false);
   const isFetchingRef = React.useRef<string | null>(null);
+  const syncUserProfileRef = React.useRef<(session: any) => Promise<void>>();
+  const lastSyncTimestampRef = React.useRef<number>(0);
 
   // Helper for timeouts with retry
   const withTimeout = async <T,>(promise: any, timeoutMs: number = 5000): Promise<T> => {
