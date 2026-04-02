@@ -333,7 +333,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mounted = false;
       subscription.unsubscribe();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [supabaseDisabled]);
 
   const reloadUsers = React.useCallback(async () => {
