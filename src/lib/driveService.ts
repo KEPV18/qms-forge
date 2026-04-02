@@ -4,8 +4,8 @@
 import { QMSRecord } from './googleSheets';
 import { getAccessToken } from './auth';
 
-// Add API_KEY from googleSheets for fallback
-const API_KEY = "AIzaSyDltPnR5hhwfDrjlwi7lS78R_kDIZbQpWo";
+// API key from environment variable (no hardcoded keys)
+const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || "";
 const DRIVE_API_BASE = "https://www.googleapis.com/drive/v3";
 const SHEETS_API_BASE = "https://sheets.googleapis.com/v4/spreadsheets";
 

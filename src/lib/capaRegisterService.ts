@@ -9,9 +9,9 @@
  * @iso ISO 9001:2015 Clause 10.2 - Nonconformity and corrective action
  */
 
-const API_KEY = "AIzaSyDltPnR5hhwfDrjlwi7lS78R_kDIZbQpWo";
+const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || "";
 const SPREADSHEET_ID = "11dGB-fG2UMqsdqc182PsY-K6S_19FKc8bsZLHlic18M";
-const SHEET_NAME = "CAPA Registe";
+const SHEET_NAME = "CAPA Register";
 const SHEETS_API_BASE = "https://sheets.googleapis.com/v4/spreadsheets";
 
 /**

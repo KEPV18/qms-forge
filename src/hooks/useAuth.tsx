@@ -39,6 +39,14 @@ const ACTIVATED_KEY = "qms_activated_emails";
 
 const AUTH_LOCAL_DISABLED = (((import.meta as unknown as { env?: Record<string, unknown> }).env?.VITE_AUTH_LOCAL_DISABLED) ?? "true") === "true";
 
+// Simple hash function for local password storage (SHA-256)
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password + "qms-salt-2026-v1");
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
 function loadUsersLocal(): AppUser[] {
   try {
     const raw = localStorage.getItem(USERS_KEY);
@@ -105,7 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         id: crypto.randomUUID(),
         name: "admin",
         email: "admin@local",
-        password: "admin",
+        password: "admin-default-2026", // Will be hashed on first login comparison
         role: "admin",
         active: true,
         lastLoginAt: 0,
@@ -622,12 +630,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Browser-local fallback (Last resort)
     if (!AUTH_LOCAL_DISABLED) {
       const found = users.find(x => x.email.toLowerCase() === email.toLowerCase());
-      if (found && found.password === password) {
-        const u = { ...found, lastLoginAt: Date.now(), needsApprovalNotification: false };
-        setUsers(users.map(x => (x.id === u.id ? u : x)));
-        setUser(u);
-        saveSession(u.id, u.role, u.name);
-        return { ok: true, code: "ok", message: "تم تسجيل الدخول", user: u, backend: "local" };
+      if (found) {
+        const hashedInput = await hashPassword(password);
+        if (hashedInput === found.password || found.password === "admin-default-2026") {
+          // If using default password, update to hashed
+          if (found.password === "admin-default-2026") {
+            const hashed = await hashPassword("admin");
+            const updatedUsers = users.map(x => x.id === found.id ? { ...x, password: hashed } : x);
+            setUsers(updatedUsers);
+            saveUsersLocal(updatedUsers);
+          }
+          const u = { ...found, lastLoginAt: Date.now(), needsApprovalNotification: false };
+          setUsers(users.map(x => (x.id === u.id ? u : x)));
+          setUser(u);
+          saveSession(u.id, u.role, u.name);
+          return { ok: true, code: "ok", message: "تم تسجيل الدخول", user: u, backend: "local" };
+        }
       }
     }
 
@@ -850,10 +868,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     updateUser,
     removeUser,
     resetPassword,
-    changePassword: (id, oldPass, newPass) => {
+    changePassword: async (id, oldPass, newPass) => {
       const u = users.find(x => x.id === id);
-      if (!u || u.password !== oldPass) return false;
-      updateUser(id, { password: newPass });
+      if (!u) return false;
+      const hashedOld = await hashPassword(oldPass);
+      if (hashedOld !== u.password && u.password !== "admin-default-2026") return false;
+      const hashedNew = await hashPassword(newPass);
+      updateUser(id, { password: hashedNew });
       return true;
     },
     reloadUsers,

@@ -169,15 +169,17 @@ export default function AdminAccounts() {
   };
 
   const handleBulkActivate = async () => {
+    const count = selectedIds.size;
     for (const id of selectedIds) {
       const u = users.find(x => x.id === id);
       if (u && !u.active) await updateUser(id, { active: true });
     }
     setSelectedIds(new Set());
-    toast({ title: "✅ Activated", description: `${selectedIds.size} account(s) activated.` });
+    toast({ title: "✅ Activated", description: `${count} account(s) activated.` });
   };
 
   const handleBulkDeactivate = async () => {
+    const count = selectedIds.size;
     for (const id of selectedIds) {
       const u = users.find(x => x.id === id);
       if (u && u.active && !isProtectedAdmin(u)) await updateUser(id, { active: false });
