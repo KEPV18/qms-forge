@@ -113,7 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         id: crypto.randomUUID(),
         name: "admin",
         email: "admin@local",
-        password: "admin-default-2026", // Will be hashed on first login comparison
+        password: "SET_ON_FIRST_LOGIN", // Will be hashed on first login comparison
         role: "admin",
         active: true,
         lastLoginAt: 0,
@@ -632,14 +632,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const found = users.find(x => x.email.toLowerCase() === email.toLowerCase());
       if (found) {
         const hashedInput = await hashPassword(password);
-        if (hashedInput === found.password || found.password === "admin-default-2026") {
-          // If using default password, update to hashed
-          if (found.password === "admin-default-2026") {
-            const hashed = await hashPassword("admin");
-            const updatedUsers = users.map(x => x.id === found.id ? { ...x, password: hashed } : x);
-            setUsers(updatedUsers);
-            saveUsersLocal(updatedUsers);
-          }
+        if (hashedInput === found.password) {
           const u = { ...found, lastLoginAt: Date.now(), needsApprovalNotification: false };
           setUsers(users.map(x => (x.id === u.id ? u : x)));
           setUser(u);
@@ -872,7 +865,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const u = users.find(x => x.id === id);
       if (!u) return false;
       const hashedOld = await hashPassword(oldPass);
-      if (hashedOld !== u.password && u.password !== "admin-default-2026") return false;
+      if (hashedOld !== u.password) return false;
       const hashedNew = await hashPassword(newPass);
       updateUser(id, { password: hashedNew });
       return true;

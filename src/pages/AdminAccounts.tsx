@@ -75,9 +75,11 @@ export default function AdminAccounts() {
 
   const handleAdd = () => {
     if (!newUser.name || !newUser.email) return;
-    addUser({ name: newUser.name, email: newUser.email, role: newUser.role, password: "123456", active: user?.role === "admin", needsApprovalNotification: false });
+    // Generate a random temporary password (user must change on first login)
+    const tempPassword = crypto.randomUUID().slice(0, 12).replace(/-/g, "");
+    addUser({ name: newUser.name, email: newUser.email, role: newUser.role, password: tempPassword, active: user?.role === "admin", needsApprovalNotification: false });
     setNewUser({ name: "", email: "", role: "user" });
-    toast({ title: "✅ Account Created", description: `${newUser.name} has been added successfully.` });
+    toast({ title: "✅ Account Created", description: `${newUser.name} created. Temporary password: ${tempPassword}` });
   };
 
   const handleRowEdit = (userId: string, field: keyof AppUser, value: any) => {
