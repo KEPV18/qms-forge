@@ -15,6 +15,7 @@ import { SettingsModal } from "@/components/settings/SettingsModal";
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { ThemeToggleCompact } from "@/components/ui/ThemeToggle";
 
 interface NavItem {
   id: string;
@@ -306,6 +307,15 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
               </button>
             </TooltipTrigger>
             {collapsed && <TooltipContent side="right" sideOffset={8} className="text-xs">Settings</TooltipContent>}
+          </Tooltip>
+
+          <Tooltip delayDuration={0}>
+            <TooltipTrigger asChild>
+              <div className="flex items-center">
+                <ThemeToggleCompact />
+              </div>
+            </TooltipTrigger>
+            {collapsed && <TooltipContent side="right" sideOffset={8} className="text-xs">Theme</TooltipContent>}
           </Tooltip>
 
           {!collapsed && (

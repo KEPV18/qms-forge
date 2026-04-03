@@ -8,6 +8,7 @@ import { Loader2 } from "lucide-react";
 import { AuthProvider } from "./hooks/useAuth";
 import { RequireAuth, RequireRole } from "./components/auth/Guards";
 import { ErrorBoundary } from "./components/ui/ErrorBoundary";
+import { ThemeProvider } from "./hooks/useTheme";
 
 // Lazy loaded routes
 const Index = lazy(() => import("./pages/Index"));
@@ -40,8 +41,9 @@ function PageLoader() {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ErrorBoundary>
-      <AuthProvider>
-        <TooltipProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <TooltipProvider>
           <Toaster />
           <Sonner />
           <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
@@ -68,6 +70,7 @@ const App = () => (
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   </QueryClientProvider>
 );
