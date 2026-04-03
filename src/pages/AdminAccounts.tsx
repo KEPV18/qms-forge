@@ -393,7 +393,7 @@ export default function AdminAccounts() {
               <div className="hidden md:flex items-center gap-3 px-6 py-2 border-b border-border/30 bg-muted/30 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                 <div className="w-6">
                   <input type="checkbox" checked={selectedIds.size === filteredUsers.length && filteredUsers.length > 0}
-                    onChange={toggleSelectAll} className="rounded border-border" />
+                    onChange={toggleSelectAll} className="rounded border-border" aria-label="Select all users" />
                 </div>
                 <div className="w-10" />
                 <button className="flex-1 flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => toggleSort("name")}>
@@ -426,7 +426,7 @@ export default function AdminAccounts() {
                     <div key={u.id} className={cn("transition-colors", hasChanges && "bg-primary/[0.03]", isExpanded && "bg-muted/30")}>
                       <div className="flex items-center gap-3 px-4 md:px-6 py-3">
                         <div className="w-6 shrink-0">
-                          <input type="checkbox" checked={selectedIds.has(u.id)} onChange={() => toggleSelect(u.id)} className="rounded border-border" />
+                          <input type="checkbox" checked={selectedIds.has(u.id)} onChange={() => toggleSelect(u.id)} className="rounded border-border" aria-label={`Select ${u.name || u.email}`} />
                         </div>
                         <div className={cn("w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0",
                           u.active ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>

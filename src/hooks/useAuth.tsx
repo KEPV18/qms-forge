@@ -42,7 +42,8 @@ const AUTH_LOCAL_DISABLED = (((import.meta as unknown as { env?: Record<string, 
 // Simple hash function for local password storage (SHA-256)
 async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();
-  const data = encoder.encode(password + "qms-salt-2026-v1");
+  const salt = (((import.meta as unknown as { env?: Record<string, unknown> }).env?.VITE_AUTH_SALT) as string) || "qms-salt-2026-v1";
+  const data = encoder.encode(password + salt);
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
   return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
