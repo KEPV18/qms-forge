@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { 
   FileText, ExternalLink, Trash2, Edit, ChevronDown, ChevronRight, 
-  Building2, Calendar, User, MessageSquare, Clock, CheckCircle, AlertTriangle, FolderOpen
+  Building2, Calendar, User, MessageSquare, Clock, CheckCircle, AlertTriangle, FolderOpen, Folder
 } from "lucide-react";
 import { QMSRecord, RecordStatus } from "@/lib/googleSheets";
 import { Button } from "@/components/ui/button";
@@ -95,6 +95,24 @@ export function RecordCard({ record, onViewDetails, onDelete, onUpdateStatus, is
           >
             <FolderOpen className="w-3.5 h-3.5" /> Open
           </Button>
+          {record.folderLink && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-8 gap-1.5 text-xs bg-background"
+              onClick={() => window.open(record.folderLink, '_blank')}
+            >
+              <Folder className="w-3.5 h-3.5" />
+            </Button>
+          )}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+            onClick={() => onDelete(record.rowIndex)}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </Button>
           <Button 
             variant="ghost" 
             size="icon" 
@@ -176,8 +194,9 @@ export function RecordCard({ record, onViewDetails, onDelete, onUpdateStatus, is
           </div>
         </div>
 
-        {/* 5. Action Row: Open Record & Delete File */}
+        {/* 5. Action Row: Open Record & Open Folder & Delete File */}
         <div className="flex gap-2">
+          {/* Open File */}
           <Button 
             className="flex-1 h-10 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground gap-2 font-bold text-xs"
             onClick={() => {
@@ -186,15 +205,26 @@ export function RecordCard({ record, onViewDetails, onDelete, onUpdateStatus, is
             }}
           >
             <ExternalLink className="w-3.5 h-3.5" />
-            Open Record
+            Open File
           </Button>
+          {/* Open Folder */}
+          {record.folderLink && (
+            <Button 
+              variant="outline"
+              className="h-10 px-4 rounded-xl border border-border/40 gap-2 font-bold text-xs"
+              onClick={() => window.open(record.folderLink, '_blank')}
+            >
+              <Folder className="w-3.5 h-3.5" />
+              Folder
+            </Button>
+          )}
+          {/* Delete File */}
           <Button 
             variant="ghost" 
             className="h-10 px-4 rounded-xl border border-border/40 text-destructive hover:bg-destructive/5 gap-2 font-bold text-xs"
             onClick={() => onDelete(record.rowIndex)}
           >
             <Trash2 className="w-3.5 h-3.5" />
-            Delete File
           </Button>
         </div>
 
