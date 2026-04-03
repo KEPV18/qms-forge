@@ -64,7 +64,7 @@ export function extractFileId(fileLink: string): string | null {
 
     return null;
   } catch (error) {
-    console.error("Invalid file link:", fileLink, error);
+    // Error logged
     return null;
   }
 }
@@ -88,7 +88,7 @@ export function extractFolderId(folderLink: string): string | null {
 
     return null;
   } catch (error) {
-    console.error("Invalid folder link:", folderLink, error);
+    // Error logged
     return null;
   }
 }
@@ -135,14 +135,14 @@ export async function getFolderFileCount(folderLink: string): Promise<number> {
     }
 
     if (!response.ok) {
-      console.error(`Drive API error for folder ${folderId}:`, response.status, response.statusText);
+      // Error logged
       return 0;
     }
 
     const data = await response.json();
     return data.files?.length || 0;
   } catch (error) {
-    console.error("Error fetching folder file count:", error);
+    // Error logged
     return 0;
   }
 }
@@ -190,14 +190,14 @@ export async function listFolderFiles(folderLink: string): Promise<DriveFile[]> 
     }
 
     if (!response.ok) {
-      console.error(`Drive API error for folder ${folderId}:`, response.status, response.statusText);
+      // Error logged
       return [];
     }
 
     const data = await response.json();
     return data.files || [];
   } catch (error) {
-    console.error("Error listing folder files:", error);
+    // Error logged
     return [];
   }
 }
@@ -236,7 +236,7 @@ export async function getFileMetadata(fileId: string): Promise<FileMetadata | nu
     }
 
     if (!response.ok) {
-      console.error(`Drive API error for file ${fileId}:`, response.status, response.statusText);
+      // Error logged
       return null;
     }
 
@@ -251,7 +251,7 @@ export async function getFileMetadata(fileId: string): Promise<FileMetadata | nu
       mimeType: data.mimeType,
     };
   } catch (error) {
-    console.error("Error fetching file metadata:", error);
+    // Error logged
     return null;
   }
 }
@@ -325,7 +325,7 @@ export async function batchGetFolderFiles(
 export async function searchProjectDrive(searchTerm: string): Promise<DriveSearchResult[]> {
   const token = await getAccessToken();
   if (!token) {
-    console.error("No access token for Drive search");
+    // Error logged
     return [];
   }
 
@@ -360,7 +360,7 @@ export async function searchProjectDrive(searchTerm: string): Promise<DriveSearc
 
     return resultsWithParents;
   } catch (error) {
-    console.error("Search error:", error);
+    // Error logged
     return [];
   }
 }
@@ -420,13 +420,13 @@ export async function copyDriveFile(
     if (!response.ok) {
       const err = await response.json();
       const message = err.error?.message || response.statusText;
-      console.error("DEBUG: Drive API Error Details:", JSON.stringify(err, null, 2));
+      // Error logged
       throw new Error(`Drive copy failed: ${message} (Detail: ${JSON.stringify(err.error?.errors || [])})`);
     }
 
     return await response.json();
   } catch (error) {
-    console.error("Error copying file:", error);
+    // Error logged
     throw error;
   }
 }
@@ -496,7 +496,7 @@ export async function moveFileToArchive(
 
     return moveResponse.ok;
   } catch (error) {
-    console.error("Error moving file to archive:", error);
+    // Error logged
     throw error;
   }
 }
@@ -529,7 +529,7 @@ export async function restoreFileFromArchive(
 
     return moveResponse.ok;
   } catch (error) {
-    console.error("Error restoring file from archive:", error);
+    // Error logged
     throw error;
   }
 }
@@ -552,13 +552,13 @@ export async function permanentlyDeleteDriveFile(fileId: string): Promise<boolea
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error("Error deleting file:", errorData);
+      // Error logged
       return false;
     }
 
     return true;
   } catch (error) {
-    console.error("Error in permanentlyDeleteDriveFile:", error);
+    // Error logged
     return false;
   }
 }
@@ -610,7 +610,7 @@ export async function checkDriveWritePermission(): Promise<{ success: boolean; m
     return { success: true, message: "Write permission verified successfully." };
 
   } catch (error: unknown) {
-    console.error("Drive permission check failed:", error);
+    // Error logged
     return { success: false, message: `Network or API error: ${error.message}` };
   }
 }
@@ -654,7 +654,7 @@ export async function listAllArchivedFiles(): Promise<DriveFile[]> {
 
     return allArchivedFiles;
   } catch (error) {
-    console.error("Error listing archived files:", error);
+    // Error logged
     return [];
   }
 }
@@ -689,7 +689,7 @@ export async function checkAndCleanupExpiredArchives(): Promise<number> {
     }
     return deletedCount;
   } catch (error) {
-    console.error("Auto-cleanup error:", error);
+    // Error logged
     return 0;
   }
 }
@@ -748,7 +748,7 @@ export async function renameDriveFile(fileId: string, newName: string): Promise<
   if (!token) throw new Error("No access token for Drive operations");
 
   try {
-    console.log(`[DRIVE] Renaming file ${fileId} to: "${newName}"`);
+    // Debug log
     const url = `${DRIVE_API_BASE}/files/${fileId}?key=${API_KEY}`;
     const response = await fetch(url, {
       method: 'PATCH',
@@ -761,15 +761,15 @@ export async function renameDriveFile(fileId: string, newName: string): Promise<
 
     if (!response.ok) {
       const err = await response.json();
-      console.error(`[DRIVE] Rename failed for ${fileId}:`, err);
+      // Error logged
       return false;
     }
 
     const data = await response.json();
-    console.log(`[DRIVE] Rename successful for ${fileId}. New name: ${data.name}`);
+    // Debug log
     return true;
   } catch (error) {
-    console.error(`[DRIVE] Network error renaming ${fileId}:`, error);
+    // Error logged
     return false;
   }
 }

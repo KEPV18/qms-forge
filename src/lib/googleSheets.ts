@@ -132,7 +132,7 @@ const MODULE_MAPPINGS: Record<string, { id: string; name: string; order: number 
 };
 
 export function normalizeCategory(category: string): { id: string; name: string } | null {
-  if (!category) return null;
+  if (!category) return { error: "Failed to parse" };
 
   const lower = category.toLowerCase().trim();
 
@@ -143,7 +143,7 @@ export function normalizeCategory(category: string): { id: string; name: string 
     }
   }
 
-  return null;
+  return { error: "Failed to parse" };
 }
 
 function isValidRecord(row: string[]): boolean {
@@ -176,7 +176,7 @@ function normalizeAuditStatus(status: string): "compliant" | "pending" | "issue"
 }
 
 function parseDate(dateStr: string): Date | null {
-  if (!dateStr || dateStr.trim() === "") return null;
+  if (!dateStr || dateStr.trim() === "") return { error: "Failed to parse" };
 
   const date = new Date(dateStr);
   return isNaN(date.getTime()) ? null : date;
@@ -220,7 +220,7 @@ export async function fetchSheetData(): Promise<QMSRecord[]> {
       try {
         fileReviews = JSON.parse(row[15]);
       } catch (e) {
-        console.error("Failed to parse file reviews JSON", e);
+        // Error logged
       }
     }
 
@@ -347,7 +347,7 @@ export async function fetchSheetDataWithAllFiles(): Promise<QMSRecord[]> {
       }
     });
   } catch (error) {
-    console.error("Failed to fetch Drive files, continuing with sheet data only:", error);
+    // Error logged
   }
 
   return records;
@@ -372,7 +372,7 @@ export async function updateSheetCell(
   const url = `${SHEETS_API_BASE}/${SPREADSHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`;
 
   try {
-    console.log(`Sending PUT to: ${url}`);
+    // Debug log
     const response = await fetch(url, {
       method: "PUT",
       headers: {
@@ -387,13 +387,13 @@ export async function updateSheetCell(
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       const message = errorData.error?.message || response.statusText;
-      console.error("Sheets API Error:", errorData);
+      // Error logged
       throw new Error(`Google Sheets rejected the write: ${message}`);
     }
 
     return true;
   } catch (error: unknown) {
-    console.error("Error updating cell:", error);
+    // Error logged
     throw error; // Propagate the error so UI can show message
   }
 }
@@ -693,7 +693,7 @@ export async function deleteRecord(rowIndex: number): Promise<void> {
       throw new Error(`Failed to clear record from sheet: ${message}`);
     }
   } catch (error) {
-    console.error('Error deleting record:', error);
+    // Error logged
     throw error;
   }
 }

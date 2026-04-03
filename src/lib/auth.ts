@@ -19,13 +19,13 @@ export async function getAccessToken(): Promise<string | null> {
         const apiBase = ''; 
 
         const response = await fetch(`${apiBase}/api/token`).catch(e => {
-            console.error('DEBUG: OAuth API is not reachable.');
+            // Error logged
             throw new Error('OAuth API is not reachable. If running locally, please run RUN_LOCAL.bat.');
         });
 
         if (!response.ok) {
             if (response.status === 401) {
-                console.error('DEBUG: No refresh token found. User needs to authenticate.');
+                // Error logged
                 return null;
             }
             throw new Error(`Proxy error: ${response.status}`);
@@ -38,7 +38,7 @@ export async function getAccessToken(): Promise<string | null> {
         tokenExpiry = Date.now() + (data.expires_in * 1000) - 60000;
         return cachedAccessToken;
     } catch (error) {
-        console.error('DEBUG: getAccessToken Error:', error);
+        // Error logged
         return null;
     }
 }
