@@ -181,7 +181,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUsers(mapped);
       if (!AUTH_LOCAL_DISABLED) saveUsersLocal(mapped);
     } catch (e) {
-      console.error("[AUTH] Full fetch failed:", e);
+      console.error("Error");
     }
   }, [supabaseDisabled]);
 
@@ -309,7 +309,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         if (mounted) setLoading(false);
       } catch (err) {
-        console.error("[AUTH] Bootstrap failed:", err);
+        console.error("Error");
         if (mounted) setLoading(false);
       }
       bootstrapDone = true;
@@ -396,7 +396,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(u);
           }
         } catch (e) {
-          console.error("Supabase reload failed:", e);
+          console.error("Error");
           setSupabaseDisabled(true);
         }
       } else {
@@ -503,7 +503,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch { /* non-critical */ }
 
         if (!profileRow) {
-          // console.log("[AUTH] Creating missing profile for", email);
           const { error: upErr } = await supabase!.from("profiles").insert({
             id: crypto.randomUUID(),
             user_id: authUserId,
@@ -576,7 +575,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(u);
         saveSession(u.id, u.role, u.name);
         setSupabaseDisabled(false);
-        // console.log("[AUTH] Supabase Login successful for:", email);
         return { ok: true, code: "ok", message: "تم تسجيل الدخول", user: u, backend };
 
       } catch (err) {
@@ -591,7 +589,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // SECURITY: Compare hashed password instead of plain text
           const hashedInput = await hashPassword(password);
           if (!pErr && prof && prof.password === hashedInput) {
-            // console.log("[AUTH] Custom password column match found for:", email);
             const authUserId = prof.user_id || prof.id;
 
             let role = "user";
@@ -624,9 +621,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return { ok: true, code: "ok", message: "تم تسجيل الدخول", user: u, backend };
           }
         } catch (fallbackErr) {
-          console.error("[AUTH] Custom password fallback failed:", fallbackErr);
+          console.error("Error");
         }
-        console.error("[AUTH] Supabase Login failed.");
+        console.error("Error");
       }
     }
 
@@ -651,7 +648,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 
   const logout = React.useCallback(async () => {
-    // console.log("[AUTH] Logging out user...");
     if (supabase) {
       try {
         await supabase.auth.signOut();
@@ -675,7 +671,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       saveUsersLocal(updated);
     }
     if (supabase) {
-      // console.log("[AUTH] addUser: inserting profile for", newUser.email);
       // SECURITY: Hash password before storing in profiles table
       const { error: profileErr } = await supabase.from("profiles").insert({
         id: newUser.id,
@@ -687,9 +682,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         last_login: null,
       });
       if (profileErr) {
-        console.error("[AUTH] addUser: profile insert FAILED:", profileErr);
+        console.error("Error");
       } else {
-        // console.log("[AUTH] addUser: profile insert succeeded");
       }
       try {
         const { error: roleErr } = await supabase.from("user_roles").insert({
@@ -698,12 +692,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           role: newUser.role,
         });
         if (roleErr) {
-          console.error("[AUTH] addUser: role insert FAILED:", roleErr);
+          console.error("Error");
         } else {
-          // console.log("[AUTH] addUser: role insert succeeded");
         }
       } catch (e) {
-        console.error("[AUTH] addUser: role insert exception:", e);
+        console.error("Error");
       }
 
       await reloadUsers();
@@ -721,7 +714,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Crucial: Persistence for Local Auth Password Changes
     if (!AUTH_LOCAL_DISABLED) {
       saveUsersLocal(updated);
-      // console.log("[AUTH] updateUser: Persisted change to Local Storage (including potentially password).");
     }
 
     if (user && user.id === id) {
@@ -749,14 +741,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Update Profiles
       if (Object.keys(payload).length > 0) {
-        // console.log("[AUTH] updateUser: updating profiles for user_id", id, "payload:", payload);
         const { error } = await supabase.from("profiles").update(payload).eq("user_id", id);
 
         if (error) {
-          console.error("[AUTH] updateUser: Supabase profiles update FAILED:", error);
+          console.error("Error");
           const { error: err2 } = await supabase.from("profiles").update(payload).eq("id", id);
           if (err2) {
-            console.error("[AUTH] updateUser: Fallback (id) also FAILED:", err2);
+            console.error("Error");
             failed = true;
           }
         }
@@ -765,15 +756,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Update Roles
       if (typeof updates.role === "string" && !failed) {
         const roleToSave = updates.role.toLowerCase();
-        // console.log("[AUTH] updateUser: updating role to", roleToSave, "for user", id);
         try {
           // Check if it's one of the supported roles
           const validRoles = ["admin", "manager", "auditor", "user", "moderator"];
           if (!validRoles.includes(roleToSave)) {
-            console.error("[AUTH] Invalid role rejected:", roleToSave);
+            console.error("Error");
             failed = true;
           } else {
-            // console.log("[AUTH] updateUser: trying role upsert for", id, "to", roleToSave);
             const { error: roleErr } = await supabase.from("user_roles").upsert(
               { user_id: id, role: roleToSave },
               { onConflict: "user_id" }
@@ -788,13 +777,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 id: crypto.randomUUID()
               });
               if (insErr) {
-                console.error("[AUTH] role delete/insert fallback also FAILED:", insErr.message);
+                console.error("Error");
                 failed = true;
               }
             }
           }
         } catch (e) {
-          console.error("[AUTH] updateUser: role upsert exception:", e);
+          console.error("Error");
           failed = true;
         }
       }
@@ -822,15 +811,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       saveSession(null);
     }
     if (supabase) {
-      // console.log("[AUTH] removeUser: deleting user", id);
       const { error: roleErr } = await supabase.from("user_roles").delete().eq("user_id", id);
-      if (roleErr) console.error("[AUTH] removeUser: role delete FAILED:", roleErr);
+      if (roleErr) console.error("Error");
       const { error: profErr } = await supabase.from("profiles").delete().eq("user_id", id);
       if (profErr) {
-        console.error("[AUTH] removeUser: profile delete FAILED (user_id):", profErr);
+        console.error("Error");
         // Fallback to id column
         const { error: profErr2 } = await supabase.from("profiles").delete().eq("id", id);
-        if (profErr2) console.error("[AUTH] removeUser: profile delete fallback FAILED:", profErr2);
+        if (profErr2) console.error("Error");
       }
       await reloadUsers();
     }
@@ -841,18 +829,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { ok: false, message: "خدمة المصادقة غير متوفرة" };
     }
     try {
-      // console.log("[AUTH] resetPassword: sending reset email to", email);
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/login`,
       });
       if (error) {
-        console.error("[AUTH] resetPassword: FAILED:", error);
+        console.error("Error");
         return { ok: false, message: error.message };
       }
-      // console.log("[AUTH] resetPassword: email sent successfully");
       return { ok: true, message: `تم إرسال رابط إعادة تعيين كلمة المرور إلى ${email}` };
     } catch (e) {
-      console.error("[AUTH] resetPassword: exception:", e);
+      console.error("Error");
       return { ok: false, message: "حدث خطأ غير متوقع" };
     }
   }, []);

@@ -93,7 +93,7 @@ export function RecordBrowser({ record, isFlat = false }: RecordBrowserProps) {
             setFiles(driveFiles);
         } catch (err) {
             setError("Failed to load files from Drive");
-            console.error(err);
+            console.error("Error");
         } finally {
             setIsLoading(false);
         }

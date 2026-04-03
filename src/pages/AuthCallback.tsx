@@ -25,7 +25,6 @@ export default function AuthCallback() {
         const refreshToken = params.get("refresh_token");
 
         if (accessToken && refreshToken) {
-          // console.log("[AUTH-CALLBACK] Found tokens in URL, setting session via lovable integration...");
           const result = await lovable.auth.callback({
             tokens: { access_token: accessToken, refresh_token: refreshToken }
           });
@@ -39,7 +38,7 @@ export default function AuthCallback() {
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error || !session?.user) {
-          console.error("[AUTH-CALLBACK] No session found:", error);
+          console.error("Error");
           toast({ title: "Authentication Failed", description: "Could not complete authentication", variant: "destructive" });
           navigate("/login");
           return;
@@ -50,7 +49,7 @@ export default function AuthCallback() {
         navigate("/");
         
       } catch (error) {
-        console.error("Error in auth callback:", error);
+        console.error("Error");
         toast({ title: "Error", description: "An error occurred during authentication", variant: "destructive" });
         navigate("/login");
       }

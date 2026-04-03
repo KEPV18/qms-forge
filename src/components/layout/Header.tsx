@@ -59,7 +59,7 @@ export function Header() {
         const driveResults = await searchProjectDrive(searchTerm);
         setResults(driveResults);
       } catch (error) {
-        console.error("Search failed:", error);
+        console.error("Error");
       } finally {
         setIsSearching(false);
       }

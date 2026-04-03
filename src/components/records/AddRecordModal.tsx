@@ -98,7 +98,7 @@ export function AddRecordModal({ isOpen, onClose, templates, onSuccess }: AddRec
                     };
                     await updateSheetCell(selectedTemplate.rowIndex, 'P', JSON.stringify(newReviews));
                 } catch (e) {
-                    console.error("Failed to save metadata to Google Sheets:", e);
+                    console.error("Error");
                     // It's not a fatal error if metadata save fails, the file is still generated
                 }
 

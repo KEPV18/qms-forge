@@ -131,7 +131,7 @@ export default function ProceduresPage() {
       });
       setFiles(items);
     } catch (err) {
-      console.error("Failed to load procedures:", err);
+      console.error("Error");
     } finally {
       setLoading(false);
     }

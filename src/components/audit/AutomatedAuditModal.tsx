@@ -93,7 +93,7 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
       });
       setCollapsedCards(autoCollapsed);
     } catch (error) {
-      console.error("Audit failed:", error);
+      console.error("Error");
       toast({ title: "Audit Failed", description: (error as Error).message, variant: "destructive" });
     } finally {
       setIsRunning(false);
@@ -151,7 +151,7 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
       queryClient.invalidateQueries({ queryKey: ["qms-data"] });
       onClose();
     } catch (error: unknown) {
-      console.error("Failed to apply audit results:", error);
+      console.error("Error");
       toast({ title: "Sync Failed", description: error.message, variant: "destructive" });
     } finally {
       setIsApplying(false);
@@ -172,7 +172,6 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
         const fix = fixesToApply[i];
         setFixProgress({ current: i + 1, total: totalToFix, name: fix.currentName });
         
-        // console.log(`[AUDIT-FIX] Renaming ${fix.type}: "${fix.currentName}" -> "${fix.suggestedName}"`);
         const success = await renameDriveFile(fix.id, fix.suggestedName);
         if (success) successCount++;
       }
@@ -189,7 +188,7 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
       setSelectedFixes(new Set());
       await handleStartAudit();
     } catch (error: unknown) {
-      console.error("[AUDIT-FIX] Error during automated fix:", error);
+      console.error("Error");
       toast({ title: "Fix Failed", description: error.message, variant: "destructive" });
     } finally {
       setIsFixing(false);
