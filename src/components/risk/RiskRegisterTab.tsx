@@ -239,7 +239,7 @@ export function RiskRegisterTab() {
                     <Button variant="outline" size="sm" className="h-9 gap-1.5" onClick={() => refetch()}>
                         <RefreshCw className="w-3.5 h-3.5" /> Sync
                     </Button>
-                    <Button size="sm" className="h-9 gap-1.5 bg-primary" onClick={() => setIsAddOpen(true)}>
+                    <Button size="sm" className="h-9 gap-1.5 bg-primary" onClick={() => { setEditingRisk({ riskId: "", department: "", riskDescription: "", cause: "", likelihood: 3, impact: 3, actionControl: "", owner: "", status: "Open", reviewDate: "", linkedCAPA: "", rowIndex: 0 }); setIsAddOpen(true); }}>
                         <Plus className="w-3.5 h-3.5" /> Add Risk
                     </Button>
                 </div>
