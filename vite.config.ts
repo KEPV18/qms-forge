@@ -20,17 +20,28 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-}));
-
-// Vitest configuration
-/// <reference types="vitest" />
-export default defineConfig(({ mode }) => ({
-  ...(mode === 'test' ? {
-    test: {
-      globals: true,
-      environment: 'jsdom',
-      setupFiles: ['./src/test/setup.ts'],
-      include: ['src/**/*.{test,spec}.{js,ts,jsx,tsx}'],
+  // Bundle optimization for production
+  build: mode !== 'test' ? {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Vendor chunks for better caching
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-ui': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select', '@radix-ui/react-popover'],
+          'vendor-utils': ['lucide-react', 'clsx', 'class-variance-authority', 'tailwind-merge'],
+          'vendor-supabase': ['@supabase/supabase-js'],
+          'vendor-query': ['@tanstack/react-query'],
+        },
+      },
     },
-  } : {}),
+    // Increase chunk size warning limit
+    chunkSizeWarningLimit: 600,
+  } : {},
+  // Vitest configuration
+  test: mode === 'test' ? {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
+    include: ['src/**/*.{test,spec}.{js,ts,jsx,tsx}'],
+  } : undefined,
 }));
