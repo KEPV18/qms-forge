@@ -6,35 +6,38 @@
 
 @layer base {
   :root {
-    --background: 220 20% 97%;
-    --foreground: 222 47% 11%;
+    /* New Brand Colors - Modern Purple/Blue */
+    --background: 230 30% 98%;
+    --foreground: 230 20% 10%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 230 20% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 230 20% 10%;
 
-    --primary: 221 83% 53%;
-    --primary-foreground: 210 40% 98%;
+    /* New primary: Purple-based blue */
+    --primary: 250 85% 55%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222 47% 11.2%;
+    --secondary: 250 30% 96%;
+    --secondary-foreground: 230 20% 15%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 230 20% 94%;
+    --muted-foreground: 230 15% 45%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222 47% 11.2%;
+    --accent: 250 85% 55%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 85% 55%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+    --border: 230 20% 90%;
+    --input: 230 20% 90%;
+    --ring: 250 85% 55%;
 
-    --radius: 0.75rem;
+    /* More rounded corners */
+    --radius: 1rem;
 
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
@@ -44,9 +47,9 @@
     --info-foreground: 0 0% 100%;
 
     /* Sidebar - Dark by default */
-    --sidebar-background: 222 47% 8%;
+    --sidebar-background: 250 40% 8%;
     --sidebar-foreground: 210 40% 85%;
-    --sidebar-primary: 221 83% 60%;
+    --sidebar-primary: 250 85% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 222 40% 14%;
     --sidebar-accent-foreground: 210 40% 90%;
@@ -54,7 +57,7 @@
     --sidebar-ring: 217.2 91.2% 59.8%;
 
     /* Module Palette */
-    --module-sales: 199 89% 48%;
+    --module-sales: 262 70% 55%;
     --module-operations: 262 83% 58%;
     --module-quality: 142 76% 36%;
     --module-procurement: 38 92% 50%;
@@ -75,7 +78,7 @@
   [data-accent="blue"] {
     --primary: 221 83% 53%;
     --ring: 221.2 83.2% 53.3%;
-    --sidebar-primary: 221 83% 60%;
+    --sidebar-primary: 250 85% 60%;
   }
   .dark[data-accent="blue"] {
     --primary: 217 91% 60%;
@@ -493,4 +496,51 @@
 }
 .fade-up {
   animation: fade-up-stagger 0.3s ease-out forwards;
+}
+
+/* ===== Enhanced Card Design ===== */
+.card-modern {
+  @apply bg-card border-border rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300;
+  background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--muted)/0.3) 100%);
+}
+
+.card-elevated {
+  @apply bg-card border-border rounded-2xl shadow-md hover:shadow-xl transition-all duration-300;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+}
+
+.card-glow {
+  @apply bg-card border-border rounded-2xl shadow-md transition-all duration-300;
+  position: relative;
+  overflow: hidden;
+}
+
+.card-glow::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent 0%, hsl(var(--primary)/0.05) 100%);
+  pointer-events: none;
+}
+
+/* Better input styles */
+.input-modern {
+  @apply border-border rounded-xl px-4 py-3 transition-all duration-200;
+  background: hsl(var(--muted)/0.5);
+}
+.input-modern:focus {
+  @apply ring-2 ring-primary/30 border-primary;
+  box-shadow: 0 0 0 4px hsl(var(--ring)/0.1);
+}
+
+/* Enhanced buttons */
+.btn-modern {
+  @apply rounded-xl px-6 py-3 font-medium transition-all duration-200;
+}
+.btn-modern:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px hsl(var(--primary)/0.3);
+}
+.btn-modern:active {
+  transform: translateY(0);
 }
