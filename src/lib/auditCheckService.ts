@@ -31,6 +31,7 @@ export interface AuditRecordResult {
   missingSerials: number[];
   issues: AuditIssue[];
   filesChecked: number;
+  checkedFileNames?: string[];
   error?: string; // Per-record error message if Drive API failed
 }
 
@@ -99,6 +100,7 @@ async function auditSingleRecord(
     missingSerials: [],
     issues: [],
     filesChecked: 0,
+    checkedFileNames: [],
   };
 
   try {
@@ -203,6 +205,7 @@ async function auditSingleRecord(
               folderFiles = allFolderFiles.filter(f => !f.name.toLowerCase().endsWith('.json'));
               
               result.filesChecked = folderFiles.length;
+              result.checkedFileNames = folderFiles.map(f => f.name);
 
               if (folderFiles && folderFiles.length > 0) {
                 const extractedSerials: number[] = [];

@@ -130,7 +130,7 @@ export async function getFolderFileCount(folderLink: string): Promise<number> {
       const fallbackResponse = await fetch(fallbackUrl);
       if (fallbackResponse.ok) {
         const data = await fallbackResponse.json();
-        return data.files?.length || 0;
+        return (data.files || []).filter((f: any) => !f.name?.toLowerCase().endsWith('.json')).length;
       }
     }
 
@@ -140,7 +140,7 @@ export async function getFolderFileCount(folderLink: string): Promise<number> {
     }
 
     const data = await response.json();
-    return data.files?.length || 0;
+    return (data.files || []).filter((f: any) => !f.name?.toLowerCase().endsWith('.json')).length;
   } catch (error) {
     // Error logged
     return 0;
@@ -185,7 +185,7 @@ export async function listFolderFiles(folderLink: string): Promise<DriveFile[]> 
       const fallbackResponse = await fetch(fallbackUrl);
       if (fallbackResponse.ok) {
         const data = await fallbackResponse.json();
-        return data.files || [];
+        return (data.files || []).filter((f: any) => !f.name?.toLowerCase().endsWith('.json'));
       }
     }
 
@@ -195,7 +195,7 @@ export async function listFolderFiles(folderLink: string): Promise<DriveFile[]> 
     }
 
     const data = await response.json();
-    return data.files || [];
+    return (data.files || []).filter((f: any) => !f.name?.toLowerCase().endsWith('.json'));
   } catch (error) {
     // Error logged
     return [];
@@ -347,7 +347,7 @@ export async function searchProjectDrive(searchTerm: string): Promise<DriveSearc
     }
 
     const data = await response.json();
-    const files: DriveSearchResult[] = data.files || [];
+    const files: DriveSearchResult[] = (data.files || []).filter((f: any) => !f.name?.toLowerCase().endsWith('.json'));
 
     // Try to resolve parent names for the first few results to show as "path"
     const resultsWithParents = await Promise.all(files.map(async (file) => {
@@ -648,7 +648,7 @@ export async function listAllArchivedFiles(): Promise<DriveFile[]> {
       });
       const fileData = await fileResponse.json();
       if (fileData.files) {
-        allArchivedFiles.push(...fileData.files);
+        allArchivedFiles.push(...fileData.files.filter((f: any) => !f.name?.toLowerCase().endsWith('.json')));
       }
     }
 

@@ -678,6 +678,22 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
                                 }
                                 return null;
                               })()}
+
+                              {/* Show audited files */}
+                              {result.checkedFileNames && result.checkedFileNames.length > 0 && (
+                                <div className="mt-4 pt-3 border-t border-border/50">
+                                  <h5 className="text-[10px] font-bold uppercase text-muted-foreground mb-2 flex items-center gap-1.5">
+                                    <CheckCheck className="w-3 h-3" /> Audited Files ({result.filesChecked})
+                                  </h5>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {result.checkedFileNames.map((fname, i) => (
+                                      <Badge key={i} variant="outline" className="text-[9px] font-mono bg-muted/30 border-muted-foreground/20 text-muted-foreground hover:bg-muted/60 transition-colors">
+                                        {fname}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
