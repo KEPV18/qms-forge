@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
     Select,
     SelectContent,
@@ -18,7 +19,7 @@ import {
     SelectValue
 } from "@/components/ui/select";
 import { QMSRecord, RecordStatus, updateSheetCell } from "@/lib/googleSheets";
-import { Settings, Loader2, Save } from "lucide-react";
+import { Settings, Loader2, Save, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface EditMetadataModalProps {
@@ -44,6 +45,8 @@ export function EditMetadataModal({ isOpen, onClose, record, fileId, fileName, o
     const [reviewDate, setReviewDate] = useState(currentReview.reviewDate || new Date().toISOString().split('T')[0]);
     
     // New Metadata state
+    const [identifiedErrors, setIdentifiedErrors] = useState(currentReview.identifiedErrors || "");
+    const [errorsFixed, setErrorsFixed] = useState(currentReview.errorsFixed || false);
     const [project, setProject] = useState(currentReview.project || "General / All Company");
     const [targetMonth, setTargetMonth] = useState(currentReview.targetMonth || (new Date().getMonth() + 1).toString());
     const [targetYear, setTargetYear] = useState(currentReview.targetYear || new Date().getFullYear().toString());
@@ -77,7 +80,9 @@ export function EditMetadataModal({ isOpen, onClose, record, fileId, fileName, o
                 reviewDate,
                 project,
                 targetMonth,
-                targetYear
+                targetYear,
+                identifiedErrors,
+                errorsFixed
             };
 
             // Column P is index 15, which is 'P'
@@ -95,7 +100,7 @@ export function EditMetadataModal({ isOpen, onClose, record, fileId, fileName, o
                 onSuccess();
                 onClose();
             }
-        } catch (error: unknown) {
+        } catch (error: any) {
             toast({
                 title: "Update Failed",
                 description: error.message || "Could not save changes to Google Sheets",
@@ -209,6 +214,44 @@ export function EditMetadataModal({ isOpen, onClose, record, fileId, fileName, o
                             onChange={(e) => setComment(e.target.value)}
                         />
                     </div>
+
+                    {(status === 'rejected' || identifiedErrors) && (
+                        <div className="space-y-4 pt-4 border-t border-border mt-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="identifiedErrors" className="text-destructive font-bold flex items-center gap-2">
+                                    <AlertTriangle className="w-4 h-4" />
+                                    Identified Errors
+                                </Label>
+                                <Textarea 
+                                    id="identifiedErrors"
+                                    placeholder="List specific errors found in the file..."
+                                    className="resize-none h-20 bg-destructive/5 border-destructive/20"
+                                    value={identifiedErrors}
+                                    onChange={(e) => setIdentifiedErrors(e.target.value)}
+                                />
+                            </div>
+                            {identifiedErrors && (
+                                <div className="flex items-center space-x-2 bg-muted/30 p-3 rounded-lg border border-border">
+                                    <Checkbox 
+                                        id="errorsFixed" 
+                                        checked={errorsFixed}
+                                        onCheckedChange={(checked) => setErrorsFixed(checked as boolean)}
+                                    />
+                                    <div className="grid gap-1.5 leading-none">
+                                        <label
+                                            htmlFor="errorsFixed"
+                                            className="text-sm font-medium leading-none cursor-pointer"
+                                        >
+                                            Errors have been fixed
+                                        </label>
+                                        <p className="text-[10px] text-muted-foreground leading-snug">
+                                            Check this when the errors have been resolved. Remember to update the Audit Status above to Approved or Pending.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 <DialogFooter className="gap-2 sm:gap-0">
