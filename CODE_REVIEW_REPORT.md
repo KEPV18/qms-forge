@@ -1,229 +1,150 @@
-# QMS Codebase Code Review Report
+# QMS Codebase Review Report
 
-**Date:** April 5th, 2026  
-**Reviewer:** Kilo (⚡)  
-**Scope:** `src/components/`, `src/lib/`, `src/pages/`  
-**Total Lines:** ~22,358
-
----
-
-## Summary
-
-| Category | Issues Found |
-|----------|-------------|
-| Errors | 19 |
-| Warnings | 12 |
-| `any` type usage | 16+ locations |
-| Missing error handling | 8+ locations |
-| Performance opportunities | Multiple |
+**Date:** April 5, 2026  
+**Reviewer:** Kilo ⚡  
+**Scope:** `src/components/`, `src/lib/`, `src/pages/`
 
 ---
 
-## 1. Code Quality Issues
+## 1. Code Quality Issues & Anti-Patterns
 
-### 1.1 Excessive `any` Type Usage (16+ locations)
+### 1.1 Excessive Use of `any` Type
+- **src/components/records/RecordCard.tsx:45** — `const review: any = ...`
+- **src/components/records/RecordsTable.tsx:154** — `record: any`
+- **src/components/layout/Sidebar.tsx:68** — `review]: [string, any]`
+- **src/pages/ProjectDetailPage.tsx:51, 64** — Multiple `any` annotations
+- **src/pages/ProjectsPage.tsx:55** — `review]: [string, any]`
+- **src/pages/AuditPage.tsx:96** — `record: any`
+- **src/pages/AdminAccounts.tsx:85** — `value: any`
 
-**Impact:** TypeScript loses type safety, runtime errors likely.
+### 1.2 Silent Error Logging
+Multiple places use generic `console.error("Error")` without actual error details:
+- **src/components/records/RecordBrowser.tsx:96**
+- **src/components/records/AddRecordModal.tsx:101**
+- **src/components/audit/AutomatedAuditModal.tsx:96, 154, 191**
+- **src/components/layout/Header.tsx:62**
+- **src/components/ui/error-boundary.tsx:25**
+- **src/pages/ProceduresPage.tsx:134**
+- **src/pages/AuthCallback.tsx:41, 52**
+- **src/pages/NotFound.tsx:8**
 
-| File | Line | Issue |
-|------|------|-------|
-| `src/components/layout/Sidebar.tsx` | 68 | `any` in event handler |
-| `src/components/records/RecordCard.tsx` | 45 | `const review: any = ...` |
-| `src/components/records/RecordsTable.tsx` | 154 | Column type `any` |
-| `src/pages/ProjectDetailPage.tsx` | 51, 64, 67 | Multiple `any` types |
-| `src/pages/ProjectsPage.tsx` | 55 | Filter type `any` |
-| `src/pages/AuditPage.tsx` | 96 | Event handler `any` |
-| `src/pages/AdminAccounts.tsx` | 85 | User type `any` |
+### 1.3 Magic Strings & Hardcoded Values
+- **src/lib/ManualContent.ts, src/lib/ProceduresContent.ts** — Hardcoded company data (Vezloo, employee names, etc.)
+- **src/components/records/RecordCard.tsx:75, 186, 237** — Hardcoded fallback `"General / All Company"` (also duplicated across files)
+- **src/components/records/EditMetadataModal.tsx:47, 55**
+- **src/components/records/AddRecordModal.tsx:38, 43**
+- **src/lib/googleSheets.ts:321**
 
-**Recommendation:** Define proper interfaces for all data structures.
-
----
-
-### 1.2 Empty Catch Blocks / Silent Error Swallowing
-
-**Impact:** Errors hidden, debugging difficult.
-
-| File | Line | Issue |
-|------|------|-------|
-| `src/lib/driveService.ts` | 383 | Empty catch: `catch (e) { }` |
-| `src/lib/driveService.ts` | 406, 444, 514 | Unnecessary try/catch wrappers |
-| `src/lib/googleSheets.ts` | 374, 675 | Unnecessary try/catch wrappers |
-
-**Example (driveService.ts:383):**
-```typescript
-} catch (e) { }  // SILENTLY SWALLOWS ERROR!
-return "Unknown";
-```
-
-**Recommendation:** Log errors or return meaningful error states.
+### 1.4 Duplicate Code Patterns
+- Project name normalization logic duplicated in multiple files:
+  - `rawProj === "General / All Company" ? "General" : rawProj`
+  - Found in: `RecordCard.tsx`, `ProjectDetailPage.tsx`, `ProjectsPage.tsx`, `AuditPage.tsx`
 
 ---
 
-### 1.3 React Hooks Dependencies Missing
+## 2. Performance Issues
 
-| File | Line | Warning |
-|------|------|---------|
-| `src/components/layout/Sidebar.tsx` | 83 | `useEffect` missing `expandedItems` |
-| `src/components/records/RecordBrowser.tsx` | 85 | `useEffect` missing `files.length`, `loadFiles` |
-| `src/pages/AuditPage.tsx` | 338 | `useMemo` missing `dateFilter`, `projectFilter`, `yearFilter` |
-| `src/pages/ArchivePage.tsx` | 58 | `useEffect` missing `loadArchivedFiles`, `toast` |
+### 2.1 Large File Sizes
+Some files are excessively large and would benefit from splitting:
+- **src/components/risk/RiskRegisterTab.tsx** — 678 lines
+- **src/components/risk/CapaRegisterTab.tsx** — 496 lines
+- **src/components/records/RecordBrowser.tsx** — 348 lines
+- **src/pages/AuditPage.tsx** — 673 lines
+- **src/pages/AdminAccounts.tsx** — 538 lines
+- **src/pages/ModulePage.tsx** — 573 lines
 
-**Impact:** Stale closures, bugs that appear randomly.
+### 2.2 Missing Memoization
+- **119 instances** of `useEffect`, `useMemo`, or `useCallback` found — many likely missing memoization dependencies or could be optimized
+- No `React.memo` wrappers on list item components (e.g., `RecordCard`)
 
----
-
-## 2. Performance Improvements
-
-### 2.1 Low Memoization Ratio
-
-- **useState:** 241 usages
-- **useMemo/useCallback:** 68 usages (~28%)
-
-**Recommendation:** Add memoization for:
-- Complex filtered lists
-- Event handlers passed to child components
-- Expensive computations in list renders
-
-### 2.2 RecordsTable Potential Re-renders
-
-The `RecordsTable` component renders potentially large datasets without virtualization.
-
-```typescript
-// Current: renders all rows at once
-// Recommended: use react-window for 100+ rows
-```
+### 2.3 Large Static Data in Modules
+- **src/lib/ManualContent.ts** (~38KB) — Large ISO manual content
+- **src/lib/ProceduresContent.ts** (~24KB) — Large procedures content
+- **Recommendation:** Move static content to separate JSON files and lazy-load
 
 ---
 
 ## 3. Security Issues
 
-### 3.1 Limited Findings ✅
+### 3.1 Weak Password Hashing in Local Auth
+- **src/hooks/useAuth.tsx:44-51** — Uses basic SHA-256 with hardcoded salt
+- No bcrypt/Argon2, no pepper, no iteration count
+- Local auth fallback stores passwords in localStorage (line 40: `USERS_KEY`)
 
-- **No `eval()` usage** - Good
-- **No hardcoded secrets** - Good
-- **OAuth flow looks secure** - Token handled server-side
+### 3.2 Missing Input Validation
+- **src/lib/validation.ts** — Has validation utilities but many components don't use them
+- No server-side validation observed
 
-### 3.2 Notes of Concern
-
-| File | Line | Note |
-|------|------|------|
-| `src/lib/auth.ts` | 17 | Generic error message, may expose internal details |
-| `src/components/ui/chart.tsx` | 70 | `dangerouslySetInnerHTML` for dynamic CSS (low risk, used for theming) |
-
----
-
-## 4. Missing Error Handling
-
-### 4.1 Async Handlers Without try/catch
-
-| File | Function | Issue |
-|------|----------|-------|
-| `src/pages/RecordDetail.tsx` | `handleAuditStatusChange` | No error handling |
-| `src/pages/RecordDetail.tsx` | `handleReviewedChange` | No error handling |
-| `src/pages/RecordDetail.tsx` | `handleSaveReviewer` | No error handling |
-
-**Example (RecordDetail.tsx:62-66):**
-```typescript
-const handleAuditStatusChange = async (newStatus: string) => {
-  if (!record) return;
-  await updateRecord.mutateAsync({  // Can fail silently!
-    rowIndex: record.rowIndex,
-    field: "auditStatus",
-    value: newStatus,
-  });
-};
-```
-
-**Recommendation:** Wrap in try/catch with toast notifications.
+### 3.3 Potential XSS in Dynamic Content
+- **src/components/risk/RiskRegisterTab.tsx** — Renders user-provided risk descriptions without sanitization
+- **src/lib/ManualContent.ts** — Contains raw HTML-like content rendered via `dangerouslySetInnerHTML` (likely)
 
 ---
 
-### 4.2 Generic Error Messages
+## 4. Error Handling Issues
 
-Multiple files use `console.error("Error")` without the actual error:
+### 4.1 Empty Catch Blocks
+- **src/hooks/useAuth.tsx:41, 54, 67, 90, 116** — Multiple `catch { return [] }` swallowing errors
 
-```typescript
-// Poor
-console.error("Error");
+### 4.2 Inconsistent Error Propagation
+- **src/lib/googleSheets.ts** — Mixes return `{ error: string }` and `throw new Error()`
+- **src/lib/driveService.ts** — Likely similar inconsistency
 
-// Better
-console.error("Failed to load files:", error);
-```
-
----
-
-## 5. Unused Imports / Dead Code
-
-### 5.1 Fast Refresh Warnings
-
-Fast refresh works best when files export only components. These files export both components and utilities:
-
-- `src/components/ui/ErrorBoundary.tsx` (line 60)
-- `src/components/ui/badge.tsx` (line 29)
-- `src/components/ui/button.tsx` (line 47)
-- `src/components/ui/form.tsx` (line 129)
-- `src/components/ui/navigation-menu.tsx` (line 111)
-- `src/components/ui/sidebar.tsx` (line 636)
-- `src/components/ui/textarea.tsx` (line 5 - empty interface)
-- `src/components/ui/toggle.tsx` (line 37)
-
-**Recommendation:** Split utilities into separate files.
+### 4.3 Missing Error Boundaries
+- No error boundaries on major page components
+- One exists: `src/components/ui/ErrorBoundary.tsx` but not applied to pages
 
 ---
 
-### 5.2 Unused Imports
+## 5. Unused Imports & Dead Code
 
-No significant unused imports found - imports are being used appropriately.
+### 5.1 Unused Imports
+Could not fully verify without running analyzer, but potential issues:
+- **src/lib/validation.ts:82** — `useState`, `useCallback` imported but used in hook that's likely unused elsewhere
 
----
+### 5.2 Duplicate Hook Files
+- **src/hooks/use-toast.ts** and **src/components/ui/use-toast.ts** — Duplicate implementations
 
-## 6. Anti-Patterns
-
-### 6.1 Non-Atomic State Updates
-
-```typescript
-// Current pattern (risky)
-await updateRecord.mutateAsync({...});  // call 1
-await updateRecord.mutateAsync({...});  // call 2
-```
-
-**Issue:** If second call fails, data is in inconsistent state.
-
-**Recommendation:** Batch updates into single operation if possible.
+### 5.3 Likely Dead Code
+- `src/lib/exportUtils.ts` — Only `console.warn`, may be incomplete
+- `src/integrations/lovable/index.ts` — Appears unused based on imports
 
 ---
 
-### 6.2 Magic Strings
+## 6. Additional Observations
 
-```typescript
-value: checked ? "TRUE" : "FALSE"  // Hardcoded strings
-```
+### 6.1 Missing TypeScript Strictness
+- Many `any` types suggest gradual typing adoption
+- No strict null checks enforced
 
-**Recommendation:** Use constants:
-```typescript
-const TRUE = "TRUE" as const;
-const FALSE = "FALSE" as const;
-```
+### 6.2 Inconsistent Status Checking
+- Multiple patterns for checking record status:
+  - `record.auditStatus === "✅ Approved"`
+  - `s.includes("approved")`
+  - `status.includes("approved")`
 
----
+### 6.3 No Loading States for Some Operations
+- `RiskRegisterTab`, `CAPARegisterTab` — Async operations without visible loading states in some areas
 
-## Priority Fix Recommendations
-
-### 🔴 High Priority
-1. **Fix empty catch blocks** (driveService.ts:383) - Silent failures
-2. **Add try/catch to async handlers** (RecordDetail.tsx) - User feedback missing
-3. **Remove `any` from RecordCard.tsx:45** - Type safety
-
-### 🟡 Medium Priority
-4. **Add memoization** to filtered lists in AuditPage, RecordsTable
-5. **Fix React hooks dependencies** to avoid stale closure bugs
-6. **Improve error messages** - log actual errors, not just "Error"
-
-### 🟢 Low Priority
-7. Split utility exports from component files
-8. Add constants for magic strings
-9. Consider virtualization for large tables
+### 6.4 API Call Efficiency
+- **src/lib/auditCheckService.ts** — Sequential API calls (line 218+)
+- Could benefit from batching/pooling
 
 ---
 
-*Generated by Kilo (⚡)*
+## Summary
+
+| Category | Count |
+|----------|-------|
+| `any` type usages | ~12 |
+| Silent `console.error` | ~10 |
+| Hardcoded strings | ~15 |
+| Files >500 lines | 5 |
+| Empty catch blocks | ~5 |
+
+**Top Priorities:**
+1. Replace `any` types with proper interfaces
+2. Add meaningful error messages to all `console.error` calls
+3. Extract magic strings to constants
+4. Split large components
+5. Fix password hashing (use bcrypt/Argon2 or move to Supabase Auth only)
