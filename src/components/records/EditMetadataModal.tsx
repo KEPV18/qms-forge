@@ -47,9 +47,9 @@ export function EditMetadataModal({ isOpen, onClose, record, fileId, fileName, o
     // New Metadata state
     const [identifiedErrors, setIdentifiedErrors] = useState(currentReview.identifiedErrors || "");
     const [errorsFixed, setErrorsFixed] = useState(currentReview.errorsFixed || false);
-    const [project, setProject] = useState(currentReview.project || "General / All Company");
-    const [targetMonth, setTargetMonth] = useState(currentReview.targetMonth || (new Date().getMonth() + 1).toString());
-    const [targetYear, setTargetYear] = useState(currentReview.targetYear || new Date().getFullYear().toString());
+    const [project, setProject] = useState(currentReview.project || "");
+    const [targetMonth, setTargetMonth] = useState(currentReview.targetMonth || "");
+    const [targetYear, setTargetYear] = useState(currentReview.targetYear || "");
 
     const [isSaving, setIsSaving] = useState(false);
     const { toast } = useToast();
@@ -254,21 +254,32 @@ export function EditMetadataModal({ isOpen, onClose, record, fileId, fileName, o
                     )}
                 </div>
 
-                <DialogFooter className="gap-2 sm:gap-0">
-                    <Button variant="ghost" onClick={onClose}>Cancel</Button>
-                    <Button onClick={handleSave} disabled={isSaving} className="gap-2">
-                        {isSaving ? (
-                            <>
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                Saving...
-                            </>
-                        ) : (
-                            <>
-                                <Save className="w-4 h-4" />
-                                Save Changes
-                            </>
+                <DialogFooter className="gap-2 sm:gap-0 sm:justify-between items-center w-full">
+                    <div className="text-xs text-destructive font-semibold flex-1">
+                        {(status === 'approved' || status === 'rejected') && (!project || !targetMonth || !targetYear || !reviewedBy.trim()) && (
+                            "Please complete all metadata fields (Project, Month, Year, Reviewer) before approval."
                         )}
-                    </Button>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button variant="ghost" onClick={onClose}>Cancel</Button>
+                        <Button 
+                            onClick={handleSave} 
+                            disabled={isSaving || ((status === 'approved' || status === 'rejected') && (!project || !targetMonth || !targetYear || !reviewedBy.trim()))} 
+                            className="gap-2"
+                        >
+                            {isSaving ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Saving...
+                                </>
+                            ) : (
+                                <>
+                                    <Save className="w-4 h-4" />
+                                    Save Changes
+                                </>
+                            )}
+                        </Button>
+                    </div>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
