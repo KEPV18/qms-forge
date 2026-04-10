@@ -356,3 +356,196 @@
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+
+/* ══════════════════════════════════════════════════
+   FLOATING LAYOUT - New Floating Sidebar & Header
+══════════════════════════════════════════════════ */
+
+/* Floating Sidebar - جديد وعائم */
+.floating-sidebar {
+  @apply fixed left-4 top-4 bottom-4 w-72;
+  @apply glass-dark rounded-3xl;
+  @apply transition-all duration-300 ease-out;
+  @apply hover:shadow-2xl;
+  z-index: 100;
+}
+
+.floating-sidebar.collapsed {
+  @apply w-20;
+}
+
+/* Floating Header - جديد وعائم */
+.floating-header {
+  @apply fixed top-4 left-80 right-4 h-16;
+  @apply glass-dark rounded-2xl;
+  @apply transition-all duration-300;
+  z-index: 90;
+}
+
+/* Main Content Area - مع offset للـ header */
+.main-content {
+  @apply pt-24 px-6 pb-6;
+  @apply transition-all duration-300;
+}
+
+/* ═══════════════════════════════════════════
+   LOADING SCREENS - Beautiful!
+══════════════════════════════════════════════════ */
+
+.loading-screen {
+  @apply fixed inset-0 z-50 flex items-center justify-center;
+  background: hsl(var(--background));
+}
+
+.loading-screen::before {
+  content: '';
+  @apply absolute inset-0;
+  background: 
+    radial-gradient(circle at 30% 30%, hsl(var(--primary) / 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 70% 70%, hsl(var(--secondary) / 0.1) 0%, transparent 50%);
+  animation: pulse 4s ease-in-out infinite;
+}
+
+.loader-spinner {
+  @apply w-16 h-16 rounded-3xl;
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--secondary)) 100%);
+  animation: spin 2s linear infinite;
+  box-shadow: 0 0 40px hsl(var(--primary) / 0.3);
+}
+
+/* ═══════════════════════════════════════════
+   MICRO-INTERACTIONS - Nice touches!
+══════════════════════════════════════════════════ */
+
+/* Wiggle animation for icons */
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-5deg); }
+  75% { transform: rotate(5deg); }
+}
+
+.hover-wiggle:hover {
+  animation: wiggle 0.3s ease-in-out;
+}
+
+/* Pulse glow */
+.pulse-glow {
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 20px hsl(var(--primary) / 0.2); }
+  50% { box-shadow: 0 0 40px hsl(var(--primary) / 0.4); }
+}
+
+/* Bounce in */
+@keyframes bounceIn {
+  0% { transform: scale(0.3); opacity: 0; }
+  50% { transform: scale(1.05); }
+  70% { transform: scale(0.9); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-bounce-in {
+  animation: bounceIn 0.5s ease-out forwards;
+}
+
+/* Shimmer effect */
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer::after {
+  content: '';
+  @apply absolute inset-0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.1) 50%,
+    transparent 100%
+  );
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* ═══════════════════════════════════════════
+   PAGE TRANSITIONS
+═════════════════��════════════════════════════════ */
+
+.page-enter {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.page-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.page-exit-active {
+  opacity: 0;
+  transform: translateY(-20px);
+  transition: opacity 300ms, transform 300ms;
+}
+
+/* ═══════════════════════════════════════════
+   STATUS INDICATORS - New style
+══════════════════════════════════════════ */
+
+.status-dot {
+  @apply w-3 h-3 rounded-full;
+}
+
+.status-dot.success {
+  @apply bg-success;
+  box-shadow: 0 0 10px hsl(var(--success) / 0.5);
+}
+
+.status-dot.warning {
+  @apply bg-warning;
+  box-shadow: 0 0 10px hsl(var(--warning) / 0.5);
+}
+
+.status-dot.error {
+  @apply bg-destructive;
+  box-shadow: 0 0 10px hsl(var(---destructive) / 0.5);
+}
+
+.status-dot.pending {
+  @apply bg-muted-foreground;
+}
+
+/* Pulse ring */
+.status-dot.pulse {
+  @apply relative;
+}
+
+.status-dot.pulse::after {
+  content: '';
+  @apply absolute inset-0 rounded-full;
+  animation: statusPulse 2s ease-out infinite;
+}
+
+.status-dot.success.pulse::after {
+  @apply bg-success;
+}
+
+.status-dot.error.pulse::after {
+  @apply bg-destructive;
+}
+
+@keyframes statusPulse {
+  0% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(2); opacity: 0; }
+}
