@@ -51,7 +51,7 @@ export function RecordCard({ record, onViewDetails, onDeleteFile, onDeleteRecord
   // ─── COMPACT VARIANT ──────────────────────────────
   if (variant === "compact") {
     return (
-      <div className="group relative bg-card border border-border/50 hover:bg-card/80 hover:border-primary/20 rounded-2xl p-4 transition-all duration-300 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm hover:shadow-md">
+      <div className="group relative glass-card rounded-2xl p-4 transition-all duration-300 flex flex-col md:flex-row md:items-center justify-between gap-4 card-hover">
         <div className="flex items-center gap-4 flex-1 overflow-hidden">
           {/* Status Icon */}
           <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", statusCfg.bg, statusCfg.color)}>
@@ -68,7 +68,7 @@ export function RecordCard({ record, onViewDetails, onDeleteFile, onDeleteRecord
               {isAtomic && record.fileName && record.recordName !== record.fileName && (
                 <span className="text-xs text-muted-foreground shrink-0" title={record.recordName}>({record.recordName})</span>
               )}
-              <Badge variant="outline" className={cn("text-[9px] h-4 py-0 uppercase shrink-0", statusCfg.color, statusCfg.border)}>
+              <Badge variant="outline" className={cn("status-badge", statusCfg.color, statusCfg.border)}>
                 {displayStatus}
               </Badge>
             </div>
@@ -175,7 +175,7 @@ export function RecordCard({ record, onViewDetails, onDeleteFile, onDeleteRecord
 
   // ─── DEFAULT (LARGE) VARIANT ──────────────────────
   return (
-    <div className="group relative bg-card/60 backdrop-blur-xl border border-border/50 rounded-3xl overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-primary/5 hover:border-primary/20">
+    <div className="group relative glass-card backdrop-blur-xl rounded-3xl overflow-hidden transition-all duration-300 card-hover">
       <div className="p-6 space-y-4">
         {/* 1. Category & Code */}
         <div>
