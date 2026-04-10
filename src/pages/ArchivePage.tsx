@@ -55,9 +55,9 @@ export default function ArchivePage() {
         loadArchivedFiles();
       }
     });
-  }, []);
+  }, [loadArchivedFiles, toast]);
 
-  const loadArchivedFiles = async () => {
+  const loadArchivedFiles = useCallback(async () => {
     setIsLoading(true);
     try {
       const files = await listAllArchivedFiles();
@@ -68,7 +68,7 @@ export default function ArchivePage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
 
   // Filtered & sorted files
   const filteredFiles = useMemo(() => {
@@ -96,7 +96,7 @@ export default function ArchivePage() {
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) { next.delete(id); } else { next.add(id); }
       return next;
     });
   };

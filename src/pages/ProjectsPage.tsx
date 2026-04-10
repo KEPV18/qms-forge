@@ -5,6 +5,7 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { useQMSData } from "@/hooks/useQMSData";
+import type { FileReview } from "@/lib/googleSheets";
 import {
   Briefcase,
   FileText,
@@ -52,7 +53,7 @@ export default function ProjectsPage() {
       if (record.fileReviews && record.files) {
         const existingFileIds = new Set(record.files.map(f => f.id));
         
-        Object.entries(record.fileReviews).forEach(([fileId, review]: [string, any]) => {
+        Object.entries(record.fileReviews).forEach(([fileId, review]: [string, FileReview]) => {
           // IMPORTANT: Only count the review if the file still exists in the Drive folder
           if (!existingFileIds.has(fileId)) return;
 

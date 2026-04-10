@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { getAccessToken } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import logoImg from "@/assets/logo.png";
 
 export function Header() {
@@ -19,6 +20,7 @@ export function Header() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { toast } = useToast();
   const [driveConnected, setDriveConnected] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -59,7 +61,11 @@ export function Header() {
         const driveResults = await searchProjectDrive(searchTerm);
         setResults(driveResults);
       } catch (error) {
-        console.error("Error");
+        toast({
+          title: "Search failed",
+          description: "Could not search Drive files. Please try again.",
+          variant: "destructive",
+        });
       } finally {
         setIsSearching(false);
       }

@@ -6,6 +6,7 @@ import {
   Layers, Wrench, Activity, BookOpen, FileCheck, Briefcase
 } from "lucide-react";
 import { useQMSData } from "@/hooks/useQMSData";
+import type { FileReview } from "@/lib/googleSheets";
 import { useState, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -65,7 +66,7 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
     records.forEach(r => {
       if (r.fileReviews && r.files) {
         const existingFileIds = new Set(r.files.map(f => f.id));
-        Object.entries(r.fileReviews).forEach(([fileId, review]: [string, any]) => {
+        Object.entries(r.fileReviews).forEach(([fileId, review]: [string, FileReview]) => {
           if (!existingFileIds.has(fileId)) return;
           const name = (review.project === "General / All Company" || !review.project) ? "General" : review.project;
           projs.add(name);
@@ -80,7 +81,7 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
     if (pathModule && !expandedItems.includes(pathModule)) {
       setExpandedItems(prev => [...prev, pathModule]);
     }
-  }, [location.pathname]);
+  }, [location.pathname, expandedItems]);
 
   useEffect(() => {
     localStorage.setItem('sidebarCollapsed', isCollapsed.toString());

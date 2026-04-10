@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -82,9 +82,9 @@ export function RecordBrowser({ record, isFlat = false }: RecordBrowserProps) {
         if (isExpanded && files.length === 0 && !record.files) {
             loadFiles();
         }
-    }, [isExpanded, record.files, record.fileReviews, isFlat]);
+    }, [isExpanded, files.length, record.files, record.fileReviews, isFlat, loadFiles]);
 
-    const loadFiles = async () => {
+    const loadFiles = useCallback(async () => {
         setIsLoading(true);
         setError(null);
 
@@ -97,7 +97,7 @@ export function RecordBrowser({ record, isFlat = false }: RecordBrowserProps) {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [record.folderLink]);
 
     const recordStatus = parseStatusFromAuditField(record.auditStatus);
 
@@ -367,8 +367,8 @@ export function RecordBrowser({ record, isFlat = false }: RecordBrowserProps) {
                                                                     <CalendarDays className="w-3 h-3" />
                                                                     {formatTimeAgo(file.createdTime)}
                                                                 </span>
-                                                                <span className="hidden md:inline font-medium text-foreground/60">• {(review as any).project || "General"}</span>
-                                                                <span className="hidden md:inline font-mono text-foreground/50">• M{(review as any).targetMonth || "—"}/{(review as any).targetYear || "—"}</span>
+                                                                <span className="hidden md:inline font-medium text-foreground/60">• {review.project || "General"}</span>
+                                                                <span className="hidden md:inline font-mono text-foreground/50">• M{review.targetMonth || "—"}/{review.targetYear || "—"}</span>
                                                             </div>
                                                         </div>
                                                     </div>

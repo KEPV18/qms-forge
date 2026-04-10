@@ -34,7 +34,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQueryClient } from "@tanstack/react-query";
-import { normalizeCategory, updateSheetCell } from "@/lib/googleSheets";
+import { normalizeCategory, updateSheetCell, QMSRecord } from "@/lib/googleSheets";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 export default function AuditPage() {
@@ -93,7 +93,7 @@ export default function AuditPage() {
 
     try {
       // Group items by rowIndex (same record)
-      const grouped = new Map<number, { record: any; fileIds: string[] }>();
+      const grouped = new Map<number, { record: QMSRecord; fileIds: string[] }>();
       items.forEach(item => {
         if (!grouped.has(item.rowIndex)) {
           grouped.set(item.rowIndex, { record: item, fileIds: [] });
@@ -123,14 +123,14 @@ export default function AuditPage() {
       });
       queryClient.invalidateQueries({ queryKey: ["qms-data"] });
     } catch (error: unknown) {
-      toast({ title: "Bulk Update Failed", description: error.message, variant: "destructive" });
+      toast({ title: "Bulk Update Failed", description: (error as Error).message, variant: "destructive" });
     } finally {
       setBulkLoading(false);
     }
   }, [user, queryClient, toast]);
 
   // Per-record approve: updates a single rejected file to 'approved'
-  const handleApproveRecord = useCallback(async (item: any) => {
+  const handleApproveRecord = useCallback(async (item: QMSRecord) => {
     if (!item?.isAtomic || !item?.fileId) return;
     const reviewerName = user?.name || user?.email || "System";
     const today = new Date().toISOString().split('T')[0];
@@ -176,10 +176,10 @@ export default function AuditPage() {
       } else {
         throw new Error("Update returned false");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: "Approval Failed",
-        description: err?.message || "Could not update the record status.",
+        description: (err as Error)?.message || "Could not update the record status.",
         variant: "destructive",
       });
     }
@@ -235,7 +235,7 @@ export default function AuditPage() {
         });
         queryClient.invalidateQueries({ queryKey: ["qms-data"] });
       } catch (error: unknown) {
-        toast({ title: "Import Failed", description: error.message, variant: "destructive" });
+        toast({ title: "Import Failed", description: (error as Error).message, variant: "destructive" });
       } finally {
         setBulkLoading(false);
       }
@@ -391,7 +391,7 @@ export default function AuditPage() {
       },
       categoryBreakdown: breakdown,
     };
-  }, [records, search, categoryFilter]);
+  }, [records, search, categoryFilter, projectFilter, yearFilter, dateFilter]);
 
   // Current tab data for export
   const currentTabData = useMemo(() => {

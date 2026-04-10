@@ -31,6 +31,7 @@ import { AddRecordModal } from "@/components/records/AddRecordModal";
 import { AddFormModal } from "@/components/records/AddFormModal";
 import { EditFrequencyModal } from "@/components/records/EditFrequencyModal";
 import { QMSRecord, formatTimeAgo } from "@/lib/googleSheets";
+import type { DriveFile } from "@/lib/driveService";
 import type { LucideIcon } from "lucide-react";
 
 const moduleConfig: Record<string, {
@@ -483,7 +484,7 @@ export default function ModulePage() {
                                       <RecordBrowser
                                         record={{
                                           ...record,
-                                          files: group.files as any[]
+                                          files: group.files as DriveFile[]
                                         }}
                                         isFlat
                                       />

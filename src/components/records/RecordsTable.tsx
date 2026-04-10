@@ -76,7 +76,7 @@ export function RecordsTable({ records, isLoading = false, variant = "default", 
   const { toast } = useToast();
   const { user } = useAuth();
   const [updatingRows, setUpdatingRows] = useState<Record<string, boolean>>({});
-  const [editingFileRecord, setEditingFileRecord] = useState<any | null>(null);
+  const [editingFileRecord, setEditingFileRecord] = useState<QMSRecord | null>(null);
 
   const handleUpdateStatus = async (record: QMSRecord, status: RecordStatus) => {
     const key = record.isAtomic ? `file-${record.fileId}` : `${record.rowIndex}-audit`;
@@ -91,10 +91,10 @@ export function RecordsTable({ records, isLoading = false, variant = "default", 
       } else {
         throw new Error("Update failed");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: "Update Failed",
-        description: err?.message || "Google Sheets rejected the write operation.",
+        description: (err as Error)?.message || "Google Sheets rejected the write operation.",
         variant: "destructive"
       });
     } finally {
@@ -108,8 +108,8 @@ export function RecordsTable({ records, isLoading = false, variant = "default", 
       await deleteRecord.mutateAsync(rowIndex);
       toast({ title: "Record Deleted" });
       queryClient.invalidateQueries({ queryKey: ["qms-data"] });
-    } catch (error: any) {
-      toast({ title: "Delete Failed", description: error?.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Delete Failed", description: (error as Error)?.message, variant: "destructive" });
     }
   };
 
@@ -154,7 +154,7 @@ export function RecordsTable({ records, isLoading = false, variant = "default", 
           ? "grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 w-full" 
           : "grid-cols-1 max-w-4xl mx-auto gap-6"
       )}>
-        {records.map((record: any) => (
+        {records.map((record: QMSRecord) => (
           <RecordCard
             key={record.isAtomic ? `file-${record.fileId}` : `${record.code}-${record.rowIndex}`}
             record={record}
@@ -173,8 +173,8 @@ export function RecordsTable({ records, isLoading = false, variant = "default", 
                 await permanentlyDeleteDriveFile(fileId);
                 toast({ title: "File Deleted", description: "File removed from Drive" });
                 queryClient.invalidateQueries({ queryKey: ["qms-data"] });
-              } catch (err: any) {
-                toast({ title: "Delete Failed", description: err?.message, variant: "destructive" });
+              } catch (err: unknown) {
+                toast({ title: "Delete Failed", description: (err as Error)?.message, variant: "destructive" });
               }
             }}
             onDeleteRecord={handleDelete}

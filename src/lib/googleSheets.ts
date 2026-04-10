@@ -10,6 +10,21 @@ const SHEETS_API_BASE = "https://sheets.googleapis.com/v4/spreadsheets";
 // Status types for record workflow
 export type RecordStatus = 'draft' | 'pending_review' | 'approved' | 'rejected';
 
+// Type for individual file review metadata stored in Column P
+export interface FileReview {
+  status: RecordStatus;
+  comment: string;
+  reviewedBy?: string;
+  reviewDate?: string;
+  date?: string;
+  project?: string;
+  targetMonth?: string;
+  targetYear?: string;
+  identifiedErrors?: string;
+  errorsFixed?: boolean;
+  [key: string]: unknown;
+}
+
 // Form Template - represents the 35 form definitions
 export interface FormTemplate {
   code: string;
@@ -57,7 +72,7 @@ export interface QMSRecord {
   // New field: actual count from Drive folder
   actualRecordCount?: number;
   // New field: individual file reviews (from Column P)
-  fileReviews?: Record<string, { status: RecordStatus; comment: string; reviewedBy?: string; reviewDate?: string; date?: string; project?: string; targetMonth?: string; targetYear?: string; [key: string]: unknown }>;
+  fileReviews?: Record<string, FileReview>;
   // New field: actual files from Drive
   files?: DriveFile[];
   // New field: days remaining until next required fill
@@ -348,7 +363,7 @@ export async function fetchSheetDataWithAllFiles(): Promise<QMSRecord[]> {
       }
     });
   } catch (error) {
-    // Error logged
+    console.error('Error calculating fill statistics:', error);
   }
 
   return records;
@@ -372,31 +387,25 @@ export async function updateSheetCell(
 
   const url = `${SHEETS_API_BASE}/${SPREADSHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`;
 
-  try {
-    // Debug log
-    const response = await fetch(url, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${accessToken}`
-      },
-      body: JSON.stringify({
-        values: [[value]],
-      }),
-    });
+  // Debug log
+  const response = await fetch(url, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${accessToken}`
+    },
+    body: JSON.stringify({
+      values: [[value]],
+    }),
+  });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const message = errorData.error?.message || response.statusText;
-      // Error logged
-      throw new Error(`Google Sheets rejected the write: ${message}`);
-    }
-
-    return true;
-  } catch (error: unknown) {
-    // Error logged
-    throw error; // Propagate the error so UI can show message
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    const message = errorData.error?.message || response.statusText;
+    throw new Error(`Google Sheets rejected the write: ${message}`);
   }
+
+  return true;
 }
 
 export async function batchUpdateReviewedBy(
@@ -673,28 +682,23 @@ export async function deleteRecord(rowIndex: number): Promise<void> {
     throw new Error("No access token available. Please restart the OAuth server.");
   }
 
-  try {
-    const range = `'${SHEET_NAME}'!A${rowIndex}:Z${rowIndex}`;
+  const range = `'${SHEET_NAME}'!A${rowIndex}:Z${rowIndex}`;
 
-    // Clear the row using authenticated request
-    const clearResponse = await fetch(
-      `${SHEETS_API_BASE}/${SPREADSHEET_ID}/values/${encodeURIComponent(range)}:clear`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      }
-    );
-
-    if (!clearResponse.ok) {
-      const errorData = await clearResponse.json().catch(() => ({}));
-      const message = errorData.error?.message || clearResponse.statusText;
-      throw new Error(`Failed to clear record from sheet: ${message}`);
+  // Clear the row using authenticated request
+  const clearResponse = await fetch(
+    `${SHEETS_API_BASE}/${SPREADSHEET_ID}/values/${encodeURIComponent(range)}:clear`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
     }
-  } catch (error) {
-    // Error logged
-    throw error;
+  );
+
+  if (!clearResponse.ok) {
+    const errorData = await clearResponse.json().catch(() => ({}));
+    const message = errorData.error?.message || clearResponse.statusText;
+    throw new Error(`Failed to clear record from sheet: ${message}`);
   }
 }

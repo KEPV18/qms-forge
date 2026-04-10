@@ -5,6 +5,7 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { useQMSData } from "@/hooks/useQMSData";
+import type { FileReview } from "@/lib/googleSheets";
 import {
   Briefcase,
   Search,
@@ -48,7 +49,7 @@ export default function ProjectDetailPage() {
       if (!record.fileReviews) return false;
       
       // Filter the fileReviews within the record too
-      const reviews = Object.entries(record.fileReviews).filter(([fileId, review]: [string, any]) => {
+      const reviews = Object.entries(record.fileReviews).filter(([fileId, review]: [string, FileReview]) => {
         // Only count existing files
         const fileExists = record.files?.some(f => f.id === fileId);
         if (!fileExists) return false;
@@ -61,10 +62,10 @@ export default function ProjectDetailPage() {
       return reviews.length > 0;
     }).map(record => {
         // Only keep reviews relevant to this project for display in this view
-        const relevantReviews: Record<string, any> = {};
+        const relevantReviews: Record<string, FileReview> = {};
         const existingFileIds = new Set(record.files?.map(f => f.id) || []);
         
-        Object.entries(record.fileReviews || {}).forEach(([fileId, review]: [string, any]) => {
+        Object.entries(record.fileReviews || {}).forEach(([fileId, review]: [string, FileReview]) => {
             // IMPORTANT: Only count the review if the file still exists in the Drive folder
             if (!existingFileIds.has(fileId)) return;
 

@@ -14,6 +14,13 @@ export interface DriveSearchResult extends DriveFile {
   path?: string;
 }
 
+/** Minimal shape for raw Google Drive API file responses */
+interface DriveApiFile {
+  id: string;
+  name: string;
+  [key: string]: unknown;
+}
+
 export interface DriveFile {
   id: string;
   name: string;
@@ -130,7 +137,7 @@ export async function getFolderFileCount(folderLink: string): Promise<number> {
       const fallbackResponse = await fetch(fallbackUrl);
       if (fallbackResponse.ok) {
         const data = await fallbackResponse.json();
-        return (data.files || []).filter((f: any) => !f.name?.toLowerCase().endsWith('.json')).length;
+        return (data.files || []).filter((f: DriveApiFile) => !f.name?.toLowerCase().endsWith('.json')).length;
       }
     }
 
@@ -140,7 +147,7 @@ export async function getFolderFileCount(folderLink: string): Promise<number> {
     }
 
     const data = await response.json();
-    return (data.files || []).filter((f: any) => !f.name?.toLowerCase().endsWith('.json')).length;
+    return (data.files || []).filter((f: DriveApiFile) => !f.name?.toLowerCase().endsWith('.json')).length;
   } catch (error) {
     // Error logged
     return 0;
@@ -185,7 +192,7 @@ export async function listFolderFiles(folderLink: string): Promise<DriveFile[]> 
       const fallbackResponse = await fetch(fallbackUrl);
       if (fallbackResponse.ok) {
         const data = await fallbackResponse.json();
-        return (data.files || []).filter((f: any) => !f.name?.toLowerCase().endsWith('.json'));
+        return (data.files || []).filter((f: DriveApiFile) => !f.name?.toLowerCase().endsWith('.json'));
       }
     }
 
@@ -195,7 +202,7 @@ export async function listFolderFiles(folderLink: string): Promise<DriveFile[]> 
     }
 
     const data = await response.json();
-    return (data.files || []).filter((f: any) => !f.name?.toLowerCase().endsWith('.json'));
+    return (data.files || []).filter((f: DriveApiFile) => !f.name?.toLowerCase().endsWith('.json'));
   } catch (error) {
     // Error logged
     return [];
@@ -347,7 +354,7 @@ export async function searchProjectDrive(searchTerm: string): Promise<DriveSearc
     }
 
     const data = await response.json();
-    const files: DriveSearchResult[] = (data.files || []).filter((f: any) => !f.name?.toLowerCase().endsWith('.json'));
+    const files: DriveSearchResult[] = (data.files || []).filter((f: DriveApiFile) => !f.name?.toLowerCase().endsWith('.json'));
 
     // Try to resolve parent names for the first few results to show as "path"
     const resultsWithParents = await Promise.all(files.map(async (file) => {
@@ -360,7 +367,7 @@ export async function searchProjectDrive(searchTerm: string): Promise<DriveSearc
 
     return resultsWithParents;
   } catch (error) {
-    // Error logged
+    console.error('Unexpected error:', error);
     return [];
   }
 }
@@ -380,7 +387,9 @@ async function getParentName(folderId: string, token: string): Promise<string> {
       folderNameCache.set(folderId, data.name);
       return data.name;
     }
-  } catch (e) { }
+  } catch (e) {
+    console.error('Unexpected error resolving parent folder name:', e);
+  }
 
   return "Unknown";
 }
@@ -403,32 +412,26 @@ export async function copyDriveFile(
     throw new Error(`Invalid source file (${fileId}) or destination folder (${folderId})`);
   }
 
-  try {
-    const url = `${DRIVE_API_BASE}/files/${fileId}/copy?fields=id,name,webViewLink&key=${API_KEY}`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        name: newName,
-        parents: [folderId]
-      })
-    });
+  const url = `${DRIVE_API_BASE}/files/${fileId}/copy?fields=id,name,webViewLink&key=${API_KEY}`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      name: newName,
+      parents: [folderId]
+    })
+  });
 
-    if (!response.ok) {
-      const err = await response.json();
-      const message = err.error?.message || response.statusText;
-      // Error logged
-      throw new Error(`Drive copy failed: ${message} (Detail: ${JSON.stringify(err.error?.errors || [])})`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    // Error logged
-    throw error;
+  if (!response.ok) {
+    const err = await response.json();
+    const message = err.error?.message || response.statusText;
+    throw new Error(`Drive copy failed: ${message} (Detail: ${JSON.stringify(err.error?.errors || [])})`);
   }
+
+  return await response.json();
 }
 
 /**
@@ -441,64 +444,59 @@ export async function moveFileToArchive(
   const token = await getAccessToken();
   if (!token) throw new Error("No access token for Drive operations");
 
-  try {
-    // 1. Find or create "Archive" folder inside parentFolderId
-    const searchQuery = `'${parentFolderId}' in parents and name = 'Archive' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
-    const searchUrl = `${DRIVE_API_BASE}/files?q=${encodeURIComponent(searchQuery)}&fields=files(id)&key=${API_KEY}`;
+  // 1. Find or create "Archive" folder inside parentFolderId
+  const searchQuery = `'${parentFolderId}' in parents and name = 'Archive' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
+  const searchUrl = `${DRIVE_API_BASE}/files?q=${encodeURIComponent(searchQuery)}&fields=files(id)&key=${API_KEY}`;
 
-    const searchResponse = await fetch(searchUrl, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+  const searchResponse = await fetch(searchUrl, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
 
-    let archiveFolderId: string;
-    const searchData = await searchResponse.json();
+  let archiveFolderId: string;
+  const searchData = await searchResponse.json();
 
-    if (searchData.files && searchData.files.length > 0) {
-      archiveFolderId = searchData.files[0].id;
-    } else {
-      // Create it
-      const createResponse = await fetch(`${DRIVE_API_BASE}/files?key=${API_KEY}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          name: 'Archive',
-          mimeType: 'application/vnd.google-apps.folder',
-          parents: [parentFolderId]
-        })
-      });
-      const createData = await createResponse.json();
-      archiveFolderId = createData.id;
-    }
-
-    // 2. Move file (remove current parent, add archive parent)
-    // First get current parents to remove them
-    const fileUrl = `${DRIVE_API_BASE}/files/${fileId}?fields=parents&key=${API_KEY}`;
-    const fileResponse = await fetch(fileUrl, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    const fileData = await fileResponse.json();
-    const oldParents = (fileData.parents || []).join(',');
-
-    const moveUrl = `${DRIVE_API_BASE}/files/${fileId}?addParents=${archiveFolderId}&removeParents=${oldParents}&key=${API_KEY}`;
-    const moveResponse = await fetch(moveUrl, {
-      method: 'PATCH',
+  if (searchData.files && searchData.files.length > 0) {
+    archiveFolderId = searchData.files[0].id;
+  } else {
+    // Create it
+    const createResponse = await fetch(`${DRIVE_API_BASE}/files?key=${API_KEY}`, {
+      method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        description: `originalParentId:${parentFolderId}|archivedAt:${new Date().toISOString()}`
+        name: 'Archive',
+        mimeType: 'application/vnd.google-apps.folder',
+        parents: [parentFolderId]
       })
     });
-
-    return moveResponse.ok;
-  } catch (error) {
-    // Error logged
-    throw error;
+    const createData = await createResponse.json();
+    archiveFolderId = createData.id;
   }
+
+  // 2. Move file (remove current parent, add archive parent)
+  // First get current parents to remove them
+  const fileUrl = `${DRIVE_API_BASE}/files/${fileId}?fields=parents&key=${API_KEY}`;
+  const fileResponse = await fetch(fileUrl, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  const fileData = await fileResponse.json();
+  const oldParents = (fileData.parents || []).join(',');
+
+  const moveUrl = `${DRIVE_API_BASE}/files/${fileId}?addParents=${archiveFolderId}&removeParents=${oldParents}&key=${API_KEY}`;
+  const moveResponse = await fetch(moveUrl, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      description: `originalParentId:${parentFolderId}|archivedAt:${new Date().toISOString()}`
+    })
+  });
+
+  return moveResponse.ok;
 }
 
 /**
@@ -511,27 +509,22 @@ export async function restoreFileFromArchive(
   const token = await getAccessToken();
   if (!token) throw new Error("No access token for Drive operations");
 
-  try {
-    // 1. Get current parents (which should be the Archive folder)
-    const fileUrl = `${DRIVE_API_BASE}/files/${fileId}?fields=parents&key=${API_KEY}`;
-    const fileResponse = await fetch(fileUrl, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    const fileData = await fileResponse.json();
-    const archiveParents = (fileData.parents || []).join(',');
+  // 1. Get current parents (which should be the Archive folder)
+  const fileUrl = `${DRIVE_API_BASE}/files/${fileId}?fields=parents&key=${API_KEY}`;
+  const fileResponse = await fetch(fileUrl, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  const fileData = await fileResponse.json();
+  const archiveParents = (fileData.parents || []).join(',');
 
-    // 2. Move file back to originalParentId
-    const moveUrl = `${DRIVE_API_BASE}/files/${fileId}?addParents=${originalParentId}&removeParents=${archiveParents}&key=${API_KEY}`;
-    const moveResponse = await fetch(moveUrl, {
-      method: 'PATCH',
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+  // 2. Move file back to originalParentId
+  const moveUrl = `${DRIVE_API_BASE}/files/${fileId}?addParents=${originalParentId}&removeParents=${archiveParents}&key=${API_KEY}`;
+  const moveResponse = await fetch(moveUrl, {
+    method: 'PATCH',
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
 
-    return moveResponse.ok;
-  } catch (error) {
-    // Error logged
-    throw error;
-  }
+  return moveResponse.ok;
 }
 
 /**
@@ -542,25 +535,20 @@ export async function permanentlyDeleteDriveFile(fileId: string): Promise<boolea
   const token = await getAccessToken();
   const url = `${DRIVE_API_BASE}/files/${fileId}?key=${API_KEY}`;
 
-  try {
-    const response = await fetch(url, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      // Error logged
-      return false;
+  const response = await fetch(url, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`
     }
+  });
 
-    return true;
-  } catch (error) {
-    // Error logged
+  if (!response.ok) {
+    const errorData = await response.json();
+    console.error('Failed to delete file:', errorData);
     return false;
   }
+
+  return true;
 }
 
 /**
@@ -611,7 +599,7 @@ export async function checkDriveWritePermission(): Promise<{ success: boolean; m
 
   } catch (error: unknown) {
     // Error logged
-    return { success: false, message: `Network or API error: ${error.message}` };
+    return { success: false, message: `Network or API error: ${(error as Error).message}` };
   }
 }
 
@@ -631,7 +619,7 @@ export async function listAllArchivedFiles(): Promise<DriveFile[]> {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     const folderData = await folderResponse.json();
-    const archiveFolderIds = (folderData.files || []).map((f: unknown) => f.id);
+    const archiveFolderIds = (folderData.files || []).map((f: DriveApiFile) => f.id);
 
     if (archiveFolderIds.length === 0) return [];
 
@@ -648,7 +636,7 @@ export async function listAllArchivedFiles(): Promise<DriveFile[]> {
       });
       const fileData = await fileResponse.json();
       if (fileData.files) {
-        allArchivedFiles.push(...fileData.files.filter((f: any) => !f.name?.toLowerCase().endsWith('.json')));
+        allArchivedFiles.push(...fileData.files.filter((f: DriveApiFile) => !f.name?.toLowerCase().endsWith('.json')));
       }
     }
 
@@ -698,7 +686,7 @@ export async function createDriveFolder(name: string, parentFolderId?: string): 
   const token = await getAccessToken();
   if (!token) throw new Error("No access token for Drive operations");
   const url = `${DRIVE_API_BASE}/files?key=${API_KEY}`;
-  const body: unknown = { name, mimeType: "application/vnd.google-apps.folder" };
+  const body: { name: string; mimeType: string; parents?: string[] } = { name, mimeType: "application/vnd.google-apps.folder" };
   if (parentFolderId) body.parents = [parentFolderId];
   const res = await fetch(url, {
     method: "POST",
@@ -721,7 +709,7 @@ export async function uploadFileToDrive(file: File, folderLink?: string, nameOve
     const fid = extractFolderId(folderLink);
     if (fid) parentId = fid;
   }
-  const metadata: unknown = {};
+  const metadata: { name?: string; parents?: string[] } = {};
   if (nameOverride) metadata.name = nameOverride;
   if (parentId) metadata.parents = [parentId];
   const form = new FormData();

@@ -3,7 +3,7 @@ import {
   FileText, ExternalLink, Trash2, Edit, ChevronDown, ChevronRight, 
   Building2, Calendar, User, MessageSquare, Clock, CheckCircle, AlertTriangle, FolderOpen, Folder, ThumbsUp, Loader2
 } from "lucide-react";
-import { QMSRecord, RecordStatus } from "@/lib/googleSheets";
+import { QMSRecord, RecordStatus, FileReview } from "@/lib/googleSheets";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -43,7 +43,7 @@ export function RecordCard({ record, onViewDetails, onDeleteFile, onDeleteRecord
   
   // Extract metadata from the first file review if available
   const firstFileId = record.files && record.files.length > 0 ? record.files[0].id : null;
-  const review: any = (record.fileReviews && firstFileId && record.fileReviews[firstFileId]) || {};
+  const review: Partial<FileReview> = (record.fileReviews && firstFileId && record.fileReviews[firstFileId]) || {};
   
   // Time ago logic
   const timeAgo = record.reviewDate ? formatDistanceToNow(new Date(record.reviewDate)) + " ago" : "4 days ago";

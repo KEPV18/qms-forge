@@ -82,7 +82,7 @@ export default function AdminAccounts() {
     toast({ title: "✅ Account Created", description: `${newUser.name} created. Temporary password: ${tempPassword}` }); // check if active
   };
 
-  const handleRowEdit = (userId: string, field: keyof AppUser, value: any) => {
+  const handleRowEdit = (userId: string, field: keyof AppUser, value: AppUser[keyof AppUser]) => {
     setEditState(prev => ({ ...prev, [userId]: { ...(prev[userId] || {}), [field]: value } })); // check if active
   };
 
@@ -160,7 +160,7 @@ export default function AdminAccounts() {
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev); // check if active
-      next.has(id) ? next.delete(id) : next.add(id); // check if active
+      if (next.has(id)) { next.delete(id); } else { next.add(id); } // check if active
       return next;
     }); // check if active
   };
