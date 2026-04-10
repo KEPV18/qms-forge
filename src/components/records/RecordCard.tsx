@@ -60,9 +60,9 @@ export function RecordCard({ record, onViewDetails, onDeleteFile, onDeleteRecord
           
           {/* Main Info */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-mono font-bold text-primary/70">{record.code}</span>
-              <h4 className="text-sm font-bold text-foreground truncate">
+            <div className="flex items-center gap-2 flex-nowrap">
+              <span className="text-xs font-mono font-bold text-primary/70 shrink-0">{record.code}</span>
+              <h4 className="text-sm font-bold text-foreground truncate whitespace-nowrap">
                 {isAtomic && record.fileName ? record.fileName : record.recordName}
               </h4>
               {isAtomic && record.fileName && (

@@ -308,11 +308,10 @@ export default function AuditPage() {
         // Final effective status for this file
         let effectiveStatus: string = review.status;
         
-        // If the entire form has an integrity issue set by Automated Audit, 
-        // treat files as 'rejected' unless they were already manually reviewed/approved
-        if (recordLevelStatus === 'rejected' && review.status === 'pending_review') {
-          effectiveStatus = 'rejected';
-        }
+        // NOTE: Removed automatic rejection logic due to user feedback.
+        // New files without individual reviews should default to "pending_review",
+        // not automatically marked as "Issues" just because the form was flagged by Automated Audit.
+        // The form-level flag (recordLevelStatus) is kept in fileComment for context.
 
         const auditItem = {
           ...record, 
