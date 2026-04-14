@@ -1,167 +1,210 @@
 # QMS Code Review Report
 
-**Date:** April 7, 2026  
-**Scope:** `src/components/`, `src/lib/`, `src/pages/`  
-**Total Lines:** ~22,690
+**Date:** April 14, 2026  
+**Reviewer:** Kilo ⚡  
+**Scope:** src/components/, src/lib/, src/pages/
 
 ---
 
-## 1. Code Quality Issues
+## 1. Critical Errors (TypeScript)
 
-### 1.1 Excessive Use of `any` Type (Type Safety)
+### 1.1 Type Safety Issues in Multiple Files
+
 | File | Line | Issue |
 |------|------|-------|
-| `src/components/layout/Sidebar.tsx` | 68 | `review: any` in file reviews mapping |
-| `src/components/records/EditMetadataModal.tsx` | 103 | `field: any` |
-| `src/components/records/RecordBrowser.tsx` | 370-371 | Multiple `any` types in map callbacks |
-| `src/components/records/RecordCard.tsx` | 46 | `item: any` |
-| `src/components/records/RecordsTable.tsx` | 79, 94, 111, 157, 176 | Multiple `any` usages |
-| `src/lib/driveService.ts` | 133, 143, 188, 198, 350, 651 | Multiple `any` in Google Drive API calls |
-| `src/lib/auditCheckService.ts` | 352 | `data: any` |
-| `src/pages/AdminAccounts.tsx` | 85 | `user: any` |
-| `src/pages/AuditPage.tsx` | 96, 133, 179 | Multiple `any` usages |
-| `src/pages/ModulePage.tsx` | 486 | `record: any` |
-| `src/pages/ProjectDetailPage.tsx` | 51, 64, 67 | Multiple `any` usages |
-| `src/pages/ProjectsPage.tsx` | 55 | `project: any` |
+| `src/components/audit/AutomatedAuditModal.tsx` | 116, 762 | Comparing `FileReview` to `string` - type mismatch |
+| `src/components/audit/AutomatedAuditModal.tsx` | 145 | Assigning string to `FileReview` type |
+| `src/components/dashboard/QuickActions.tsx` | 128 | Assigning string to `CAPAType` |
+| `src/components/risk/CapaRegisterTab.tsx` | 334 | Assigning string to `CAPAType` |
+| `src/components/risk/CapaRegisterTab.tsx` | 374 | Assigning string to `CAPAStatus` |
+| `src/components/risk/RiskRegisterTab.tsx` | 257 | Missing required `riskScore` property |
+| `src/components/risk/RiskRegisterTab.tsx` | 405 | Assigning string to `RiskStatus` |
+| `src/components/risk/RiskRegisterTab.tsx` | 481 | Assigning string to CAPA type union |
 
-**Impact:** Loses TypeScript benefits, potential runtime errors.
+### 1.2 Missing Dependencies & Broken Imports
 
-### 1.2 Empty Interfaces (Redundant)
-| File | Line |
-|------|------|
-| `src/components/ui/command.tsx` | 24 |
-| `src/components/ui/textarea.tsx` | 5 |
+| File | Issue |
+|------|-------|
+| `src/components/ui/EmptyState.tsx` (line 52) | Cannot find `cn` - missing utility import |
+| `src/components/ui/LayoutComponents.tsx` (line 1) | Cannot find module `./utils` |
+| `src/components/ui/LoadingSpinner.tsx` (line 2) | Cannot find module `./utils` |
 
-**Issue:** Empty interface `interface Props extends React.HTMLAttributes<HTMLTextAreaElement> {}` is equivalent to the supertype.
+### 1.3 React Hooks in Non-Component
+
+| File | Issue |
+|------|-------|
+| `src/lib/validation.ts` (lines 110-127) | `useState`, `useCallback` used outside React component - **this is a major bug** |
+
+**Impact:** The `useFormValidation` hook will crash at runtime if used in any component.
 
 ---
 
-## 2. React Hook Issues
+## 2. Security Issues
 
-### 2.1 Missing Dependencies in useEffect/useMemo
-| File | Line | Issue |
-|------|------|-------|
-| `src/components/layout/Sidebar.tsx` | 83 | Missing `expandedItems` in useEffect |
-| `src/components/records/RecordBrowser.tsx` | 85 | Missing `files.length` and `loadFiles` |
-| `src/pages/ArchivePage.tsx` | 58 | Missing `loadArchivedFiles` and `toast` |
-| `src/pages/AuditPage.tsx` | 394 | Missing `dateFilter`, `projectFilter`, `yearFilter` in useMemo |
+### 2.1 Hardcoded API Keys & Spreadsheet IDs
 
-**Impact:** Stale closures, potential bugs where hook doesn't re-run when expected.
+`src/lib/capaRegisterService.ts` (lines 12-13):
+```typescript
+const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || "";
+const SPREADSHEET_ID = "11dGB-fG2UMqsdqc182PsY-K6S_19FKc8bsZLHlic18M";
+```
 
-### 2.2 Unused Expressions (Potential Bugs)
-| File | Line | Issue |
-|------|------|-------|
-| `src/pages/AdminAccounts.tsx` | 163 | Expected assignment or function call |
-| `src/pages/ArchivePage.tsx` | 99 | Expected assignment or function call |
+Similar issues in:
+- `src/lib/driveService.ts` (lines 8-10)
+- `src/lib/googleSheets.ts`
+- `src/lib/processInteractionService.ts`
 
-**Impact:** Logic likely not executing as intended.
+**Recommendation:** Move ALL spreadsheet IDs to environment variables.
+
+### 2.2 Sensitive Data in Error Messages
+
+`src/lib/googleSheets.ts` (lines 385, 682):
+```typescript
+throw new Error("No access token available. Please restart the OAuth server.");
+```
+This exposes implementation details to users.
+
+### 2.3 localStorage Usage (Low Risk)
+
+Multiple files use `localStorage` without encryption:
+- `src/components/layout/Sidebar.tsx` (sidebar state)
+- `src/components/settings/SettingsModal.tsx` (theme, accent color)
+- All pages: `sidebarCollapsed` key
+
+**Issue:** Data is not sanitized before storage; no try-catch on parse.
 
 ---
 
 ## 3. Error Handling Issues
 
-### 3.1 Empty Catch Blocks
-| File | Line |
-|------|------|
-| `src/lib/driveService.ts` | 383 |
+### 3.1 Silent Error Swallowing
 
-**Issue:** Empty block statement catches error but does nothing.
+| File | Line | Issue |
+|------|------|-------|
+| `src/components/records/FormDetailsModal.tsx` | 34 | Empty catch block - errors silently ignored |
+| `src/components/dashboard/QuickActions.tsx` | 98 | Empty catch block |
+| `src/components/settings/SettingsModal.tsx` | 98, 119 | Empty catch blocks |
 
-### 3.2 Useless Try/Catch Wrappers
-| File | Lines |
-|------|-------|
-| `src/lib/driveService.ts` | 406, 444, 514 |
-| `src/lib/googleSheets.ts` | 375, 676 |
+### 3.2 Missing Error Logging
 
-**Issue:** Catch block only re-throws the error with no additional handling:
+Most catch blocks log to console but don't provide user feedback:
 ```typescript
-} catch (error) {
-  // Error logged
-  throw error;
+// Example - src/components/records/EditMetadataModal.tsx:103
+} catch (error: unknown) {
+  // No user-facing error message
 }
 ```
-This adds no value over removing the try/catch.
+
+### 3.3 Inconsistent Error Types
+
+Many files use `catch (error)` without typing, while others use `catch (error: unknown)`:
+- `src/components/records/RecordBrowser.tsx` (line 94): `catch (err)` - no type
+- `src/components/audit/AutomatedAuditModal.tsx` (line 95): `catch (error)` - no type
 
 ---
 
-## 4. Performance Concerns
+## 4. Unused Imports & Dead Code
 
-### 4.1 Interval Cleanup (Potential Memory Leak)
-| File | Line | Issue |
-|------|------|-------|
-| `src/components/audit/AutomatedAuditModal.tsx` | 46 | `setInterval` without visible cleanup |
-| `src/components/layout/Header.tsx` | 32 | Properly cleaned up ✓ |
+### 4.1 Unused React Hooks
 
-**Recommendation:** Verify AutomatedAuditModal properly clears interval on unmount.
+| File | Unused |
+|------|--------|
+| `src/components/records/RecordsTable.tsx` | `Fragment` imported but may not be used |
+| `src/components/ui/button.tsx` | `React` wildcard import (warning only) |
+| `src/components/ui/checkbox.tsx` | `React` wildcard import (warning only) |
 
-### 4.2 Debounce Implementation
-| File | Line | Issue |
-|------|------|-------|
-| `src/components/layout/Header.tsx` | 55 | Properly cleaned up ✓ |
-| `src/pages/ProceduresPage.tsx` | 112 | Properly cleaned up ✓ |
+### 4.2 Variable Hoisting Issues
 
-**Note:** Debounce is correctly implemented with cleanup.
-
----
-
-## 5. Security Observations
-
-### 5.1 Safe ✓
-- No `eval()` usage found
-- No SQL injection risks (no direct DB queries in frontend)
-- No `dangerouslySetInnerHTML` with user input (chart.tsx uses it for static D3 rendering)
-
-### 5.2 Potential Concern
-| File | Line | Issue |
-|------|------|-------|
-| `src/components/ui/chart.tsx` | 70 | `dangerouslySetInnerHTML` with D3 (verify it's static/isolated) |
-
-**Recommendation:** Confirm the D3-generated HTML doesn't include any user-controlled data.
+`src/components/records/RecordBrowser.tsx` (line 85):
+```typescript
+// Block-scoped variable 'loadFiles' used before declaration
+```
+Same issue in `src/pages/ArchivePage.tsx` (line 58).
 
 ---
 
-## 6. Unused/Dead Code
+## 5. Performance Issues
 
-### 6.1 Fast Refresh Warnings
-Multiple UI components export non-component items alongside components (noted as warnings, not errors):
-- `src/components/ui/ErrorBoundary.tsx`
-- `src/components/ui/badge.tsx`
-- `src/components/ui/button.tsx`
-- `src/components/ui/form.tsx`
-- `src/components/ui/navigation-menu.tsx`
-- `src/components/ui/sidebar.tsx`
-- `src/components/ui/sonner.tsx`
-- `src/components/ui/toggle.tsx`
+### 5.1 Repeated localStorage Reads
 
-**Recommendation:** Move shared constants/types to separate files.
+Every page component repeats:
+```typescript
+const [sidebarCollapsed, setSidebarCollapsed] = useState(
+  localStorage.getItem('sidebarCollapsed') === 'true'
+);
+```
+
+This appears in 14+ page files. Should be a shared hook or context.
+
+### 5.2 No Memoization
+
+Many components re-render unnecessarily:
+- `src/components/records/RecordBrowser.tsx` - no memoization on filters
+- `src/components/dashboard/QuickActions.tsx` - missing `useMemo` for computed values
+
+### 5.3 Large File Sizes
+
+Files with >500 lines without lazy loading:
+- `src/pages/AuditPage.tsx`
+- `src/components/audit/AutomatedAuditModal.tsx`
+- `src/components/risk/RiskRegisterTab.tsx`
 
 ---
 
-## 7. Missing Error Handling
+## 6. Anti-Patterns
 
-### 7.1 Silent Failures in Search
-| File | Line | Issue |
-|------|------|-------|
-| `src/components/layout/Header.tsx` | 67 | `console.error("Error")` - no user feedback |
+### 6.1 Type Assertions
 
-**Issue:** Search errors are logged but user sees no indication of failure.
+Overuse of `as` type assertions (bypassing type safety):
+```typescript
+// src/lib/validation.ts:26
+if (!rule.validate(value as never))
+```
+
+### 6.2 `any` Type Usage
+
+`src/hooks/useAuth.tsx` (lines 228-229):
+```typescript
+// PostgrestBuilder not assignable to Promise<unknown>
+```
+
+### 6.3 Missing Key Prop in Lists
+
+Should verify all `.map()` calls include proper keys.
+
+### 6.4 Window Location Manipulation
+
+`src/pages/Login.tsx` (line 56):
+```typescript
+window.location.href = url;
+```
+Should use React Router for SPA navigation.
 
 ---
 
-## Summary
+## 7. Recommended Fixes (Priority Order)
 
-| Category | Count |
-|----------|-------|
-| ESLint Errors | 37 |
-| ESLint Warnings | 12 |
-| `any` type usages | ~20+ |
-| Missing useEffect deps | 4 |
-| Useless try/catch | 6 |
-| Empty catch blocks | 1 |
+### P0 - Breaking Bugs
+1. **Fix validation.ts** - Move React hooks out of lib/ or convert to proper hook file
+2. **Fix EmptyState.tsx & LoadingSpinner.tsx** - Add missing imports or create utils
 
-### Priority Actions
-1. **High:** Replace `any` types with proper interfaces
-2. **High:** Fix missing useEffect dependencies (causes stale data bugs)
-3. **Medium:** Remove useless try/catch wrappers
-4. **Medium:** Add user-facing error handling for search/API failures
-5. **Low:** Move exported constants to separate files for HMR support
+### P1 - Security
+3. Move all spreadsheet IDs to environment variables
+4. Remove hardcoded sensitive identifiers
+
+### P2 - Type Safety  
+5. Add proper error types to all catch blocks
+6. Fix string-to-enum assignments in risk components
+
+### P3 - Code Quality
+7. Create `useSidebarState` hook to eliminate重复 localStorage reads
+8. Add error logging service for production
+9. Split large components into smaller, focused files
+
+---
+
+**Total TypeScript Errors:** ~90+  
+**Critical Security Issues:** 4  
+**Runtime Bugs:** 1 (validation.ts)
+
+Generated by Kilo ⚡
