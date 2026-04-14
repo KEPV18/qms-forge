@@ -306,7 +306,7 @@ export default function AuditPage() {
         const review = reviews[file.id] || { status: 'pending_review', comment: '' };
         
         // Final effective status for this file
-        let effectiveStatus: string = review.status;
+        const effectiveStatus: string = review.status;
         
         // NOTE: Removed automatic rejection logic due to user feedback.
         // New files without individual reviews should default to "pending_review",

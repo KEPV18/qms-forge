@@ -18,7 +18,7 @@ function fillDocx(templatePath, outputPath, dataMap) {
     if (label.startsWith("{{")) continue;
 
     // Find label - try exact match first
-    let labelIdx = xml.indexOf(label);
+    const labelIdx = xml.indexOf(label);
     if (labelIdx === -1) continue;
 
     // Find NEXT empty <w:r> after this label
