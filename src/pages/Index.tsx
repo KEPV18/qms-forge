@@ -129,7 +129,7 @@ export default function Index() {
           <div className="max-w-[1400px] mx-auto p-4 md:p-6 lg:p-8 space-y-8">
 
             {/* Hero Section - Mesh gradient */}
-            <div className="relative overflow-hidden rounded-2xl mesh-gradient animated-gradient p-8 md:p-10 shadow-xl shadow-primary/10">
+            <div className="relative overflow-hidden rounded-3xl mesh-gradient p-8 md:p-12 shadow-2xl shadow-primary/5 border border-white/5">
               <div className="relative z-10 flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2 mb-2">

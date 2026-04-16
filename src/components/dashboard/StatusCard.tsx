@@ -56,7 +56,7 @@ export function StatusCard({ title, value, subtitle, icon: Icon, trend, variant 
 
   return (
     <div className={cn(
-      "relative glass-card rounded-xl p-5 transition-all duration-300 group cursor-pointer overflow-hidden",
+      "relative glass-card rounded-2xl p-6 transition-all duration-300 group cursor-pointer overflow-hidden hover:-translate-y-1",
       styles[variant].glow
     )}>
       {/* Subtle gradient background */}

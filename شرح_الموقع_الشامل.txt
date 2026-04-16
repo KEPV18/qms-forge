@@ -1,0 +1,333 @@
+# Comprehensive Documentation of the Quality Management System (QMS) Platform
+
+This document contains a complete and comprehensive explanation of every aspect of the website, including its design, functionality, and section layout.
+
+---
+
+## 1. Introduction and Website Objective
+The website is a digital platform for managing a Quality Management System (QMS) compliant with the ISO 9001:2015 standard. Its primary objective is to automate audit processes, record tracking, ensure compliance with international standards, and facilitate access to Standard Operating Procedures (SOPs).
+
+---
+
+## 2. General Structure and Section Layout
+The website is divided into two main parts:
+
+1. **Sidebar**: Always located on the left, it contains all essential links. It can be collapsed to save space.
+
+2. **Main Content**: This changes depending on the section you are browsing and always includes a **Header** containing the search bar, notifications, and user information.
+
+### Sidebar Contents:
+
+- **Dashboard**: System overview.
+
+- **Projects**: Track quality records for each individual project.
+
+- **Audit Dashboard**: The heart of the system, where records are reviewed, accepted, or rejected.
+
+- **Archive**: Access archived records.
+
+- **Risk Management**: Monitor quality risks.
+
+- **Activity**: A complete log of all transactions performed on the system.
+
+- **Procedures**: View and modify Standard Operating Procedures (SOPs).
+
+- **ISO Manual**: Digital manual of ISO specifications.
+
+- **Admin Accounts**: (Visible only to administrators) For managing users and their permissions.
+
+---
+
+## 3. Main Dashboard
+This is the first page you see after logging in. Its design is based on a colored card system:
+
+- **Hero Section**: Welcomes the user and displays the synchronization status with Google Sheets, along with a Sync button for real-time data updates.
+
+- **Top Metrics**: Five colored cards:
+
+- **Evidence**: Total files uploaded.
+
+- **Approved**: Files that have been reviewed and accepted.
+
+- **Pending**: Files awaiting review.
+
+- **Gaps**: Forms for which no files have been uploaded yet.
+
+- **Rejected**: Files with issues that require modification.
+
+- **System Modules**: A grid containing sections such as Sales, Operations, Quality, HR, and R&D. Each card displays its corresponding ISO standard and the number of completed forms.
+
+- **Side Panel (Widgets)**:
+
+- **Quick Actions**: Quick buttons for uploading files or writing reports.
+
+- **Audit Readiness**: A progress bar showing the system's readiness for external auditing.
+
+---
+
+## 4. Audit Dashboard
+This is the section for auditors and quality control personnel:
+
+- **Filters**: You can search by code, name, category, project, or even year.
+
+- **Tabs**:
+
+- **Pending**: All new files that need review.
+
+- **Approved**: Accepted files (shown in green).
+
+- **Issues**: Rejected files (shown in red) with the reason.
+
+- **Overdue**: Forms that are overdue for updates.
+
+- **Never Filled**: Forms that have never been used.
+
+- **Automated Audit**: The Run Audit button opens a window that prompts the system to automatically check all files for missing data or dates.
+
+- **Bulk Actions**: You can select a group of files and accept or reject them with a single click.
+
+---
+
+## 5. Record Details Page
+Clicking on any record opens a dedicated page:
+
+- **Header**: Displays the record code (e.g., P-SLS-01), its name, and its classification.
+
+- **Links**: Direct buttons to open the blank form or the record folder in Google Drive.
+
+- **Technical Specs**: A table showing (Who is responsible? How often is it updated? Where is it saved? How long is it saved for?).
+
+- **Review Panel**: Here, the auditor writes their feedback and changes the status to "Approved" or "Rejected".
+
+---
+
+## 6. Procedures Section
+This section is dedicated to written Standard Operating Procedures (SOPs):
+- **Digital**: Displays procedures as digital text that can be read and edited directly within the website.
+
+- **Drive Archive**: A window that displays PDF and Word files stored on Google Drive directly within the website without needing to leave it.
+
+---
+
+## 7. Admin Page (Admin Accounts & Settings)
+This is the "Admin Editor" you requested:
+
+- **User Management**: A table showing all employees registered with the system.
+
+- **Admin Edit Data**: Clicking on any user opens a panel that allows the admin to change:
+
+- Name and email address.
+
+- **Role**: (Admin, Manager, Auditor, User).
+
+- **Status**: Activate or deactivate your account.
+
+- **Password**: Send a password reset link.
+
+- **Pending Approvals**: A special section showing newly registered employees awaiting admin approval to access the system.
+
+---
+
+## 8. Forms and Record Format
+- **Templates**: Blank forms that are uploaded and filled out.
+
+- **Records**: Completed copies uploaded to the system. They appear on the website as "cards" or "rows in a table" containing a file icon, upload date, and the uploader's name.
+
+---
+
+## 9. Additional Features (Where to Find Everything?)
+- **Search**: Located at the top of almost every page.
+
+- **Sync**: The circular (Refresh) button is always available.
+
+
+
+
+
+Plan: Quality Management System (QMS) Platform – Full Build (ISO 9001:2015 Aligned)
+1. Foundation and Architecture
+Set up React with Router for multi-page navigation across all modules
+Initialize the database schema with core tables:
+users, roles, projects, records, procedures, documents, audits, findings, CAPA, risks, objectives, activity_logs, notifications
+Implement Row Level Security (RLS) for strict role-based access:
+Admin, Manager, Auditor, User
+Configure a centralized database client and global auth context
+Define all TypeScript interfaces and data contracts
+Establish a Google Drive integration layer:
+Store only file metadata in the database (file ID, link, version, folder path)
+All actual files (records, templates, procedures) are stored in Google Drive
+2. Authentication System
+Secure login with email/password
+Session management and token handling
+Registration flow with Admin approval required
+Password reset via email or Admin trigger
+Protected routes for all authenticated areas
+Role-based UI and API access control
+3. Core Layout (Sidebar + Header)
+Collapsible sidebar with modules:
+Dashboard, Projects, Audit, Records, Document Control, Risk Management, Objectives, Activity Log, Procedures, ISO Manual, Archive, Admin
+Role-based visibility (Admin-only sections hidden for others)
+Top header:
+Global search
+Notifications center
+User profile (name + role)
+Fully responsive layout
+4. Main Dashboard
+Welcome section with user name
+System Health Indicator (ISO Compliance Score)
+Metrics:
+Total Records
+Approved
+Pending
+Overdue
+Nonconformities
+Department modules overview (Sales, Ops, HR, Quality, etc.)
+Quick Actions:
+Upload Record
+Create Risk
+Start Audit
+Audit Readiness Progress Bar
+5. Records Management (Google Drive-Based)
+Records stored in Google Drive folders per:
+Department → Project → Record Code
+System stores:
+Record metadata (code, name, owner, frequency, status)
+Drive file links
+Features:
+Upload new record (to Drive via API)
+Link existing Drive files
+Version tracking (via file naming or metadata)
+Status lifecycle:
+Pending → Approved → Rejected → Overdue
+6. Document Control System (Critical ISO Module)
+Centralized control of:
+Procedures
+Policies
+Templates
+Each document includes:
+Version number (v1.0, v1.1…)
+Revision history
+Owner
+Approval status
+Workflow:
+
+Draft → Under Review → Approved → Obsolete
+
+Google Drive stores all document files
+System tracks:
+Current active version
+Previous versions
+Approval logs
+7. Audit Management System
+Audit Dashboard:
+Filters:
+Record, Project, Department, Year
+Tabs:
+Pending / Approved / Issues / Overdue
+Audit Execution:
+Create Audit Plan
+Define Audit Checklist
+Perform audit and log findings
+Findings Types:
+Nonconformity (NC)
+Observation
+Opportunity for Improvement (OFI)
+8. CAPA (Corrective and Preventive Actions)
+Link findings to corrective actions
+Fields:
+Root cause
+Action plan
+Responsible person
+Due date
+Status
+Workflow:
+
+Open → In Progress → Verified → Closed
+
+9. Risk Management System
+Risk register with:
+Description
+Likelihood
+Impact
+Severity (auto-calculated)
+Owner
+Mitigation plan
+Status
+Risk Matrix visualization
+Add:
+Review date
+Risk acceptance threshold
+10. Quality Objectives & KPIs
+Define measurable objectives per department
+
+Fields:
+
+Objective name
+KPI metric
+Target value
+Current performance
+Frequency
+Owner
+Progress tracking dashboard
+11. Activity Log (Audit Trail - ISO Compliant)
+Immutable logging system (no delete allowed)
+Tracks:
+User actions
+Record changes
+Approvals / rejections
+File uploads
+
+Each log includes:
+
+Timestamp
+User
+Action
+Before/after values
+12. Notifications System
+Real-time alerts for:
+Overdue records
+Pending approvals
+Audit deadlines
+CAPA due dates
+Notification center in header
+13. Procedures & ISO Manual
+Procedures:
+Two modes:
+Digital editable view
+Google Drive embedded viewer
+ISO Manual:
+Structured by ISO 9001:2015 clauses
+Fully readable داخل النظام
+14. Projects Module
+Project cards with:
+Name
+Department
+Completion %
+Record count
+Drill-down into project records
+15. Archive
+Read-only storage of:
+Old records
+Obsolete documents
+Filters:
+Date
+Department
+Status
+16. Admin Panel
+User management:
+Roles
+Status (Active / Inactive)
+Pending approvals
+Trigger password reset
+Full access restricted to Admin
+17. Google Drive Strategy (Important)
+Drive = File Storage Layer فقط
+System = Control + Metadata + Workflow Layer
+Structure:
+QMS/
+ ├── Records/
+ ├── Procedures/
+ ├── Templates/
+ ├── Audits/
+Naming conventions enforced:
+RecordCode_Version_Date

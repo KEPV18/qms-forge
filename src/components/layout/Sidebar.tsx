@@ -393,14 +393,14 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
       )}
 
       <aside className={cn(
-        "md:hidden fixed left-0 top-0 h-screen z-50 w-80 sidebar flex flex-col transition-transform duration-300 ease-in-out",
+        "md:hidden fixed left-0 top-0 h-screen z-50 w-80 sidebar flex flex-col transition-transform duration-300 ease-in-out bg-sidebar-background text-sidebar-foreground",
         isMobileOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         {sidebarContent(true)}
       </aside>
 
       <aside className={cn(
-        "hidden md:flex flex-col h-screen fixed left-0 top-0 z-50 transition-all duration-300 sidebar",
+        "hidden md:flex flex-col h-screen fixed left-0 top-0 z-50 transition-all duration-300 sidebar bg-sidebar-background text-sidebar-foreground",
         isCollapsed ? "w-[60px]" : "w-60"
       )}>
         {sidebarContent(false)}

@@ -169,7 +169,7 @@ export function Header() {
   );
 
   return (
-    <header className="header h-14 md:h-16">
+    <header className="header h-14 md:h-16 glass-card border-x-0 border-t-0 rounded-none z-40 sticky top-0">
       <div className="flex items-center h-full px-4 md:px-6 gap-3">
         {/* Spacer for mobile hamburger */}
         <div className="w-10 md:hidden" />

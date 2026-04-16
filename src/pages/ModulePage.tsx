@@ -379,7 +379,7 @@ export default function ModulePage() {
                     return (
                       <div key={record.code} className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start animate-fade-in group/row">
                         {/* Left: Form Template Card */}
-                        <div className="glass-card rounded-2xl p-6 hover:shadow-2xl transition-all duration-300 group border-l-4 border-l-primary/30 hover:border-l-primary relative h-full flex flex-col glass-sheen card-hover-enhanced">
+                        <div className="glass-card rounded-2xl p-6 hover:shadow-2xl transition-all duration-300 group border-l-4 border-l-primary/30 hover:border-l-primary relative h-full flex flex-col">
                           <div className="flex items-start justify-between mb-4">
                             <div className="min-w-0 flex-1">
                               <div className="flex flex-col gap-2 mb-2">
