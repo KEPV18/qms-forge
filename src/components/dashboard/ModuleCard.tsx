@@ -49,7 +49,7 @@ export function ModuleCard({ title, description, icon: Icon, moduleClass, stats,
 
   return (
     <div className={cn(
-      "relative glass-card rounded-2xl border overflow-hidden group cursor-pointer transition-all duration-300 card-lift hover:-translate-y-1",
+      "relative surface-card rounded-2xl border overflow-hidden group cursor-pointer transition-all duration-300 card-lift hover:-translate-y-1",
       colors.border,
       colors.shadow
     )}>

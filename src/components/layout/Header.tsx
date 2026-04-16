@@ -99,7 +99,7 @@ export function Header() {
       <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground transition-colors group-focus-within:text-primary z-10" />
       <Input
         placeholder="Search files and folders..."
-        className="pl-11 pr-4 glass-card rounded-xl shadow-none focus-visible:ring-2 focus-visible:ring-primary/30 transition-all h-10 font-medium"
+        className="pl-11 pr-4 bg-background border border-border rounded-md shadow-sm focus-visible:ring-1 focus-visible:ring-ring transition-all h-10 font-medium"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
         onFocus={() => searchTerm.length >= 2 && setShowDropdown(true)}
@@ -110,7 +110,7 @@ export function Header() {
 
       {/* Results Dropdown */}
       {showDropdown && (
-        <div className="absolute top-full left-0 w-full mt-2 glass-card rounded-xl shadow-xl overflow-hidden animate-fade-in z-50">
+        <div className="absolute top-full left-0 w-full mt-2 bg-card border border-border rounded-md shadow-lg overflow-hidden animate-fade-in z-50">
           <div className="max-h-[400px] overflow-y-auto">
             {results.length > 0 ? (
               <>
@@ -169,7 +169,7 @@ export function Header() {
   );
 
   return (
-    <header className="header h-14 md:h-16 glass-card border-x-0 border-t-0 rounded-none z-40 sticky top-0">
+    <header className="header h-14 md:h-16 bg-card border-b border-border border-x-0 border-t-0 rounded-none z-40 sticky top-0">
       <div className="flex items-center h-full px-4 md:px-6 gap-3">
         {/* Spacer for mobile hamburger */}
         <div className="w-10 md:hidden" />
@@ -230,7 +230,7 @@ export function Header() {
 
       {/* Mobile search expanded */}
       {showMobileSearch && (
-        <div className="md:hidden px-4 pb-3 border-b border-border/30 bg-card/80 backdrop-blur-xl">
+        <div className="md:hidden px-4 pb-3 border-b border-border/30 bg-card">
           {searchBar}
         </div>
       )}
