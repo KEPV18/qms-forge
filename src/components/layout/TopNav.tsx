@@ -3,7 +3,7 @@ import {
   LayoutDashboard, ChevronDown, Shield,
   Search, FileText, Folder, FileCode, Table, Loader2,
   LogOut, Menu, X, Layers, Wrench, Briefcase,
-  ExternalLink,
+  ExternalLink, Settings, AlertTriangle,
 } from "lucide-react";
 import { NotificationBell } from "./NotificationBell";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ThemeToggleCompact } from "@/components/ui/ThemeToggle";
 import { SettingsModal } from "@/components/settings/SettingsModal";
-import { useQMSData } from "@/hooks/useQMSData";
+import { useQMSRecords } from "@/hooks/useQMSData";
 import type { FileReview } from "@/lib/googleSheets";
 import { MODULE_NAV_ITEMS, TOOL_NAV_ITEMS, type NavItem } from "@/config/modules";
 import qmsLogo from "@/assets/qms-logo.png";
@@ -29,7 +29,7 @@ export function TopNav() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
-  const { data: records } = useQMSData();
+  const { data: records } = useQMSRecords();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
@@ -47,10 +47,12 @@ export function TopNav() {
     if (!records) return [];
     const projs = new Set<string>();
     records.forEach(r => {
-      if (r.fileReviews && r.files) {
-        const existingFileIds = new Set(r.files.map(f => f.id));
-        Object.entries(r.fileReviews).forEach(([fileId, review]: [string, FileReview]) => {
-          if (!existingFileIds.has(fileId)) return;
+      const fileReviews = r.fileReviews as Record<string, FileReview> | undefined;
+      const files = r.files;
+      if (fileReviews) {
+        const existingFileIds = files ? new Set(files.map(f => f.id)) : null;
+        Object.entries(fileReviews).forEach(([fileId, review]) => {
+          if (existingFileIds && !existingFileIds.has(fileId)) return;
           const name = (review.project === "General / All Company" || !review.project) ? "General" : review.project;
           projs.add(name);
         });

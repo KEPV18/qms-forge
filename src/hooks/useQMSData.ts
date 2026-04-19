@@ -81,7 +81,7 @@ export function useAuditSummary(records: QMSRecord[] | undefined): AuditSummary 
 
 export function useReviewSummary(records: QMSRecord[] | undefined): ReviewSummary {
   return useMemo(() => {
-    if (!records) return { completed: 0, pending: 0, total: 0 };
+    if (!records) return { completed: 0, pending: 0, total: 0, rejected: 0 };
     return calculateReviewSummary(records);
   }, [records]);
 }

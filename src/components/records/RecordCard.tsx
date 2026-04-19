@@ -127,7 +127,7 @@ export function RecordCard({ record, onViewDetails, onDeleteFile, onDeleteRecord
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          {(record.fileStatus === 'rejected' || displayStatus?.toLowerCase() === 'rejected') && onApproveRecord && (
+          {(record.fileStatus === 'pending_review' || record.fileStatus === 'rejected' || displayStatus?.toLowerCase() === 'pending' || displayStatus?.toLowerCase() === 'rejected') && onApproveRecord && (
             <Button
               size="sm"
               className="h-8 gap-1.5 text-xs bg-success hover:bg-success/90 text-success-foreground border-0 shrink-0"
@@ -250,7 +250,7 @@ export function RecordCard({ record, onViewDetails, onDeleteFile, onDeleteRecord
 
           {/* Action Row */}
           <div className="flex gap-2 flex-wrap pt-2 border-t border-border/40">
-            {(record.fileStatus === 'rejected' || displayStatus?.toLowerCase() === 'rejected') && onApproveRecord && (
+            {(record.fileStatus === 'pending_review' || record.fileStatus === 'rejected' || displayStatus?.toLowerCase() === 'pending' || displayStatus?.toLowerCase() === 'rejected') && onApproveRecord && (
               <Button
                 className="flex-1 h-9 rounded-sm bg-success hover:bg-success/90 text-success-foreground gap-2 font-bold text-xs border-0"
                 disabled={isUpdating}
@@ -411,7 +411,7 @@ export function RecordCard({ record, onViewDetails, onDeleteFile, onDeleteRecord
 
         {/* 5. Action Row */}
         <div className="flex gap-2 flex-wrap">
-          {(record.fileStatus === 'rejected' || displayStatus?.toLowerCase() === 'rejected') && onApproveRecord && (
+          {(record.fileStatus === 'pending_review' || record.fileStatus === 'rejected' || displayStatus?.toLowerCase() === 'pending' || displayStatus?.toLowerCase() === 'rejected') && onApproveRecord && (
             <Button
               className="flex-1 h-10 rounded-sm bg-success hover:bg-success/90 text-success-foreground gap-2 font-bold text-xs border-0"
               disabled={isUpdating}

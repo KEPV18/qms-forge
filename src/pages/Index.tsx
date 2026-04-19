@@ -67,19 +67,8 @@ export default function Index() {
     ? new Date(dataUpdatedAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
     : null;
 
-  // Count individual rejected files (matching Audit page calculation)
-  const rejectedCount = (records ?? []).reduce((count, r) => {
-    const reviews = (r.fileReviews || {}) as Record<string, { status?: string }>;
-    const files = r.files || [];
-    files.forEach(file => {
-      const review = reviews[file.id];
-      const status = (review?.status || "").toLowerCase();
-      if (status === "rejected" || status.includes("invalid") || status === "❌") {
-        count++;
-      }
-    });
-    return count;
-  }, 0);
+  // Rejected count now comes from reviewSummary (uses fileReviews from Column P)
+  const rejectedCount = reviewSummary.rejected;
 
   const totalEvidence = records?.reduce((sum, r) => sum + (r.actualRecordCount || 0), 0) || 0;
   const gapsCount = records?.filter(r => (r.actualRecordCount || 0) === 0).length || 0;

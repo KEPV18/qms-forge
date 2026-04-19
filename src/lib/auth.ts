@@ -1,9 +1,10 @@
-
 let cachedAccessToken: string | null = null;
 let tokenExpiry: number = 0;
+let tokenPromise: Promise<string | null> | null = null;
 
 /**
- * Common helper to get a fresh access token from the local OAuth proxy
+ * Common helper to get a fresh access token from the local OAuth proxy.
+ * Deduplicates concurrent calls so only one network request is in-flight at a time.
  */
 export async function getAccessToken(): Promise<string | null> {
     // Check if we have a valid cached token
@@ -11,34 +12,39 @@ export async function getAccessToken(): Promise<string | null> {
         return cachedAccessToken;
     }
 
-    try {
-        // Use relative path for production (served by unified express server)
-        // For local vite development, we might need the full URL if running on different ports
-        const isDev = import.meta.env.DEV;
-        // With Vite proxy, we can use relative paths both in dev and prod
-        const apiBase = ''; 
-
-        const response = await fetch(`${apiBase}/api/token`).catch(e => {
-            // Error logged
-            throw new Error('OAuth API is not reachable. If running locally, please run RUN_LOCAL.bat.');
-        });
-
-        if (!response.ok) {
-            if (response.status === 401) {
-                // Error logged
-                return null;
-            }
-            throw new Error(`Proxy error: ${response.status}`);
-        }
-
-        const data = await response.json();
-        if (!data.access_token) return null;
-
-        cachedAccessToken = data.access_token;
-        tokenExpiry = Date.now() + (data.expires_in * 1000) - 60000;
-        return cachedAccessToken;
-    } catch (error) {
-        // Error logged
-        return null;
+    // Deduplicate: if a request is already in-flight, wait for it
+    if (tokenPromise) {
+        return tokenPromise;
     }
+
+    tokenPromise = (async () => {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
+            const response = await fetch('/api/token', { signal: controller.signal });
+
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    return null;
+                }
+                throw new Error(`Proxy error: ${response.status}`);
+            }
+
+            const data = await response.json();
+            if (!data.access_token) return null;
+
+            cachedAccessToken = data.access_token;
+            tokenExpiry = Date.now() + (data.expires_in * 1000) - 60000;
+            return cachedAccessToken;
+        } catch {
+            return null;
+        } finally {
+            tokenPromise = null;
+        }
+    })();
+
+    return tokenPromise;
 }

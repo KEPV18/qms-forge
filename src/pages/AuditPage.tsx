@@ -113,15 +113,32 @@ export default function AuditPage() {
     }
   }, [user, queryClient]);
 
-  // Per-record approve: updates a single rejected file to 'approved'
+  // Per-record approve: updates a single file (atomic or non-atomic) to 'approved'
   const handleApproveRecord = useCallback(async (item: QMSRecord) => {
-    if (!item?.isAtomic || !item?.fileId) return;
     const reviewerName = user?.name || user?.email || "System";
     const today = new Date().toISOString().split('T')[0];
-    
+
+    // Determine the target file ID: for atomic records use item.fileId,
+    // for non-atomic records find the first pending/rejected file in fileReviews
+    let targetFileId = item.fileId;
+    if (!item?.isAtomic || !targetFileId) {
+      const reviews = (item.fileReviews || {}) as Record<string, { status?: string }>;
+      const metaKeys = new Set(['recordstatus', 'lastupdated']);
+      const found = Object.entries(reviews).find(([key, review]) => {
+        if (metaKeys.has(key.toLowerCase())) return false;
+        const s = (review.status || '').toLowerCase();
+        return s === 'pending_review' || s === 'rejected' || s === 'draft' || s === 'unknown' || !review.status;
+      });
+      if (found) {
+        targetFileId = found[0];
+      }
+    }
+
+    if (!targetFileId) return;
+
     // Create the audit trail comment
     const auditLog = `Approved individually by ${reviewerName} on ${today}`;
-    const currentComment = item.fileReviews?.[item.fileId]?.comment || "";
+    const currentComment = item.fileReviews?.[targetFileId]?.comment || "";
     const newComment = currentComment 
       ? `${currentComment}\n\n[Audit Log]: ${auditLog}` 
       : `${auditLog}`;
@@ -131,8 +148,8 @@ export default function AuditPage() {
       // Set record status to approved as well to clear any integrity rejections
       recordStatus: 'approved',
       lastUpdated: new Date().toISOString(),
-      [item.fileId]: {
-        ...(item.fileReviews?.[item.fileId] || {}),
+      [targetFileId]: {
+        ...(item.fileReviews?.[targetFileId] || {}),
         status: 'approved',
         reviewedBy: reviewerName,
         date: new Date().toISOString(),

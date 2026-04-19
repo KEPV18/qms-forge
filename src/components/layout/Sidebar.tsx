@@ -2,9 +2,9 @@ import { useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, ChevronRight, Shield,
   PanelLeftClose, PanelLeftOpen, LogOut, Menu, X,
-  Layers, Wrench, Briefcase
+  Layers, Wrench, Briefcase, Settings
 } from "lucide-react";
-import { useQMSData } from "@/hooks/useQMSData";
+import { useQMSRecords } from "@/hooks/useQMSData";
 import type { FileReview } from "@/lib/googleSheets";
 import { useState, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
@@ -34,7 +34,7 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { user, logout, loading } = useAuth();
-  const { data: records } = useQMSData();
+  const { data: records } = useQMSRecords();
 
   const projects = useMemo(() => {
     if (!records) return [];
