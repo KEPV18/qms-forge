@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Sidebar } from "@/components/layout/Sidebar";
-import { Header } from "@/components/layout/Header";
+import { AppShell } from "@/components/layout/AppShell";
 import { useRiskData } from "@/hooks/useRiskData";
 import { getRiskLevel, getRiskLevelColor } from "@/lib/riskRegisterService";
 import type { RiskStatus, RiskInput } from "@/lib/riskRegisterService";
@@ -31,7 +30,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function RiskRegisterPage() {
   const navigate = useNavigate();
-  const [activeModule, setActiveModule] = useState("risks");
   const { risks, stats, isLoading, isError, error, addRisk, updateRisk, isAdding } = useRiskData();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -75,13 +73,8 @@ export default function RiskRegisterPage() {
     : risks.filter(r => r.status === statusFilter);
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
-      <Sidebar activeModule={activeModule} onModuleChange={setActiveModule} />
-
-      <div className="flex-1 flex flex-col md:ml-64 ml-0">
-        <Header />
-
-        <main className="flex-1 p-6 space-y-6">
+    <AppShell breadcrumbs={[{ label: "Dashboard", path: "/" }, { label: "Risk Register" }]}>
+      <div className="space-y-6">
           {/* Page Header */}
           <div className="flex items-center justify-between">
             <div>
@@ -311,7 +304,7 @@ export default function RiskRegisterPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <Card className="border-l-4 border-l-green-500">
               <CardContent className="p-4 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-sm bg-green-100 flex items-center justify-center">
                   <CheckCircle className="w-6 h-6 text-green-600" />
                 </div>
                 <div>
@@ -324,7 +317,7 @@ export default function RiskRegisterPage() {
 
             <Card className="border-l-4 border-l-yellow-500">
               <CardContent className="p-4 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-sm bg-yellow-100 flex items-center justify-center">
                   <TrendingUp className="w-6 h-6 text-yellow-600" />
                 </div>
                 <div>
@@ -337,7 +330,7 @@ export default function RiskRegisterPage() {
 
             <Card className="border-l-4 border-l-red-500">
               <CardContent className="p-4 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-sm bg-red-100 flex items-center justify-center">
                   <TrendingDown className="w-6 h-6 text-red-600" />
                 </div>
                 <div>
@@ -453,9 +446,7 @@ export default function RiskRegisterPage() {
               )}
             </CardContent>
           </Card>
-        </main>
-        {/* Footer */}
-      </div>
-    </div>
+        </div>
+    </AppShell>
   );
 }

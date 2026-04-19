@@ -49,7 +49,7 @@ export function AuditFilters({
   const hasFilters = search || categoryFilter !== "all" || projectFilter !== "all" || yearFilter !== "all" || dateFilter !== "";
 
   return (
-    <div className="bg-card rounded-xl border border-border p-4">
+    <div className="bg-card rounded-sm border border-border p-4">
       <div className="flex flex-col gap-3">
         {/* Top Row: Search & Export */}
         <div className="flex items-center gap-3">

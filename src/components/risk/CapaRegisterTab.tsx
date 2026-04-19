@@ -206,7 +206,7 @@ export function CapaRegisterTab() {
             </div>
 
             {/* Table */}
-            <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
+            <div className="rounded-sm border border-border/50 bg-card overflow-hidden">
                 <Table>
                     <TableHeader>
                         <TableRow className="bg-muted/30 border-b border-border/50">
@@ -313,7 +313,7 @@ export function CapaRegisterTab() {
                         <div className="grid gap-4 py-4">
                             {/* Closure warning */}
                             {editingCapa.status === "Closed" && (!editingCapa.rootCauseAnalysis || !editingCapa.effectivenessCheck || !editingCapa.closureApproval) && (
-                                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 flex gap-2 items-start">
+                                <div className="p-3 rounded-sm bg-destructive/10 border border-destructive/20 flex gap-2 items-start">
                                     <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
                                     <p className="text-xs text-destructive">
                                         Closing requires: Root Cause Analysis, Effectiveness Check, and Closure Approval.
@@ -453,7 +453,7 @@ export function CapaRegisterTab() {
                     {closingCapa?.relatedRisk && (() => {
                         const lr = risks.find(r => r.riskId === closingCapa.relatedRisk);
                         return lr ? (
-                            <div className="p-3 rounded-lg bg-muted/30 border border-border/30 space-y-1 text-xs">
+                            <div className="p-3 rounded-sm bg-muted/30 border border-border/30 space-y-1 text-xs">
                                 <div className="font-bold">{lr.riskId} — {lr.riskDescription}</div>
                                 <div className="text-muted-foreground">Current Status: <Badge variant="outline" className={cn("text-[7px]", getRiskBadgeColor(lr.status))}>{lr.status}</Badge></div>
                                 <div className="text-muted-foreground mt-1">→ Will be updated to: <Badge variant="outline" className="text-[7px] text-green-600 bg-green-100">Controlled</Badge></div>

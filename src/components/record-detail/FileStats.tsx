@@ -36,8 +36,8 @@ export function FileStats({ record }: FileStatsProps) {
   return (
     <div className="grid grid-cols-3 gap-3">
       {stats.map((stat, i) => (
-        <div key={i} className="rounded-xl border border-border/50 bg-card p-4 text-center shadow-sm">
-          <div className={`w-9 h-9 rounded-lg ${stat.bg} flex items-center justify-center mx-auto mb-2`}>
+        <div key={i} className="rounded-sm border border-border/50 bg-card p-4 text-center shadow-sm">
+          <div className={`w-9 h-9 rounded-sm ${stat.bg} flex items-center justify-center mx-auto mb-2`}>
             <stat.icon className={`w-4.5 h-4.5 ${stat.color}`} />
           </div>
           <p className="text-lg font-bold text-foreground">{stat.value}</p>

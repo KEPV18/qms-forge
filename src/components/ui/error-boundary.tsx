@@ -31,7 +31,7 @@ export class ErrorBoundary extends Component<Props, State> {
         <div className="min-h-screen flex items-center justify-center bg-background p-4">
           <div className="max-w-md w-full text-center space-y-6">
             <div className="flex justify-center">
-              <div className="bg-destructive/10 p-4 rounded-full">
+              <div className="bg-destructive/10 p-4 rounded-sm">
                 <AlertTriangle className="h-12 w-12 text-destructive" />
               </div>
             </div>
@@ -44,7 +44,7 @@ export class ErrorBoundary extends Component<Props, State> {
             </div>
 
             {this.state.error && (
-              <div className="bg-muted p-4 rounded-md text-left overflow-auto max-h-40 text-xs font-mono border">
+              <div className="bg-muted p-4 rounded-sm text-left overflow-auto max-h-40 text-xs font-mono border">
                 {this.state.error.toString()}
               </div>
             )}

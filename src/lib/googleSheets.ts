@@ -1,4 +1,5 @@
 import { DriveFile } from './driveService';
+import { MODULE_MAPPINGS, normalizeCategory as configNormalizeCategory, normalizeAuditStatus as configNormalizeAuditStatus } from '@/config/modules';
 
 // Google Sheets API Configuration - MUST be set via environment variables
 const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || "";
@@ -86,6 +87,9 @@ export interface QMSRecord {
   fileId?: string;
   fileName?: string;
   fileLink?: string;
+  fileComment?: string;
+  fileProject?: string;
+  fileTargetYear?: string;
   googleDriveFileId?: string;
   driveFileId?: string;
 }
@@ -121,46 +125,10 @@ export interface MonthlyComparison {
   isPositive: boolean;
 }
 
-// Module category mappings (normalized)
-const MODULE_MAPPINGS: Record<string, { id: string; name: string; order: number }> = {
-  "sales": { id: "sales", name: "Sales & Customer Service", order: 1 },
-  "01": { id: "sales", name: "Sales & Customer Service", order: 1 },
-  "01-": { id: "sales", name: "Sales & Customer Service", order: 1 },
-  "operations": { id: "operations", name: "Operations & Production", order: 2 },
-  "02": { id: "operations", name: "Operations & Production", order: 2 },
-  "02-": { id: "operations", name: "Operations & Production", order: 2 },
-  "quality": { id: "quality", name: "Quality & Audit", order: 3 },
-  "03": { id: "quality", name: "Quality & Audit", order: 3 },
-  "03-": { id: "quality", name: "Quality & Audit", order: 3 },
-  "procurement": { id: "procurement", name: "Procurement & Vendors", order: 4 },
-  "04": { id: "procurement", name: "Procurement & Vendors", order: 4 },
-  "04-": { id: "procurement", name: "Procurement & Vendors", order: 4 },
-  "hr": { id: "hr", name: "HR & Training", order: 5 },
-  "05": { id: "hr", name: "HR & Training", order: 5 },
-  "05-": { id: "hr", name: "HR & Training", order: 5 },
-  "r&d": { id: "rnd", name: "R&D & Design", order: 6 },
-  "rnd": { id: "rnd", name: "R&D & Design", order: 6 },
-  "06": { id: "rnd", name: "R&D & Design", order: 6 },
-  "06-": { id: "rnd", name: "R&D & Design", order: 6 },
-  "management": { id: "management", name: "Management & Documentation", order: 7 },
-  "07": { id: "management", name: "Management & Documentation", order: 7 },
-  "07-": { id: "management", name: "Management & Documentation", order: 7 },
-};
+// Module category mappings are now in @/config/modules.ts
+// Re-export for backward compatibility with files that import from googleSheets
 
-export function normalizeCategory(category: string): { id: string; name: string } | null {
-  if (!category) return { error: "Failed to parse" };
-
-  const lower = category.toLowerCase().trim();
-
-  // Check direct matches
-  for (const [key, value] of Object.entries(MODULE_MAPPINGS)) {
-    if (lower.includes(key)) {
-      return value;
-    }
-  }
-
-  return { error: "Failed to parse" };
-}
+export { normalizeCategory, normalizeAuditStatus, MODULE_MAPPINGS } from '@/config/modules';
 
 function isValidRecord(row: string[]): boolean {
   const code = row[1]?.trim() || "";
@@ -178,21 +146,10 @@ function isValidRecord(row: string[]): boolean {
   return /^[A-Z]+\/\d+/i.test(code) || /^\d+$/.test(code);
 }
 
-function normalizeAuditStatus(status: string): "compliant" | "pending" | "issue" {
-  const lower = (status || "").toLowerCase().trim();
-
-  if (lower.includes("approved") || lower.includes("compliant") || lower.includes("✅")) {
-    return "compliant";
-  }
-  if (lower.includes("nc") || lower.includes("issue") || lower.includes("invalid") || lower.includes("❌")) {
-    return "issue";
-  }
-  // Default to pending for waiting, not started, or empty
-  return "pending";
-}
+// normalizeAuditStatus is now imported from @/config/modules
 
 function parseDate(dateStr: string): Date | null {
-  if (!dateStr || dateStr.trim() === "") return { error: "Failed to parse" };
+  if (!dateStr || dateStr.trim() === "") return null;
 
   const date = new Date(dateStr);
   return isNaN(date.getTime()) ? null : date;

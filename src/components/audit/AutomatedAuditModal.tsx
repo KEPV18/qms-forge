@@ -13,7 +13,7 @@ import { renameDriveFile } from "@/lib/driveService";
 import { runAutomatedAudit, AuditRecordResult, AuditFullResult, AuditIssue, IssueSeverity } from "@/lib/auditCheckService";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface AutomatedAuditModalProps {
   isOpen: boolean;
@@ -38,8 +38,6 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
   const [startTimestamp, setStartTimestamp] = useState<number | null>(null);
   const [fixProgress, setFixProgress] = useState<{ current: number; total: number; name: string } | null>(null);
   const queryClient = useQueryClient();
-  const { toast } = useToast();
-
   // Timer for elapsed time during scan
   useEffect(() => {
     if (!isRunning || !startTimestamp) return;
@@ -94,7 +92,7 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
       setCollapsedCards(autoCollapsed);
     } catch (error) {
       console.error("Error");
-      toast({ title: "Audit Failed", description: (error as Error).message, variant: "destructive" });
+      toast.error("Audit Failed", { description: (error as Error).message });
     } finally {
       setIsRunning(false);
       setStartTimestamp(null);
@@ -117,7 +115,7 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
       });
 
       if (recordsWithIssues.length === 0 && recordsToClear.length === 0) {
-        toast({ title: "Audit Status Synchronized", description: "No new issues to apply, and no old issues need clearing." });
+        toast.success("Audit Status Synchronized", { description: "No new issues to apply, and no old issues need clearing." });
         setIsApplying(false);
         return;
       }
@@ -147,12 +145,12 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
         updatedCount++;
       }
 
-      toast({ title: "Dashboard Synchronized", description: `Updated ${updatedCount} forms with latest audit findings.` });
+      toast.success("Dashboard Synchronized", { description: `Updated ${updatedCount} forms with latest audit findings.` });
       queryClient.invalidateQueries({ queryKey: ["qms-data"] });
       onClose();
     } catch (error: unknown) {
       console.error("Error");
-      toast({ title: "Sync Failed", description: error.message, variant: "destructive" });
+      toast.error("Sync Failed", { description: (error as Error)?.message });
     } finally {
       setIsApplying(false);
     }
@@ -176,10 +174,7 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
         if (success) successCount++;
       }
 
-      toast({
-        title: "Renaming Complete",
-        description: `Successfully renamed ${successCount} of ${totalToFix} items. Syncing with Drive...`
-      });
+      toast.success("Renaming Complete", { description: `Successfully renamed ${successCount} of ${totalToFix} items. Syncing with Drive...` });
 
       setFixProgress(null);
       queryClient.invalidateQueries({ queryKey: ["qms-data"] });
@@ -189,7 +184,7 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
       await handleStartAudit();
     } catch (error: unknown) {
       console.error("Error");
-      toast({ title: "Fix Failed", description: error.message, variant: "destructive" });
+      toast.error("Fix Failed", { description: (error as Error)?.message });
     } finally {
       setIsFixing(false);
       setFixProgress(null);
@@ -224,8 +219,8 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
     a.download = `audit-report-${new Date().toISOString().split("T")[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    toast({ title: "Report Exported" });
-  }, [auditResult, toast]);
+    toast.success("Report Exported");
+  }, [auditResult]);
 
   // ─── Select All / Deselect All ───
   const allFixIds = useMemo(() => {
@@ -338,7 +333,7 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
           {/* ═══ START SCREEN ═══ */}
           {!isRunning && !results && (
             <div className="flex-1 p-12 flex flex-col items-center justify-center text-center space-y-6">
-              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
+              <div className="w-20 h-20 rounded-sm bg-primary/10 flex items-center justify-center">
                 <PlayCircle className="w-10 h-10 text-primary" />
               </div>
               <div className="max-w-md">
@@ -368,9 +363,9 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
                   <span className="text-muted-foreground">Scanning Google Drive...</span>
                   <span className="font-mono text-primary">{progress.currentCode}</span>
                 </div>
-                <div className="h-3 bg-muted/50 rounded-full overflow-hidden w-full border border-border">
+                <div className="h-3 bg-muted/50 rounded-sm overflow-hidden w-full border border-border">
                   <div
-                    className="h-full bg-primary transition-all duration-300 rounded-full"
+                    className="h-full bg-primary transition-all duration-300 rounded-sm"
                     style={{ width: `${getPercentage()}%` }}
                   />
                 </div>
@@ -385,7 +380,7 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
 
                 {/* Live issue counter */}
                 {liveIssueCount > 0 && (
-                  <div className="mt-4 p-3 bg-destructive/5 border border-destructive/20 rounded-lg flex items-center gap-2 text-sm">
+                  <div className="mt-4 p-3 bg-destructive/5 border border-destructive/20 rounded-sm flex items-center gap-2 text-sm">
                     <AlertCircle className="w-4 h-4 text-destructive" />
                     <span className="text-destructive font-semibold">{liveIssueCount}</span>
                     <span className="text-muted-foreground">issues found so far</span>
@@ -403,7 +398,7 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
                 <div className="px-6 py-3 bg-card border-b border-border flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
                     <div className={cn(
-                      "w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold",
+                      "w-12 h-12 rounded-sm flex items-center justify-center text-lg font-bold",
                       summary.healthScore >= 80 ? "bg-green-500/10 text-green-600" :
                         summary.healthScore >= 50 ? "bg-orange-500/10 text-orange-600" :
                           "bg-red-500/10 text-red-600"
@@ -443,8 +438,8 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
 
               {/* Stats Cards */}
               <div className="p-4 grid grid-cols-5 gap-2 bg-card border-b border-border">
-                <div className="p-2.5 rounded-xl border border-border bg-background flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-green-500/10 flex items-center justify-center">
+                <div className="p-2.5 rounded-sm border border-border bg-background flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-sm bg-green-500/10 flex items-center justify-center">
                     <CheckCircle className="w-3.5 h-3.5 text-green-500" />
                   </div>
                   <div>
@@ -452,8 +447,8 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
                     <p className="text-[7px] uppercase font-bold text-muted-foreground">Compliant</p>
                   </div>
                 </div>
-                <div className="p-2.5 rounded-xl border border-border bg-background flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-red-500/10 flex items-center justify-center">
+                <div className="p-2.5 rounded-sm border border-border bg-background flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-sm bg-red-500/10 flex items-center justify-center">
                     <XCircle className="w-3.5 h-3.5 text-red-500" />
                   </div>
                   <div>
@@ -461,8 +456,8 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
                     <p className="text-[7px] uppercase font-bold text-muted-foreground">Critical</p>
                   </div>
                 </div>
-                <div className="p-2.5 rounded-xl border border-border bg-background flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                <div className="p-2.5 rounded-sm border border-border bg-background flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-sm bg-orange-500/10 flex items-center justify-center">
                     <AlertTriangle className="w-3.5 h-3.5 text-orange-500" />
                   </div>
                   <div>
@@ -470,8 +465,8 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
                     <p className="text-[7px] uppercase font-bold text-muted-foreground">Warnings</p>
                   </div>
                 </div>
-                <div className="p-2.5 rounded-xl border border-border bg-background flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                <div className="p-2.5 rounded-sm border border-border bg-background flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-sm bg-blue-500/10 flex items-center justify-center">
                     <Info className="w-3.5 h-3.5 text-blue-400" />
                   </div>
                   <div>
@@ -479,8 +474,8 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
                     <p className="text-[7px] uppercase font-bold text-muted-foreground">Info</p>
                   </div>
                 </div>
-                <div className="p-2.5 rounded-xl border border-border bg-background flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                <div className="p-2.5 rounded-sm border border-border bg-background flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-sm bg-orange-500/10 flex items-center justify-center">
                     <AlertCircle className="w-3.5 h-3.5 text-orange-500" />
                   </div>
                   <div>
@@ -503,7 +498,7 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
                       key={tab.key}
                       onClick={() => setFilterTab(tab.key)}
                       className={cn(
-                        "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all",
+                        "px-3 py-1.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all",
                         filterTab === tab.key
                           ? "bg-primary/10 text-primary border border-primary/20"
                           : "text-muted-foreground hover:bg-muted/50"
@@ -529,7 +524,7 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
                 <ScrollArea className="absolute inset-0 w-full h-full">
                   <div className="p-6 space-y-3 pb-12">
                   {filteredResults.length === 0 ? (
-                    <div className="text-center p-12 bg-background rounded-xl border border-border">
+                    <div className="text-center p-12 bg-background rounded-sm border border-border">
                       <CheckCircle className="w-12 h-12 text-success mx-auto mb-4" />
                       <h3 className="text-xl font-bold">
                         {filterTab === 'all' ? "Audit Completed Successfully" : `No ${filterTab} issues found`}
@@ -550,7 +545,7 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
 
                       return (
                         <div key={result.recordCode} className={cn(
-                          "rounded-xl border bg-card shadow-sm overflow-hidden transition-all",
+                          "rounded-sm border bg-card shadow-sm overflow-hidden transition-all",
                           isCompliant ? "border-green-200/50 bg-green-50/30" : "border-border"
                         )}>
                           {/* Card Header */}
@@ -707,7 +702,7 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
               {/* Fix Progress Overlay */}
               {isFixing && fixProgress && (
                 <div className="absolute inset-0 z-50 bg-background/60 backdrop-blur-sm flex items-center justify-center p-8">
-                  <div className="bg-card border border-border shadow-2xl rounded-2xl p-6 w-full max-w-md text-center space-y-4">
+                  <div className="bg-card border border-border shadow-2xl rounded-sm p-6 w-full max-w-md text-center space-y-4">
                     <Loader2 className="w-10 h-10 text-primary animate-spin mx-auto" />
                     <div className="space-y-1">
                       <h4 className="font-bold">Applying Fixes...</h4>
@@ -715,7 +710,7 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
                     </div>
                     
                     <div className="space-y-2">
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div className="h-2 bg-muted rounded-sm overflow-hidden">
                         <div 
                           className="h-full bg-primary transition-all duration-300" 
                           style={{ width: `${(fixProgress.current / fixProgress.total) * 100}%` }}
@@ -727,7 +722,7 @@ export function AutomatedAuditModal({ isOpen, onClose, records }: AutomatedAudit
                       </div>
                     </div>
                     
-                    <div className="p-3 bg-muted/50 rounded-lg text-xs font-mono truncate">
+                    <div className="p-3 bg-muted/50 rounded-sm text-xs font-mono truncate">
                       Renaming: {fixProgress.name}
                     </div>
                   </div>

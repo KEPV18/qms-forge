@@ -59,7 +59,7 @@ export function ProcessInteractionTab() {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center p-6 rounded-2xl bg-muted/20 border-border/50 backdrop-blur-sm relative overflow-hidden">
+            <div className="flex justify-between items-center p-6 rounded-sm bg-muted/20 border-border/50 backdrop-blur-sm relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full blur-2xl" />
                 <div className="relative z-10">
                     <h3 className="font-bold text-xl font-heading text-foreground">Process Interaction Sheet</h3>
@@ -72,7 +72,7 @@ export function ProcessInteractionTab() {
                 </Button>
             </div>
 
-            <div className="rounded-xl border border-border/50 bg-card overflow-hidden shadow-xl">
+            <div className="rounded-sm border border-border/50 bg-card overflow-hidden shadow-xl">
                 <Table>
                     <TableHeader>
                         <TableRow className="bg-muted/30 border-b border-border/50">

@@ -32,19 +32,20 @@ export function NotificationBell() {
     return (
         <div className="relative" ref={ref}>
             <button
+                aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
                 onClick={() => setOpen(!open)}
-                className="relative p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                className="relative p-2 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
             >
                 <Bell className="w-5 h-5" />
                 {unreadCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
+                    <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-sm flex items-center justify-center">
                         {unreadCount > 9 ? "9+" : unreadCount}
                     </span>
                 )}
             </button>
 
             {open && (
-                <div className="absolute right-0 top-full mt-2 w-80 bg-card border border-border rounded-xl shadow-xl overflow-hidden z-50 animate-fade-in">
+                <div className="absolute right-0 top-full mt-2 w-80 bg-card border border-border rounded-sm shadow-xl overflow-hidden z-50 animate-fade-in">
                     <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
                         <h3 className="text-sm font-bold">Notifications</h3>
                         {notifications.length > 0 && (
@@ -82,6 +83,7 @@ export function NotificationBell() {
                                             <p className="text-[10px] text-muted-foreground/60 mt-1">{formatTime(n.created_at)}</p>
                                         </div>
                                         <button
+                                            aria-label="Dismiss notification"
                                             onClick={(e) => { e.stopPropagation(); removeNotification(n.id); }}
                                             className="p-1 hover:bg-destructive/10 rounded text-muted-foreground hover:text-destructive"
                                         >

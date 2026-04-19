@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Lock, Mail, Loader2, Eye, EyeOff, AlertCircle, ArrowRight } from "lucide-react";
 import logoImg from "@/assets/logo.png";
 
@@ -19,8 +19,6 @@ export default function Login() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const { login, user, loading } = useAuth();
-  const { toast } = useToast();
-
   useEffect(() => {
     if (!loading && user) {
       const from = location.state?.from?.pathname || "/";
@@ -43,7 +41,7 @@ export default function Login() {
     const res = await login(email.trim(), password.trim());
     setIsLoading(false);
     if (!res.ok) {
-      toast({ title: "Login failed", description: res.message, variant: "destructive" });
+      toast.error("Login failed", { description: res.message });
       return;
     }
     navigate("/");
@@ -61,52 +59,45 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6 relative overflow-hidden">
-      {/* Ambient glow */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-20%] left-[10%] w-[500px] h-[500px] bg-primary/15 rounded-full blur-[150px]" />
-        <div className="absolute bottom-[-15%] right-[5%] w-[400px] h-[400px] bg-primary/10 rounded-full blur-[130px]" />
-        <div className="absolute top-[40%] right-[20%] w-[200px] h-[200px] bg-accent/10 rounded-full blur-[100px]" />
-      </div>
+    <div className="min-h-screen bg-background flex items-center justify-center p-6 relative overflow-hidden grid-bg">
+      {/* Aurora glow */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden aurora-bg opacity-60" />
 
       {/* Brand mark */}
       <div className="absolute top-8 left-8 flex items-center gap-3 animate-fade-in">
-        <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/25 border border-primary/30">
-          <span className="text-primary-foreground font-black text-[10px] tracking-tighter">QMS</span>
+        <div className="w-10 h-10 bg-neon-cyan/10 rounded-sm flex items-center justify-center border border-neon-cyan/20">
+          <span className="text-primary font-mono font-black text-[10px] tracking-tighter">QMS</span>
         </div>
         <div>
-          <div className="text-xl font-black text-foreground tracking-tighter">QMS Suite</div>
-          <div className="text-[8px] text-muted-foreground font-black uppercase tracking-[0.3em] opacity-50">ISO 9001:2015</div>
+          <div className="text-xl font-black text-foreground tracking-tight">QMS Suite</div>
+          <div className="text-[8px] text-muted-foreground font-mono font-bold uppercase tracking-[0.3em]">ISO 9001:2015</div>
         </div>
       </div>
 
       {/* Corporate Branding */}
-      <div className="absolute top-8 right-8 flex items-center gap-2 opacity-60 hover:opacity-100 transition-opacity duration-300">
-        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Founded by</span>
-        <img src={logoImg} alt="Vezloo" className="w-6 h-6 object-contain" />
-        <span className="text-xs font-black text-foreground">Vezloo Group</span>
+      <div className="absolute top-8 right-8 flex items-center gap-2 opacity-50 hover:opacity-100 transition-opacity duration-300">
+        <span className="text-[9px] font-mono font-bold text-muted-foreground uppercase tracking-widest">Founded by</span>
+        <img src={logoImg} alt="Vezloo" className="w-5 h-5 object-contain" />
+        <span className="text-xs font-bold text-foreground font-mono">Vezloo Group</span>
       </div>
 
-      <Card className="w-full max-w-[420px] shadow-2xl shadow-primary/5 border-border/40 rounded-3xl overflow-hidden animate-scale-in bg-card/95 backdrop-blur-xl">
-        {/* Top accent */}
-        <div className="h-1.5 bg-gradient-to-r from-primary via-primary/80 to-primary/40 w-full" />
-
+      <Card className="w-full max-w-[420px] shadow-xl border-neon-cyan/10 rounded-sm overflow-hidden animate-fade-in bg-card/95 backdrop-blur-xl accent-line-top">
         <CardHeader className="text-center pt-10 pb-4">
           <div className="mb-5 relative mx-auto w-14 h-14">
-            <div className="absolute inset-0 bg-primary/20 rounded-2xl blur-xl animate-pulse" />
-            <div className="relative w-14 h-14 bg-gradient-to-br from-primary to-primary/70 rounded-2xl flex items-center justify-center shadow-xl shadow-primary/30 border border-primary/20">
-              <Lock className="w-6 h-6 text-primary-foreground" />
+            <div className="absolute inset-0 bg-neon-cyan/15 rounded-sm blur-xl animate-glow-pulse" />
+            <div className="relative w-14 h-14 bg-gradient-to-br from-neon-cyan/20 to-neon-violet/10 rounded-sm flex items-center justify-center border border-neon-cyan/25">
+              <Lock className="w-6 h-6 text-neon-cyan" />
             </div>
           </div>
           <CardTitle className="text-2xl font-bold tracking-tight">Welcome to Vezloo QMS</CardTitle>
-          <CardDescription className="text-muted-foreground text-sm mt-1">Sign in to your enterprise quality account</CardDescription>
+          <CardDescription className="text-muted-foreground text-sm mt-1 font-mono">Sign in to your enterprise quality account</CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-4 px-7 pb-4" onKeyDown={handleKeyDown}>
           {/* Google */}
           <Button
             variant="outline"
-            className="w-full h-11 rounded-xl gap-3 font-semibold border-border/50 hover:bg-muted/60 hover:border-border transition-all text-sm"
+            className="w-full h-11 rounded-sm gap-3 font-semibold border-border/50 hover:bg-muted/60 hover:border-neon-cyan/20 transition-all text-sm"
             onClick={handleGoogleSignIn}
             disabled={isGoogleLoading}
           >
@@ -128,22 +119,22 @@ export default function Login() {
               <span className="w-full border-t border-border/40" />
             </div>
             <div className="relative flex justify-center text-xs">
-              <span className="bg-card px-4 text-muted-foreground/70 font-medium uppercase tracking-wider text-[10px]">or continue with email</span>
+              <span className="bg-card px-4 text-muted-foreground/70 font-mono font-medium uppercase tracking-wider text-[10px]">or continue with email</span>
             </div>
           </div>
 
           {/* Email */}
           <div className="space-y-1.5">
-            <Label htmlFor="email" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80">Email</Label>
+            <Label htmlFor="email" className="text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground/80">Email</Label>
             <div className="relative group">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50 transition-colors group-focus-within:text-primary" />
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50 transition-colors group-focus-within:text-neon-cyan" />
               <Input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => { setEmail(e.target.value); setErrors(p => ({ ...p, email: undefined })); }}
                 placeholder="you@company.com"
-                className={`pl-10 h-11 rounded-xl bg-muted/30 border-border/40 focus:border-primary/50 focus:ring-primary/20 transition-all text-sm ${errors.email ? 'border-destructive' : ''}`}
+                className={`pl-10 h-11 rounded-sm bg-muted/30 border-border/40 focus:border-neon-cyan/50 focus:ring-neon-cyan/20 transition-all text-sm font-mono ${errors.email ? 'border-destructive' : ''}`}
               />
             </div>
             {errors.email && (
@@ -153,16 +144,16 @@ export default function Login() {
 
           {/* Password */}
           <div className="space-y-1.5">
-            <Label htmlFor="password" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80">Password</Label>
+            <Label htmlFor="password" className="text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground/80">Password</Label>
             <div className="relative group">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50 transition-colors group-focus-within:text-primary" />
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50 transition-colors group-focus-within:text-neon-cyan" />
               <Input
                 id="password"
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => { setPassword(e.target.value); setErrors(p => ({ ...p, password: undefined })); }}
                 placeholder="••••••••"
-                className={`pl-10 pr-10 h-11 rounded-xl bg-muted/30 border-border/40 focus:border-primary/50 focus:ring-primary/20 transition-all text-sm ${errors.password ? 'border-destructive' : ''}`}
+                className={`pl-10 pr-10 h-11 rounded-sm bg-muted/30 border-border/40 focus:border-neon-cyan/50 focus:ring-neon-cyan/20 transition-all text-sm font-mono ${errors.password ? 'border-destructive' : ''}`}
               />
               <button
                 type="button"
@@ -180,7 +171,7 @@ export default function Login() {
 
         <CardFooter className="flex flex-col gap-4 px-7 pb-9">
           <Button
-            className="w-full h-11 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-lg shadow-primary/20 transition-all active:scale-[0.98] group"
+            className="w-full h-11 rounded-sm bg-primary hover:bg-primary/90 text-primary-foreground font-semibold transition-all active:scale-[0.98] group"
             onClick={handleLogin}
             disabled={isLoading}
           >
@@ -197,7 +188,7 @@ export default function Login() {
             )}
           </Button>
 
-          <p className="text-center text-xs text-muted-foreground">
+          <p className="text-center text-xs text-muted-foreground font-mono">
             Don't have an account?{" "}
             <button onClick={() => navigate("/register")} className="text-primary hover:underline font-semibold transition-colors">
               Request access
@@ -206,7 +197,7 @@ export default function Login() {
         </CardFooter>
       </Card>
 
-      <div className="absolute bottom-8 text-[10px] font-bold uppercase tracking-[0.4em] text-muted-foreground/30">
+      <div className="absolute bottom-8 text-[9px] font-mono font-bold uppercase tracking-[0.4em] text-muted-foreground/30">
         Vezloo QMS Platform v2.5.0
       </div>
     </div>

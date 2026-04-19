@@ -23,13 +23,13 @@ export function CompliancePanel({ auditStatus, onStatusChange }: CompliancePanel
   const CurrentIcon = current.icon;
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card p-6 shadow-sm">
+    <div className="rounded-sm border border-border/50 bg-card p-6 shadow-sm">
       <h2 className="text-xs font-bold uppercase tracking-[0.15em] text-muted-foreground mb-5 flex items-center gap-2">
         <div className="w-1.5 h-1.5 rounded-full bg-warning" />
         Audit Status
       </h2>
 
-      <div className={`p-3 rounded-xl ${current.bg} mb-4 flex items-center gap-3`}>
+      <div className={`p-3 rounded-sm ${current.bg} mb-4 flex items-center gap-3`}>
         <CurrentIcon className={`w-5 h-5 ${current.color}`} />
         <span className={`text-sm font-bold ${current.color}`}>
           {auditStatus === "✅ Approved" ? "Approved" : auditStatus === "❌ NC" ? "Non-Conforming" : "Pending Review"}
@@ -37,7 +37,7 @@ export function CompliancePanel({ auditStatus, onStatusChange }: CompliancePanel
       </div>
 
       <Select value={auditStatus || "⚪ Waiting"} onValueChange={onStatusChange}>
-        <SelectTrigger className="h-11 rounded-xl bg-background border-border/50 focus:ring-primary/20">
+        <SelectTrigger className="h-11 rounded-sm bg-background border-border/50 focus:ring-primary/20">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

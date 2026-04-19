@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { QMSRecord, updateSheetCell } from "@/lib/googleSheets";
 import { PlusCircle, Loader2, Save } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface AddFormModalProps {
     isOpen: boolean;
@@ -27,8 +27,6 @@ export function AddFormModal({ isOpen, onClose, onSuccess, category }: AddFormMo
     const [description, setDescription] = useState("");
     const [frequency, setFrequency] = useState("Monthly");
     const [isSaving, setIsSaving] = useState(false);
-    const { toast } = useToast();
-
     const handleSave = async () => {
         setIsSaving(true);
         try {
@@ -39,18 +37,11 @@ export function AddFormModal({ isOpen, onClose, onSuccess, category }: AddFormMo
 
             await new Promise(r => setTimeout(r, 1000)); // Simulate API
 
-            toast({
-                title: "New Form Template Added",
-                description: `Successfully created ${code} - ${name}`,
-            });
+            toast.success("New Form Template Added", { description: `Successfully created ${code} - ${name}` });
             onSuccess();
             onClose();
         } catch (error: unknown) {
-            toast({
-                title: "Failed to Add Form",
-                description: error.message || "Connection error",
-                variant: "destructive",
-            });
+            toast.error("Failed to Add Form", { description: (error as Error)?.message || "Connection error" });
         } finally {
             setIsSaving(false);
         }
@@ -61,7 +52,7 @@ export function AddFormModal({ isOpen, onClose, onSuccess, category }: AddFormMo
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        <PlusCircle className="w-5 h-5 text-sidebar-primary" />
+                        <PlusCircle className="w-5 h-5 text-primary" />
                         Add New Form Template
                     </DialogTitle>
                 </DialogHeader>

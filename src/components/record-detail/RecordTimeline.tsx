@@ -10,7 +10,7 @@ export function RecordTimeline({ record }: RecordTimelineProps) {
 
   if (events.length === 0) {
     return (
-      <div className="rounded-2xl border border-border/50 bg-card p-6 shadow-sm">
+      <div className="rounded-sm border border-border/50 bg-card p-6 shadow-sm">
         <h2 className="text-xs font-bold uppercase tracking-[0.15em] text-muted-foreground mb-4 flex items-center gap-2">
           <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground" />
           Activity Timeline
@@ -21,7 +21,7 @@ export function RecordTimeline({ record }: RecordTimelineProps) {
   }
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card p-6 shadow-sm">
+    <div className="rounded-sm border border-border/50 bg-card p-6 shadow-sm">
       <h2 className="text-xs font-bold uppercase tracking-[0.15em] text-muted-foreground mb-5 flex items-center gap-2">
         <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground" />
         Activity Timeline
@@ -31,7 +31,7 @@ export function RecordTimeline({ record }: RecordTimelineProps) {
         <div className="absolute left-[15px] top-2 bottom-2 w-px bg-border" />
         {events.map((event, i) => (
           <div key={i} className="relative flex items-start gap-4 pb-5 last:pb-0">
-            <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${event.bg}`}>
+            <div className={`relative z-10 w-8 h-8 rounded-sm flex items-center justify-center shrink-0 ${event.bg}`}>
               <event.icon className={`w-3.5 h-3.5 ${event.color}`} />
             </div>
             <div className="pt-1 min-w-0">

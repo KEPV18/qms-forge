@@ -1,9 +1,8 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import {
-  LayoutDashboard, Users, Settings, ClipboardCheck, ShoppingCart,
-  GraduationCap, Lightbulb, Building2, ChevronRight, Shield, Archive,
-  AlertTriangle, PanelLeftClose, PanelLeftOpen, LogOut, Menu, X,
-  Layers, Wrench, Activity, BookOpen, FileCheck, Briefcase
+  LayoutDashboard, ChevronRight, Shield,
+  PanelLeftClose, PanelLeftOpen, LogOut, Menu, X,
+  Layers, Wrench, Briefcase
 } from "lucide-react";
 import { useQMSData } from "@/hooks/useQMSData";
 import type { FileReview } from "@/lib/googleSheets";
@@ -17,33 +16,10 @@ import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ThemeToggleCompact } from "@/components/ui/ThemeToggle";
+import { MODULE_NAV_ITEMS, TOOL_NAV_ITEMS, type NavItem } from "@/config/modules";
 
-interface NavItem {
-  id: string;
-  label: string;
-  icon: React.ElementType;
-  moduleClass?: string;
-  path?: string;
-  children?: { id: string; label: string; code?: string }[];
-}
-
-const moduleItems: NavItem[] = [
-  { id: "sales", label: "Sales & Customer", icon: Users, moduleClass: "module-sales", path: "/module/sales" },
-  { id: "operations", label: "Operations", icon: Settings, moduleClass: "module-operations", path: "/module/operations" },
-  { id: "quality", label: "Quality & Audit", icon: ClipboardCheck, moduleClass: "module-quality", path: "/module/quality" },
-  { id: "procurement", label: "Procurement", icon: ShoppingCart, moduleClass: "module-procurement", path: "/module/procurement" },
-  { id: "hr", label: "HR & Training", icon: GraduationCap, moduleClass: "module-hr", path: "/module/hr" },
-  { id: "rnd", label: "R&D & Design", icon: Lightbulb, moduleClass: "module-rnd", path: "/module/rnd" },
-  { id: "management", label: "Management", icon: Building2, moduleClass: "module-management", path: "/module/management" },
-];
-
-const toolItems: NavItem[] = [
-  { id: "iso-manual", label: "ISO 9001 Manual", icon: FileCheck, path: "/iso-manual" },
-  { id: "procedures", label: "Procedures", icon: BookOpen, path: "/procedures" },
-  { id: "risk", label: "Risk & Process", icon: AlertTriangle, path: "/risk-management" },
-  { id: "activity", label: "Activity Log", icon: Activity, path: "/activity" },
-  { id: "archive", label: "Record Archive", icon: Archive, path: "/archive" },
-];
+const moduleItems = MODULE_NAV_ITEMS;
+const toolItems = TOOL_NAV_ITEMS;
 
 interface SidebarProps {
   activeModule: string;
@@ -147,41 +123,42 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
     const button = (
       <div className="relative">
         <button
+          aria-label={item.label}
           onClick={() => handleNavClick(item)}
           className={cn(
-            "w-full flex items-center gap-3 rounded-xl text-[13px] transition-all duration-200 relative group",
+            "w-full flex items-center gap-3 rounded-sm text-[13px] transition-all duration-200 relative group",
             collapsed ? "justify-center p-2.5 mx-auto" : "px-3 py-2.5",
             isActive
-              ? "bg-gradient-to-r from-sidebar-primary/20 to-sidebar-primary/5 text-sidebar-primary font-semibold shadow-sm shadow-sidebar-primary/10"
-              : "text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent/80"
+              ? "bg-gradient-to-r from-primary/20 to-primary/5 text-primary font-semibold shadow-sm shadow-primary/10"
+              : "text-foreground/50 hover:text-foreground hover:bg-muted/80"
           )}
         >
           {isActive && !collapsed && (
-            <div className="absolute left-0 top-1 bottom-1 w-[3px] bg-gradient-to-b from-sidebar-primary to-sidebar-primary/50 rounded-full" />
+            <div className="absolute left-0 top-1 bottom-1 w-[3px] bg-gradient-to-b from-primary to-primary/50 rounded-full" />
           )}
           <Icon className={cn(
             "w-[18px] h-[18px] flex-shrink-0 transition-all duration-200",
-            isActive ? "text-sidebar-primary drop-shadow-[0_0_6px_hsl(var(--sidebar-primary)/0.4)]" : "text-sidebar-foreground/40 group-hover:text-sidebar-foreground/70"
+            isActive ? "text-primary drop-shadow-[0_0_6px_hsl(var(--primary)/0.4)]" : "text-foreground/40 group-hover:text-foreground/70"
           )} />
           {!collapsed && (
             <>
               <span className="flex-1 text-left truncate">{item.label}</span>
               {item.children && (
-                <ChevronRight className={cn("w-3 h-3 text-sidebar-foreground/30 transition-transform duration-200", isExpanded && "rotate-90")} />
+                <ChevronRight className={cn("w-3 h-3 text-foreground/30 transition-transform duration-200", isExpanded && "rotate-90")} />
               )}
             </>
           )}
         </button>
 
         {!collapsed && item.children && isExpanded && (
-          <div className="ml-7 mt-0.5 space-y-0.5 border-l-2 border-sidebar-primary/15 pl-3">
+          <div className="ml-7 mt-0.5 space-y-0.5 border-l-2 border-primary/15 pl-3">
             {item.children.map((child) => (
               <button
                 key={child.id}
                 onClick={() => handleChildClick(item.id, child)}
-                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-sidebar-foreground/40 hover:text-sidebar-foreground hover:bg-sidebar-accent/60 transition-all duration-150"
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-sm text-xs text-foreground/40 hover:text-foreground hover:bg-muted/60 transition-all duration-150"
               >
-                {child.code && <span className="font-mono text-[10px] text-sidebar-primary/70">{child.code}</span>}
+                {child.code && <span className="font-mono text-[10px] text-primary/70">{child.code}</span>}
                 <span className="truncate">{child.label}</span>
               </button>
             ))}
@@ -205,11 +182,11 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
   };
 
   const SectionLabel = ({ icon: SIcon, label }: { icon: React.ElementType; label: string }) => {
-    if (collapsed) return <div className="my-3 mx-3 border-t border-sidebar-border/20" />;
+    if (collapsed) return <div className="my-3 mx-3 border-t border-border/20" />;
     return (
       <div className="flex items-center gap-2 px-3 pt-6 pb-2">
-        <SIcon className="w-3.5 h-3.5 text-sidebar-primary/30" />
-        <span className="text-[10px] font-bold text-sidebar-foreground/25 uppercase tracking-[0.15em]">{label}</span>
+        <SIcon className="w-3.5 h-3.5 text-primary/30" />
+        <span className="text-[10px] font-bold text-foreground/25 uppercase tracking-[0.15em]">{label}</span>
       </div>
     );
   };
@@ -219,26 +196,26 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
   const sidebarContent = (isMobile: boolean) => (
     <>
       {/* Header */}
-      <div className={cn("flex items-center border-b border-sidebar-border/20", collapsed ? "justify-center px-2 py-5" : "px-5 py-5 gap-3")}>
+      <div className={cn("flex items-center border-b border-border/20", collapsed ? "justify-center px-2 py-5" : "px-5 py-5 gap-3")}>
         <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer hover:scale-110 transition-all duration-300 flex-shrink-0 overflow-hidden shadow-lg shadow-sidebar-primary/10"
+          className="w-10 h-10 rounded-sm flex items-center justify-center cursor-pointer hover:scale-110 transition-all duration-300 flex-shrink-0 overflow-hidden shadow-lg shadow-primary/10"
           onClick={() => { navigate("/"); onModuleChange("dashboard"); }}
         >
           <img src={qmsLogo} alt="QMS Logo" className="w-10 h-10 object-contain" />
         </div>
         {!collapsed && (
           <div className="min-w-0 flex-1" onClick={() => { navigate("/"); onModuleChange("dashboard"); }}>
-            <h1 className="font-bold text-sm text-sidebar-foreground cursor-pointer tracking-tight">QMS Suite</h1>
-            <p className="text-[9px] text-sidebar-primary/40 font-bold uppercase tracking-[0.2em]">ISO 9001:2015</p>
+            <h1 className="font-bold text-sm text-foreground cursor-pointer tracking-tight">QMS Suite</h1>
+            <p className="text-[9px] text-primary/40 font-bold uppercase tracking-[0.2em]">ISO 9001:2015</p>
           </div>
         )}
         {!collapsed && !isMobile && (
-          <button onClick={toggleSidebar} className="p-1.5 rounded-lg text-sidebar-foreground/20 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-all duration-200">
+          <button aria-label="Collapse sidebar" onClick={toggleSidebar} className="p-1.5 rounded-sm text-foreground/20 hover:text-foreground hover:bg-muted transition-all duration-200">
             <PanelLeftClose className="w-4 h-4" />
           </button>
         )}
         {isMobile && (
-          <button onClick={() => setIsMobileOpen(false)} className="ml-auto p-1.5 rounded-lg text-sidebar-foreground/30 hover:text-sidebar-foreground">
+          <button aria-label="Close menu" onClick={() => setIsMobileOpen(false)} className="ml-auto p-1.5 rounded-sm text-foreground/30 hover:text-foreground">
             <X className="w-5 h-5" />
           </button>
         )}
@@ -246,7 +223,7 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
 
       {collapsed && (
         <div className="flex justify-center py-3">
-          <button onClick={toggleSidebar} className="p-1.5 rounded-lg text-sidebar-foreground/20 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-all duration-200">
+          <button aria-label="Expand sidebar" onClick={toggleSidebar} className="p-1.5 rounded-sm text-foreground/20 hover:text-foreground hover:bg-muted transition-all duration-200">
             <PanelLeftOpen className="w-4 h-4" />
           </button>
         </div>
@@ -296,13 +273,14 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className={cn("border-t border-sidebar-border/20", collapsed ? "p-2" : "p-4 space-y-3")}>
+      <div className={cn("border-t border-border/20", collapsed ? "p-2" : "p-4 space-y-3")}>
         <div className={cn("flex items-center", collapsed ? "flex-col gap-1" : "gap-1")}>
           <Tooltip delayDuration={0}>
             <TooltipTrigger asChild>
               <button
+                aria-label="Settings"
                 onClick={() => setIsSettingsOpen(true)}
-                className="p-2 rounded-lg text-sidebar-foreground/30 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-all duration-200"
+                className="p-2 rounded-sm text-foreground/30 hover:text-foreground hover:bg-muted transition-all duration-200"
               >
                 <Settings className="w-4 h-4" />
               </button>
@@ -323,8 +301,9 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
             <Tooltip delayDuration={0}>
               <TooltipTrigger asChild>
                 <button
+                  aria-label="Sign out"
                   onClick={logout}
-                  className="p-2 rounded-lg text-sidebar-foreground/30 hover:text-destructive hover:bg-destructive/10 transition-all duration-200 ml-auto"
+                  className="p-2 rounded-sm text-foreground/30 hover:text-destructive hover:bg-destructive/10 transition-all duration-200 ml-auto"
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
@@ -336,13 +315,13 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
 
         {/* User card */}
         <div className={cn(
-          "flex items-center rounded-xl transition-all duration-200",
-          collapsed ? "justify-center p-2 bg-sidebar-accent/50" : "gap-3 px-3 py-3 bg-gradient-to-r from-sidebar-accent/80 to-sidebar-accent/40 border border-sidebar-border/20"
+          "flex items-center rounded-sm transition-all duration-200",
+          collapsed ? "justify-center p-2 bg-muted/50" : "gap-3 px-3 py-3 bg-gradient-to-r from-muted/80 to-muted/40 border border-border/20"
         )}>
           <Tooltip delayDuration={0}>
             <TooltipTrigger asChild>
-              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-sidebar-primary/40 to-sidebar-primary/15 flex items-center justify-center flex-shrink-0 border border-sidebar-primary/20 shadow-sm shadow-sidebar-primary/10">
-                <span className="text-[11px] font-bold text-sidebar-primary">{userInitials}</span>
+              <div className="w-9 h-9 rounded-sm bg-gradient-to-br from-primary/40 to-primary/15 flex items-center justify-center flex-shrink-0 border border-primary/20 shadow-sm shadow-primary/10">
+                <span className="text-[11px] font-bold text-primary">{userInitials}</span>
               </div>
             </TooltipTrigger>
             {collapsed && (
@@ -354,21 +333,21 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
           </Tooltip>
           {!collapsed && (
             <div className="flex-1 min-w-0">
-              <p className="text-[12px] font-semibold truncate text-sidebar-foreground">{user?.name || "Guest"}</p>
-              <p className="text-[10px] text-sidebar-foreground/30 font-semibold capitalize">{user?.role || "user"}</p>
+              <p className="text-[12px] font-semibold truncate text-foreground">{user?.name || "Guest"}</p>
+              <p className="text-[10px] text-foreground/30 font-semibold capitalize">{user?.role || "user"}</p>
             </div>
           )}
         </div>
 
         {/* Vezloo Branding Badge */}
         {!collapsed && (
-          <div className="mt-4 p-3 rounded-xl bg-sidebar-primary/5 border border-sidebar-primary/10 flex items-center gap-3 animate-fade-in group/brand uppercase">
-            <div className="w-8 h-8 rounded-lg bg-white p-1.5 shadow-sm border border-sidebar-border/50 group-hover/brand:scale-110 transition-transform duration-300">
+          <div className="mt-4 p-3 rounded-sm bg-primary/5 border border-primary/10 flex items-center gap-3 animate-fade-in group/brand uppercase">
+            <div className="w-8 h-8 rounded-sm bg-white p-1.5 shadow-sm border border-border/50 group-hover/brand:scale-110 transition-transform duration-300">
                <img src={logoImg} alt="Vezloo" className="w-full h-full object-contain" />
             </div>
             <div>
-              <p className="text-[10px] text-sidebar-foreground/30 font-bold uppercase tracking-wider leading-tight">Founded by</p>
-              <p className="text-[12px] font-black text-sidebar-primary tracking-tight leading-tight">Vezloo Group</p>
+              <p className="text-[10px] text-foreground/30 font-bold uppercase tracking-wider leading-tight">Founded by</p>
+              <p className="text-[12px] font-black text-primary tracking-tight leading-tight">Vezloo Group</p>
             </div>
           </div>
         )}
@@ -382,7 +361,7 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
     <TooltipProvider>
       <button
         onClick={() => setIsMobileOpen(true)}
-        className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-xl bg-card/90 backdrop-blur-xl border border-border/50 shadow-lg hover:bg-muted transition-all duration-200"
+        className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-sm bg-card/90 backdrop-blur-xl border border-border/50 shadow-lg hover:bg-muted transition-all duration-200"
         aria-label="Open menu"
       >
         <Menu className="w-5 h-5 text-foreground" />
@@ -393,14 +372,14 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
       )}
 
       <aside className={cn(
-        "md:hidden fixed left-0 top-0 h-screen z-50 w-80 sidebar flex flex-col transition-transform duration-300 ease-in-out bg-sidebar-background border-r border-sidebar-border text-sidebar-foreground",
+        "md:hidden fixed left-0 top-0 h-screen z-50 w-80 sidebar flex flex-col transition-transform duration-300 ease-in-out bg-muted border-r border-border text-foreground",
         isMobileOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         {sidebarContent(true)}
       </aside>
 
       <aside className={cn(
-        "hidden md:flex flex-col h-screen fixed left-0 top-0 z-50 transition-all duration-300 sidebar bg-sidebar-background border-r border-sidebar-border text-sidebar-foreground",
+        "hidden md:flex flex-col h-screen fixed left-0 top-0 z-50 transition-all duration-300 sidebar bg-muted border-r border-border text-foreground",
         isCollapsed ? "w-[60px]" : "w-60"
       )}>
         {sidebarContent(false)}

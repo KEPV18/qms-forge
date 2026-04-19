@@ -28,7 +28,7 @@ export function ReviewPanel({ reviewed, reviewedBy, reviewDate, onReviewedChange
   };
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card p-6 shadow-sm">
+    <div className="rounded-sm border border-border/50 bg-card p-6 shadow-sm">
       <h2 className="text-xs font-bold uppercase tracking-[0.15em] text-muted-foreground mb-5 flex items-center gap-2">
         <div className="w-1.5 h-1.5 rounded-full bg-success" />
         Review Details
@@ -36,7 +36,7 @@ export function ReviewPanel({ reviewed, reviewedBy, reviewDate, onReviewedChange
 
       <div className="space-y-5">
         <div
-          className={`flex items-center gap-3 p-3.5 rounded-xl border transition-colors ${
+          className={`flex items-center gap-3 p-3.5 rounded-sm border transition-colors ${
             reviewed ? "bg-success/5 border-success/20" : "bg-muted/30 border-border/50"
           }`}
         >
@@ -64,7 +64,7 @@ export function ReviewPanel({ reviewed, reviewedBy, reviewDate, onReviewedChange
             value={localReviewedBy}
             onChange={(e) => setLocalReviewedBy(e.target.value)}
             placeholder="Enter reviewer name"
-            className="h-10 rounded-lg bg-background border-border/50"
+            className="h-10 rounded-sm bg-background border-border/50"
           />
         </div>
 
@@ -78,14 +78,14 @@ export function ReviewPanel({ reviewed, reviewedBy, reviewDate, onReviewedChange
             type="date"
             value={localReviewDate}
             onChange={(e) => setLocalReviewDate(e.target.value)}
-            className="h-10 rounded-lg bg-background border-border/50"
+            className="h-10 rounded-sm bg-background border-border/50"
           />
         </div>
 
         <Button
           onClick={handleSave}
           disabled={isSaving}
-          className="w-full h-11 rounded-xl font-bold tracking-widest uppercase text-[10px] transition-all shadow-sm"
+          className="w-full h-11 rounded-sm font-bold tracking-widest uppercase text-[10px] transition-all shadow-sm"
         >
           {isSaving ? (
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />

@@ -18,7 +18,7 @@ import {
 import { QMSRecord, updateSheetCell } from "@/lib/googleSheets";
 import { copyDriveFile } from "@/lib/driveService";
 import { Loader2, FilePlus, ExternalLink, CheckCircle2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface AddRecordModalProps {
     isOpen: boolean;
@@ -31,8 +31,6 @@ export function AddRecordModal({ isOpen, onClose, templates, onSuccess }: AddRec
     const [selectedCode, setSelectedCode] = useState<string>("");
     const [isCreating, setIsCreating] = useState(false);
     const [createdFile, setCreatedFile] = useState<{ name: string; link: string } | null>(null);
-    const { toast } = useToast();
-
     // New Metadata state
     const now = new Date();
     const [selectedProject, setSelectedProject] = useState<string>("General / All Company");
@@ -103,17 +101,10 @@ export function AddRecordModal({ isOpen, onClose, templates, onSuccess }: AddRec
                 }
 
                 setCreatedFile({ name: result.name, link: result.webViewLink });
-                toast({
-                    title: "Record Created Successfully",
-                    description: `Generated ${newName}`,
-                });
+                toast.success("Record Created Successfully", { description: `Generated ${newName}` });
             }
         } catch (error: unknown) {
-            toast({
-                title: "Creation Failed",
-                description: error.message || "An unexpected error occurred",
-                variant: "destructive",
-            });
+            toast.error("Creation Failed", { description: (error as Error)?.message || "An unexpected error occurred" });
         } finally {
             setIsCreating(false);
         }
@@ -130,7 +121,7 @@ export function AddRecordModal({ isOpen, onClose, templates, onSuccess }: AddRec
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        <FilePlus className="w-5 h-5 text-sidebar-primary" />
+                        <FilePlus className="w-5 h-5 text-primary" />
                         Create New Record
                     </DialogTitle>
                 </DialogHeader>
@@ -146,7 +137,7 @@ export function AddRecordModal({ isOpen, onClose, templates, onSuccess }: AddRec
                                 <SelectContent>
                                     {templates.map((t) => (
                                         <SelectItem key={t.code} value={t.code}>
-                                            <span className="font-mono text-xs mr-2 text-sidebar-primary">{t.code}</span>
+                                            <span className="font-mono text-xs mr-2 text-primary">{t.code}</span>
                                             {t.recordName}
                                         </SelectItem>
                                     ))}
@@ -156,7 +147,7 @@ export function AddRecordModal({ isOpen, onClose, templates, onSuccess }: AddRec
 
                         {selectedTemplate && (
                             <div className="space-y-4">
-                                <div className="p-4 bg-muted/30 rounded-lg border border-border/50">
+                                <div className="p-4 bg-muted/30 rounded-sm border border-border/50">
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1">Target Folder</p>
@@ -164,7 +155,7 @@ export function AddRecordModal({ isOpen, onClose, templates, onSuccess }: AddRec
                                         </div>
                                         <div>
                                             <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1">Next Serial</p>
-                                            <p className="text-xs font-bold text-sidebar-primary">{calculateNextSerial(selectedTemplate)}</p>
+                                            <p className="text-xs font-bold text-primary">{calculateNextSerial(selectedTemplate)}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -219,7 +210,7 @@ export function AddRecordModal({ isOpen, onClose, templates, onSuccess }: AddRec
                     </div>
                 ) : (
                     <div className="py-8 text-center space-y-4">
-                        <div className="w-16 h-16 bg-success/10 text-success rounded-full flex items-center justify-center mx-auto mb-4">
+                        <div className="w-16 h-16 bg-success/10 text-success rounded-sm flex items-center justify-center mx-auto mb-4">
                             <CheckCircle2 className="w-10 h-10" />
                         </div>
                         <h3 className="font-bold text-xl">System Ready</h3>
@@ -229,7 +220,7 @@ export function AddRecordModal({ isOpen, onClose, templates, onSuccess }: AddRec
                         <Button
                             className="w-full gap-2"
                             onClick={() => {
-                                window.open(createdFile.link, '_blank');
+                                window.open(createdFile.link, '_blank', 'noopener,noreferrer');
                                 handleReset();
                                 onSuccess();
                             }}

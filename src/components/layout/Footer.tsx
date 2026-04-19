@@ -26,7 +26,7 @@ export function Footer() {
                 Ahmed Khaled
               </button>
               {showPhone ? (
-                <span className="ml-2 inline-flex items-center gap-1 text-primary bg-primary/10 px-2 py-0.5 rounded-full animate-fade-in">
+                <span className="ml-2 inline-flex items-center gap-1 text-primary bg-primary/10 px-2 py-0.5 rounded-sm animate-fade-in">
                   <Phone className="w-2.5 h-2.5" />
                   01121199859
                 </span>

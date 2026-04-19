@@ -477,10 +477,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = React.useCallback(async (email: string, password: string): Promise<{ ok: boolean; code: string; message: string; user?: AppUser; backend: "supabase" | "local" }> => {
     const backend: "supabase" | "local" = supabase ? "supabase" : "local";
     if (!email.trim()) {
-      return { ok: false, code: "email_empty", message: "البريد الإلكتروني فارغ", backend };
+      return { ok: false, code: "email_empty", message: "Email is required", backend };
     }
     if (!password.trim()) {
-      return { ok: false, code: "password_empty", message: "كلمة المرور فارغة", backend };
+      return { ok: false, code: "password_empty", message: "Password is required", backend };
     }
 
     if (backend === "supabase") {
@@ -547,7 +547,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (!is_active) {
           await supabase!.auth.signOut();
-          return { ok: false, code: "inactive", message: "الحساب غير مفعل", backend };
+          return { ok: false, code: "inactive", message: "Account not activated", backend };
         }
 
         const finalLastLogin = profileRow?.last_login ? new Date(profileRow.last_login).getTime() : Date.now();
@@ -575,7 +575,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(u);
         saveSession(u.id, u.role, u.name);
         setSupabaseDisabled(false);
-        return { ok: true, code: "ok", message: "تم تسجيل الدخول", user: u, backend };
+        return { ok: true, code: "ok", message: "Logged in successfully", user: u, backend };
 
       } catch (err) {
         console.warn("[AUTH] Supabase Auth rejected, trying custom password column fallback...");
@@ -602,7 +602,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             } catch { /* non-critical */ }
 
             const isActive = !!(prof.is_active ?? true);
-            if (!isActive) return { ok: false, code: "inactive", message: "الحساب غير مفعل", backend };
+            if (!isActive) return { ok: false, code: "inactive", message: "Account not activated", backend };
 
             const u: AppUser = {
               id: authUserId,
@@ -618,7 +618,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(u);
             saveSession(u.id, u.role, u.name);
             setSupabaseDisabled(false);
-            return { ok: true, code: "ok", message: "تم تسجيل الدخول", user: u, backend };
+            return { ok: true, code: "ok", message: "Logged in successfully", user: u, backend };
           }
         } catch (fallbackErr) {
           console.error("Error");
@@ -637,12 +637,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUsers(users.map(x => (x.id === u.id ? u : x)));
           setUser(u);
           saveSession(u.id, u.role, u.name);
-          return { ok: true, code: "ok", message: "تم تسجيل الدخول", user: u, backend: "local" };
+          return { ok: true, code: "ok", message: "Logged in successfully", user: u, backend: "local" };
         }
       }
     }
 
-    return { ok: false, code: "failed", message: "بيانات الاعتماد غير صحيحة", backend };
+    return { ok: false, code: "failed", message: "Invalid credentials", backend };
   }, [users, supabaseDisabled]);
 
 
@@ -826,7 +826,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const resetPassword = React.useCallback(async (email: string): Promise<{ ok: boolean; message: string }> => {
     if (!supabase) {
-      return { ok: false, message: "خدمة المصادقة غير متوفرة" };
+      return { ok: false, message: "Authentication service unavailable" };
     }
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -836,10 +836,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error("Error");
         return { ok: false, message: error.message };
       }
-      return { ok: true, message: `تم إرسال رابط إعادة تعيين كلمة المرور إلى ${email}` };
+      return { ok: true, message: `Password reset link sent to ${email}` };
     } catch (e) {
       console.error("Error");
-      return { ok: false, message: "حدث خطأ غير متوقع" };
+      return { ok: false, message: "An unexpected error occurred" };
     }
   }, []);
 

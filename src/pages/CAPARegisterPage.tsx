@@ -1,7 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Sidebar } from "@/components/layout/Sidebar";
-import { Header } from "@/components/layout/Header";
+import { AppShell } from "@/components/layout/AppShell";
 import { useCAPAData } from "@/hooks/useCAPAData";
 import { getCAPAStatusColor } from "@/lib/capaRegisterService";
 import type { CAPAStatus, CAPAType, CAPAInput } from "@/lib/capaRegisterService";
@@ -32,8 +31,6 @@ import {
 
 export default function CAPARegisterPage() {
   const navigate = useNavigate();
-  const [activeModule, setActiveModule] = useState("capa");
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(localStorage.getItem('sidebarCollapsed') === 'true');
   const { capas, stats, isLoading, isError, error, refetch, addCAPA, updateCAPA, isAdding } = useCAPAData();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
@@ -93,23 +90,9 @@ export default function CAPARegisterPage() {
 
   const filteredCAPAs = getFilteredCAPAs();
 
-  useEffect(() => {
-    const handleToggle = (event: Event) => {
-      const customEvent = event as CustomEvent<boolean>;
-      setSidebarCollapsed(customEvent.detail);
-    };
-    window.addEventListener('qms-sidebar-toggle', handleToggle as EventListener);
-    return () => window.removeEventListener('qms-sidebar-toggle', handleToggle as EventListener);
-  }, []);
-
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
-      <Sidebar activeModule={activeModule} onModuleChange={setActiveModule} />
-
-      <div className={`flex-1 flex flex-col ml-0 transition-all duration-300 ${sidebarCollapsed ? "md:ml-16" : "md:ml-64"}`}>
-        <Header />
-
-        <main className="flex-1 p-6 space-y-6">
+    <AppShell breadcrumbs={[{ label: "Dashboard", path: "/" }, { label: "CAPA Register" }]}>
+      <div className="space-y-6">
           {/* Page Header */}
           <div className="flex items-center justify-between">
             <div>
@@ -363,7 +346,7 @@ export default function CAPARegisterPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card className="border-l-4 border-l-blue-500">
               <CardContent className="p-4 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-sm bg-blue-100 flex items-center justify-center">
                   <FileCheck2 className="w-6 h-6 text-blue-600" />
                 </div>
                 <div className="flex-1">
@@ -380,7 +363,7 @@ export default function CAPARegisterPage() {
 
             <Card className="border-l-4 border-l-purple-500">
               <CardContent className="p-4 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-sm bg-purple-100 flex items-center justify-center">
                   <FileCheck2 className="w-6 h-6 text-purple-600" />
                 </div>
                 <div className="flex-1">
@@ -492,9 +475,7 @@ export default function CAPARegisterPage() {
               </Tabs>
             </CardContent>
           </Card>
-        </main>
-        {/* Footer */}
-      </div>
-    </div>
+        </div>
+    </AppShell>
   );
 }

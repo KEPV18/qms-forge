@@ -1,5 +1,5 @@
 import { Loader2 } from 'lucide-react';
-import { cn } from './utils';
+import { cn } from '@/lib/utils';
 
 interface SpinnerProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -35,7 +35,7 @@ export function LoadingOverlay({
   
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center glass">
-      <div className="flex flex-col items-center gap-4 p-8 bg-card rounded-lg shadow-lg">
+      <div className="flex flex-col items-center gap-4 p-8 bg-card rounded-sm shadow-lg">
         <Spinner size="lg" />
         <p className="text-muted-foreground">{message}</p>
       </div>
@@ -67,7 +67,7 @@ export function LoadingSkeleton({
 // Card skeleton
 export function CardSkeleton() {
   return (
-    <div className="p-4 border rounded-lg space-y-3">
+    <div className="p-4 border rounded-sm space-y-3">
       <div className="skeleton h-6 w-1/2 rounded" />
       <div className="skeleton h-4 w-3/4 rounded" />
       <div className="skeleton h-4 w-full rounded" />

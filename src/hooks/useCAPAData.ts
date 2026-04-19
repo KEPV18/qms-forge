@@ -6,7 +6,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import {
   getAllCAPAs,
   addCAPA,
@@ -24,8 +24,6 @@ const QUERY_KEY = ["capas"];
  */
 export function useCAPAData() {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
-
   // Fetch all CAPAs
   const {
     data: capas = [],
@@ -45,18 +43,13 @@ export function useCAPAData() {
     mutationFn: (input: CAPAInput) => addCAPA(input),
     onSuccess: (newCAPA) => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEY });
-      toast({
-        title: "CAPA Created",
-        description: `CAPA ${newCAPA.capaId} has been created successfully.`,
-      });
+      toast.success("CAPA Created", { description: `CAPA ${newCAPA.capaId} has been created successfully.` });
     },
     onError: (error: Error) => {
-      toast({
-        title: "Failed to Create CAPA",
+      toast.error("Failed to Create CAPA", {
         description: error.message.includes("API key")
           ? "Write operations require OAuth authentication. Current API key is read-only."
           : error.message,
-        variant: "destructive",
       });
     },
   });
@@ -67,18 +60,13 @@ export function useCAPAData() {
       updateCAPA(capaId, updates),
     onSuccess: (updatedCAPA) => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEY });
-      toast({
-        title: "CAPA Updated",
-        description: `CAPA ${updatedCAPA.capaId} has been updated successfully.`,
-      });
+      toast.success("CAPA Updated", { description: `CAPA ${updatedCAPA.capaId} has been updated successfully.` });
     },
     onError: (error: Error) => {
-      toast({
-        title: "Failed to Update CAPA",
+      toast.error("Failed to Update CAPA", {
         description: error.message.includes("API key")
           ? "Write operations require OAuth authentication. Current API key is read-only."
           : error.message,
-        variant: "destructive",
       });
     },
   });

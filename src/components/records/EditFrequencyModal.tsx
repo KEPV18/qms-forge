@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { QMSRecord, updateSheetCell } from "@/lib/googleSheets";
 import { Loader2, Calendar, Save } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface EditFrequencyModalProps {
@@ -40,7 +40,6 @@ const FREQUENCY_OPTIONS = [
 export function EditFrequencyModal({ record, isOpen, onClose }: EditFrequencyModalProps) {
     const [frequency, setFrequency] = useState<string>(record?.whenToFill || "");
     const [isSaving, setIsSaving] = useState(false);
-    const { toast } = useToast();
     const queryClient = useQueryClient();
 
     // Reset local state when record changes
@@ -56,20 +55,12 @@ export function EditFrequencyModal({ record, isOpen, onClose }: EditFrequencyMod
             // Column E is "When to Fill" (Frequency)
             await updateSheetCell(record.rowIndex, "E", frequency);
 
-            toast({
-                title: "Frequency Updated",
-                description: `Successfully changed frequency for ${record.code} to ${frequency}.`,
-                className: "bg-success text-success-foreground"
-            });
+            toast.success("Frequency Updated", { description: `Successfully changed frequency for ${record.code} to ${frequency}.` });
 
             queryClient.invalidateQueries({ queryKey: ["qms-data"] });
             onClose();
         } catch (error: unknown) {
-            toast({
-                title: "Update Failed",
-                description: error.message || "Could not update frequency in Google Sheets.",
-                variant: "destructive",
-            });
+            toast.error("Update Failed", { description: (error as Error)?.message || "Could not update frequency in Google Sheets." });
         } finally {
             setIsSaving(false);
         }
@@ -80,13 +71,13 @@ export function EditFrequencyModal({ record, isOpen, onClose }: EditFrequencyMod
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        <Calendar className="w-5 h-5 text-sidebar-primary" />
+                        <Calendar className="w-5 h-5 text-primary" />
                         Edit Fill Frequency
                     </DialogTitle>
                 </DialogHeader>
 
                 <div className="space-y-6 py-4">
-                    <div className="p-3 bg-muted/30 rounded-lg border border-border/50">
+                    <div className="p-3 bg-muted/30 rounded-sm border border-border/50">
                         <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Form Code</p>
                         <p className="text-sm font-semibold">{record?.code} - {record?.recordName}</p>
                     </div>

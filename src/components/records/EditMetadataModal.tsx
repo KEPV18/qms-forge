@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { QMSRecord, RecordStatus, updateSheetCell } from "@/lib/googleSheets";
 import { Settings, Loader2, Save, AlertTriangle } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface EditMetadataModalProps {
     isOpen: boolean;
@@ -52,8 +52,6 @@ export function EditMetadataModal({ isOpen, onClose, record, fileId, fileName, o
     const [targetYear, setTargetYear] = useState(currentReview.targetYear || "");
 
     const [isSaving, setIsSaving] = useState(false);
-    const { toast } = useToast();
-
     const PROJECTS = [
         "General / All Company",
         "Omniaz Project - Mapping",
@@ -93,19 +91,12 @@ export function EditMetadataModal({ isOpen, onClose, record, fileId, fileName, o
             );
 
             if (success) {
-                toast({
-                    title: "Metadata Updated",
-                    description: `Successfully updated audit details for ${fileName}`,
-                });
+                toast.success("Metadata Updated", { description: `Successfully updated audit details for ${fileName}` });
                 onSuccess();
                 onClose();
             }
         } catch (error: unknown) {
-            toast({
-                title: "Update Failed",
-                description: (error as Error).message || "Could not save changes to Google Sheets",
-                variant: "destructive",
-            });
+            toast.error("Update Failed", { description: (error as Error).message || "Could not save changes to Google Sheets" });
         } finally {
             setIsSaving(false);
         }
@@ -116,7 +107,7 @@ export function EditMetadataModal({ isOpen, onClose, record, fileId, fileName, o
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        <Settings className="w-5 h-5 text-sidebar-primary" />
+                        <Settings className="w-5 h-5 text-primary" />
                         Edit Record Metadata
                     </DialogTitle>
                     <p className="text-xs text-muted-foreground mt-1 truncate font-mono bg-muted px-2 py-1 rounded">
@@ -231,7 +222,7 @@ export function EditMetadataModal({ isOpen, onClose, record, fileId, fileName, o
                                 />
                             </div>
                             {identifiedErrors && (
-                                <div className="flex items-center space-x-2 bg-muted/30 p-3 rounded-lg border border-border">
+                                <div className="flex items-center space-x-2 bg-muted/30 p-3 rounded-sm border border-border">
                                     <Checkbox 
                                         id="errorsFixed" 
                                         checked={errorsFixed}

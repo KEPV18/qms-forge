@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { getAccessToken } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import logoImg from "@/assets/logo.png";
 
 export function Header() {
@@ -20,7 +20,6 @@ export function Header() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { toast } = useToast();
   const [driveConnected, setDriveConnected] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -61,11 +60,7 @@ export function Header() {
         const driveResults = await searchProjectDrive(searchTerm);
         setResults(driveResults);
       } catch (error) {
-        toast({
-          title: "Search failed",
-          description: "Could not search Drive files. Please try again.",
-          variant: "destructive",
-        });
+        toast.error("Search failed", { description: "Could not search Drive files. Please try again." });
       } finally {
         setIsSearching(false);
       }
@@ -120,11 +115,11 @@ export function Header() {
                 {results.map((file) => (
                   <div
                     key={file.id}
-                    onClick={() => window.open(file.webViewLink, '_blank')}
+                    onClick={() => window.open(file.webViewLink, '_blank', 'noopener,noreferrer')}
                     className="px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer border-b border-border/30 last:border-0"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-background/60 flex items-center justify-center border border-border/50">
+                      <div className="w-8 h-8 rounded-sm bg-background/60 flex items-center justify-center border border-border/50">
                         {getFileIcon(file.mimeType)}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -133,7 +128,7 @@ export function Header() {
                           {(() => {
                             const typeInfo = getFileTypeInfo(file);
                             return (
-                              <span className={cn("text-[9px] px-1.5 py-0.5 rounded-full font-bold border uppercase shrink-0", typeInfo.color)}>
+                              <span className={cn("text-[9px] px-1.5 py-0.5 rounded-sm font-bold border uppercase shrink-0", typeInfo.color)}>
                                 {typeInfo.label}
                               </span>
                             );
@@ -181,7 +176,7 @@ export function Header() {
 
         {/* Global Branding Center */}
         <div className="hidden lg:flex items-center gap-4 px-8 h-full border-x border-border/10">
-          <div className="w-12 h-12 rounded-xl bg-white p-2 border border-border/50 shadow-lg shadow-black/5 transition-all hover:scale-105 hover:rotate-3 duration-500 flex-shrink-0">
+          <div className="w-12 h-12 rounded-sm bg-white p-2 border border-border/50 shadow-lg shadow-black/5 transition-all hover:scale-105 hover:rotate-3 duration-500 flex-shrink-0">
             <img src={logoImg} alt="Vezloo" className="w-full h-full object-contain" />
           </div>
           <div className="flex flex-col justify-center">
@@ -196,8 +191,8 @@ export function Header() {
             <Button 
               variant="destructive" 
               size="sm" 
-              className="h-8 text-[10px] gap-1.5 px-3 rounded-full animate-pulse shadow-lg shadow-destructive/20 border-white/20"
-              onClick={() => window.open('/api/auth', '_blank')}
+              className="h-8 text-[10px] gap-1.5 px-3 rounded-sm animate-pulse shadow-lg shadow-destructive/20 border-white/20"
+              onClick={() => window.open('/api/auth', '_blank', 'noopener,noreferrer')}
             >
               <AlertTriangle className="w-3.5 h-3.5" />
               <span className="font-bold uppercase tracking-wider">Connect Drive</span>
@@ -205,7 +200,7 @@ export function Header() {
           )}
 
           {driveConnected === true && (
-            <div className="hidden lg:flex items-center gap-1.5 px-3 py-1 rounded-full bg-success/10 border border-success/20 text-success mr-2">
+            <div className="hidden lg:flex items-center gap-1.5 px-3 py-1 rounded-sm bg-success/10 border border-success/20 text-success mr-2">
                <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
                <span className="text-[10px] font-bold uppercase tracking-wider">Drive Active</span>
             </div>
@@ -214,7 +209,8 @@ export function Header() {
           <NotificationBell />
           {/* Mobile search toggle */}
           <button
-            className="md:hidden p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            aria-label="Search"
+            className="md:hidden p-2 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
             onClick={() => setShowMobileSearch(!showMobileSearch)}
           >
             <Search className="w-5 h-5" />

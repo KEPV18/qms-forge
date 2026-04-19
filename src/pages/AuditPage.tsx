@@ -1,9 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Sidebar } from "@/components/layout/Sidebar";
-import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
-import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
+import { AppShell } from "@/components/layout/AppShell";
 import { useQMSData } from "@/hooks/useQMSData";
 import { RecordsTable } from "@/components/records/RecordsTable";
 import { AuditCharts } from "@/components/audit/AuditCharts";
@@ -35,17 +32,15 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQueryClient } from "@tanstack/react-query";
 import { normalizeCategory, updateSheetCell, QMSRecord } from "@/lib/googleSheets";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 export default function AuditPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   const { user } = useAuth();
-  const [activeModule, setActiveModule] = useState("quality");
   const [activeTab, setActiveTab] = useState("pending");
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(localStorage.getItem('sidebarCollapsed') === 'true');
   const [viewMode, setViewMode] = useState<"card" | "compact">("compact");
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -70,14 +65,6 @@ export default function AuditPage() {
     if (searchParam) setSearch(searchParam);
   }, [location.search]);
 
-  useEffect(() => {
-    const handleToggle = (event: Event) => {
-      setSidebarCollapsed((event as CustomEvent<boolean>).detail);
-    };
-    window.addEventListener('qms-sidebar-toggle', handleToggle as EventListener);
-    return () => window.removeEventListener('qms-sidebar-toggle', handleToggle as EventListener);
-  }, []);
-
   const { data: records, isLoading, error, dataUpdatedAt, refetch } = useQMSData();
 
   const handleRefresh = () => {
@@ -86,7 +73,7 @@ export default function AuditPage() {
   };
 
   // Bulk status change: updates all files in a tab to a new status
-  const handleBulkStatusChange = useCallback(async (items: unknown[], newStatus: string) => {
+  const handleBulkStatusChange = useCallback(async (items: QMSRecord[], newStatus: string) => {
     if (items.length === 0) return;
     setBulkLoading(true);
     const reviewerName = user?.name || user?.email || "System";
@@ -117,17 +104,14 @@ export default function AuditPage() {
         if (success) successCount += fileIds.length;
       }
 
-      toast({
-        title: `Bulk Update Complete`,
-        description: `${successCount} files changed to "${newStatus}"`,
-      });
+      toast.success(`Bulk Update Complete`, { description: `${successCount} files changed to "${newStatus}"` });
       queryClient.invalidateQueries({ queryKey: ["qms-data"] });
     } catch (error: unknown) {
-      toast({ title: "Bulk Update Failed", description: (error as Error).message, variant: "destructive" });
+      toast.error("Bulk Update Failed", { description: (error as Error).message });
     } finally {
       setBulkLoading(false);
     }
-  }, [user, queryClient, toast]);
+  }, [user, queryClient]);
 
   // Per-record approve: updates a single rejected file to 'approved'
   const handleApproveRecord = useCallback(async (item: QMSRecord) => {
@@ -168,22 +152,15 @@ export default function AuditPage() {
         await updateSheetCell(item.rowIndex, 'N', reviewerName); // Reviewer
         await updateSheetCell(item.rowIndex, 'O', today); // Review Date
         
-        toast({
-          title: "✅ Record Approved",
-          description: `"${item.fileName || item.recordName}" has been approved and audit trail recorded.`,
-        });
+        toast.success("Record Approved", { description: `"${item.fileName || item.recordName}" has been approved and audit trail recorded.` });
         queryClient.invalidateQueries({ queryKey: ["qms-data"] });
       } else {
         throw new Error("Update returned false");
       }
     } catch (err: unknown) {
-      toast({
-        title: "Approval Failed",
-        description: (err as Error)?.message || "Could not update the record status.",
-        variant: "destructive",
-      });
+      toast.error("Approval Failed", { description: (err as Error)?.message || "Could not update the record status." });
     }
-  }, [user, queryClient, toast]);
+  }, [user, queryClient]);
 
   // Export all metadata to JSON file
   const handleExportMetadata = useCallback(() => {
@@ -229,25 +206,17 @@ export default function AuditPage() {
           if (success) successCount++;
         }
 
-        toast({
-          title: "Metadata Imported",
-          description: `${successCount} records restored successfully`,
-        });
+        toast.success("Metadata Imported", { description: `${successCount} records restored successfully` });
         queryClient.invalidateQueries({ queryKey: ["qms-data"] });
       } catch (error: unknown) {
-        toast({ title: "Import Failed", description: (error as Error).message, variant: "destructive" });
+        toast.error("Import Failed", { description: (error as Error).message });
       } finally {
         setBulkLoading(false);
       }
     };
     input.click();
-  }, [queryClient, toast]);
+  }, [queryClient]);
 
-  const handleModuleChange = (newModuleId: string) => {
-    setActiveModule(newModuleId);
-    if (newModuleId === "dashboard") navigate("/");
-    else if (newModuleId !== "documents") navigate(`/module/${newModuleId}`);
-  };
 
   // All unique categories, projects, years
   const { categories, projects, years } = useMemo(() => {
@@ -282,7 +251,7 @@ export default function AuditPage() {
     };
 
     const searchLower = search.toLowerCase();
-    const matchesSearch = (r: unknown) => {
+    const matchesSearch = (r: QMSRecord) => {
       if (!search) return true;
       return (
         r.code?.toLowerCase().includes(searchLower) ||
@@ -291,36 +260,30 @@ export default function AuditPage() {
         r.fileName?.toLowerCase().includes(searchLower)
       );
     };
-    const matchesCategory = (r: unknown) => categoryFilter === "all" || r.category === categoryFilter;
+    const matchesCategory = (r: QMSRecord) => categoryFilter === "all" || r.category === categoryFilter;
 
-    const pending: unknown[] = [];
-    const compliant: unknown[] = [];
-    const issuesList: unknown[] = [];
+    const pending: QMSRecord[] = [];
+    const compliant: QMSRecord[] = [];
+    const issuesList: QMSRecord[] = [];
 
     records.forEach(record => {
       const files = record.files || [];
       const reviews = record.fileReviews || {};
       const recordLevelStatus = reviews?.recordStatus;
-      
+
       files.forEach(file => {
         const review = reviews[file.id] || { status: 'pending_review', comment: '' };
-        
-        // Final effective status for this file
+
         const effectiveStatus: string = review.status;
-        
-        // NOTE: Removed automatic rejection logic due to user feedback.
-        // New files without individual reviews should default to "pending_review",
-        // not automatically marked as "Issues" just because the form was flagged by Automated Audit.
-        // The form-level flag (recordLevelStatus) is kept in fileComment for context.
 
         const auditItem = {
-          ...record, 
-          fileId: file.id, 
-          fileName: file.name, 
+          ...record,
+          fileId: file.id,
+          fileName: file.name,
           fileLink: file.webViewLink,
-          fileStatus: effectiveStatus, 
+          fileStatus: effectiveStatus,
           fileComment: review.comment || (recordLevelStatus === 'rejected' ? "Automated Audit detected issues in this form." : ""),
-          fileReviewedBy: review.reviewedBy || record.reviewedBy || "", 
+          fileReviewedBy: review.reviewedBy || record.reviewedBy || "",
           fileTargetYear: review.targetYear ? review.targetYear.toString() : "2026",
           fileProject: review.project || "General",
           isAtomic: true
@@ -330,27 +293,51 @@ export default function AuditPage() {
         const normalizedProject = (rawProject === "General / All Company") ? "General" : rawProject;
         const matchesProject = projectFilter === "all" || normalizedProject === projectFilter;
         const matchesYear = yearFilter === "all" || auditItem.fileTargetYear === yearFilter;
-        // dateFilter matches reviewDate
         const itemReviewDate = auditItem.reviewDate || review.reviewDate || "";
         const matchesDate = !dateFilter || itemReviewDate.startsWith(dateFilter) || itemReviewDate.includes(dateFilter);
 
         if (!matchesSearch(auditItem) || !matchesCategory(auditItem) || !matchesProject || !matchesYear || !matchesDate) return;
-        
+
         if (effectiveStatus === 'approved') compliant.push(auditItem);
         else if (effectiveStatus === 'rejected') issuesList.push(auditItem);
         else pending.push(auditItem);
       });
     });
 
-    const filteredRecords = records.filter(r => {
-      const isMatch = matchesSearch(r) && matchesCategory(r);
-      // For parent records, strictly matching file reviews is tricky, so we mostly apply name/category search,
-      // but let's apply project/year if possible to the parent if they want. 
-      // Given the list is mostly atomic, it's fine.
-      return isMatch;
+    // Overdue: spread as atomic records (file-level) for consistent display
+    const overdue: QMSRecord[] = [];
+    const neverFilled: QMSRecord[] = [];
+    records.forEach(record => {
+      if (!matchesSearch(record) || !matchesCategory(record)) return;
+      const files = record.files || [];
+      const reviews = record.fileReviews || {};
+
+      if (record.isOverdue) {
+        if (files.length > 0) {
+          files.forEach(file => {
+            const review = reviews[file.id] || { status: 'pending_review', comment: '' };
+            overdue.push({
+              ...record,
+              fileId: file.id,
+              fileName: file.name,
+              fileLink: file.webViewLink,
+              fileStatus: review.status || 'pending_review',
+              fileComment: review.comment || "",
+              fileReviewedBy: review.reviewedBy || record.reviewedBy || "",
+              fileTargetYear: review.targetYear ? review.targetYear.toString() : "2026",
+              fileProject: review.project || "General",
+              isAtomic: true
+            });
+          });
+        } else {
+          overdue.push({ ...record, fileStatus: 'pending_review', isAtomic: true, fileName: record.recordName, fileId: '', fileProject: "General", fileTargetYear: "2026", fileReviewedBy: record.reviewedBy || "", fileComment: "" });
+        }
+      }
+
+      if ((record.actualRecordCount || 0) === 0) {
+        neverFilled.push({ ...record, fileStatus: 'pending_review', isAtomic: true, fileName: record.recordName, fileId: '', fileProject: "General", fileTargetYear: "2026", fileReviewedBy: record.reviewedBy || "", fileComment: "" });
+      }
     });
-    const overdue = filteredRecords.filter(r => r.isOverdue);
-    const neverFilled = filteredRecords.filter(r => (r.actualRecordCount || 0) === 0);
 
     // Category breakdown for bar chart (unfiltered for full picture)
     const catMap = new Map<string, { compliant: number; pending: number; issues: number }>();
@@ -410,7 +397,7 @@ export default function AuditPage() {
     const headers = isAtomic
       ? ["Code", "Record Name", "Category", "File Name", "Status", "Reviewed By"]
       : ["Code", "Record Name", "Category", "Description", "Last Filed", "Frequency"];
-    const rows = currentTabData.map((r: unknown) =>
+    const rows = currentTabData.map((r: QMSRecord) =>
       isAtomic
         ? [r.code, r.recordName, r.category, r.fileName || "", r.fileStatus || "", r.fileReviewedBy || ""]
         : [r.code, r.recordName, r.category, r.description || "", r.lastFileDate || "", r.fillFrequency || ""]
@@ -441,15 +428,8 @@ export default function AuditPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Sidebar activeModule={activeModule} onModuleChange={handleModuleChange} />
-
-      <div className={cn("flex-1 flex flex-col ml-0 transition-all duration-300", sidebarCollapsed ? "md:ml-[60px]" : "md:ml-60")}>
-        <Header />
-
-        <main className="flex-1">
-          <div className="max-w-[1400px] mx-auto p-4 md:p-6 space-y-5">
-            <Breadcrumbs items={[{ label: "Dashboard", path: "/" }, { label: "Audit Dashboard" }]} />
+    <AppShell breadcrumbs={[{ label: "Dashboard", path: "/" }, { label: "Audit Dashboard" }]}>
+      <div className="space-y-5">
 
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -464,8 +444,8 @@ export default function AuditPage() {
               </div>
               <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap overflow-x-auto pb-1">
                 {lastUpdated && (
-                  <span className="hidden lg:flex items-center gap-1.5 text-[10px] text-muted-foreground bg-muted/40 px-3 py-1.5 rounded-lg border border-border/50 shrink-0">
-                    <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                  <span className="hidden lg:flex items-center gap-1.5 text-[10px] text-muted-foreground bg-muted/40 px-3 py-1.5 rounded-sm border border-border/50 shrink-0">
+                    <div className="w-1.5 h-1.5 rounded-sm bg-success animate-pulse" />
                     Synced {lastUpdated}
                   </span>
                 )}
@@ -511,13 +491,13 @@ export default function AuditPage() {
                 <div
                   key={s.label}
                   className={cn(
-                    "bg-card rounded-xl border border-border p-4 flex items-center gap-3 transition-colors",
+                    "bg-card rounded-sm border border-border p-4 flex items-center gap-3 transition-colors",
                     s.tab && "cursor-pointer hover:shadow-sm",
                     activeTab === s.tab && "ring-1 ring-primary/30"
                   )}
                   onClick={() => s.tab && handleTabChange(s.tab)}
                 >
-                  <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center", s.bg)}>
+                  <div className={cn("w-9 h-9 rounded-sm flex items-center justify-center", s.bg)}>
                     <s.icon className={cn("w-4 h-4", s.color)} />
                   </div>
                   <div>
@@ -532,13 +512,13 @@ export default function AuditPage() {
             <AuditCharts stats={stats} categoryBreakdown={categoryBreakdown} />
 
             {/* Compliance bar */}
-            <div className="bg-card rounded-xl border border-border p-5">
+            <div className="bg-card rounded-sm border border-border p-5">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-sm font-semibold text-foreground">Template Population Rate</span>
                 <span className="text-2xl font-bold text-success">{complianceRate}%</span>
               </div>
-              <div className="w-full bg-muted/30 rounded-full h-2 overflow-hidden">
-                <div className="bg-success h-2 rounded-full transition-all duration-700" style={{ width: `${complianceRate}%` }} />
+              <div className="w-full bg-muted/30 rounded-sm h-2 overflow-hidden">
+                <div className="bg-success h-2 rounded-sm transition-all duration-700" style={{ width: `${complianceRate}%` }} />
               </div>
               <p className="text-[10px] text-muted-foreground mt-2">
                 {stats.filledTemplatesCount} of {stats.totalTemplates} templates populated
@@ -566,7 +546,7 @@ export default function AuditPage() {
             />
 
             {/* Tabs */}
-            <div className="bg-card rounded-xl border border-border overflow-hidden">
+            <div className="bg-card rounded-sm border border-border overflow-hidden">
               <Tabs value={activeTab} onValueChange={handleTabChange}>
                 <div className="px-5 py-2 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-3 overflow-x-auto overflow-y-hidden">
                   <TabsList className="bg-transparent h-11 p-0 gap-1 shrink-0">
@@ -592,7 +572,7 @@ export default function AuditPage() {
                   </TabsList>
                   
                   {/* View Toggle */}
-                  <div className="hidden sm:flex items-center bg-muted/40 rounded-lg p-0.5 border border-border/50 shrink-0">
+                  <div className="hidden sm:flex items-center bg-muted/40 rounded-sm p-0.5 border border-border/50 shrink-0">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -637,7 +617,9 @@ export default function AuditPage() {
                       </Button>
                     </div>
                   )}
-                  <RecordsTable records={pendingRecords} isLoading={isLoading} variant={viewMode === "card" ? "default" : "compact"} />
+                  <ErrorBoundary>
+                    <RecordsTable records={pendingRecords} isLoading={isLoading} variant={viewMode === "card" ? "default" : "compact"} onApproveRecord={handleApproveRecord} />
+                  </ErrorBoundary>
                 </TabsContent>
                 <TabsContent value="compliant" className="m-0">
                   {compliantRecords.length > 0 && (
@@ -654,16 +636,16 @@ export default function AuditPage() {
                       </Button>
                     </div>
                   )}
-                  <div className="bg-muted/10 p-2 sm:p-4 rounded-b-xl min-h-[500px]">
-                     <RecordsTable records={compliantRecords} isLoading={isLoading} variant={viewMode === "card" ? "default" : "compact"} />
-                  </div>
+                  <ErrorBoundary>
+                    <RecordsTable records={compliantRecords} isLoading={isLoading} variant={viewMode === "card" ? "default" : "compact"} onApproveRecord={handleApproveRecord} />
+                  </ErrorBoundary>
                 </TabsContent>
                 <TabsContent value="issues" className="m-0">
                   {issueRecords.length > 0 && (
                     <div className="px-5 py-3 border-b border-border flex items-center gap-2 bg-muted/20 flex-wrap">
-                      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-1.5">
-                        <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                        <span>Use the <strong className="text-emerald-600">Approve</strong> button on each record below to approve individually</span>
+                      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground bg-success/10 border border-success/20 rounded-sm px-3 py-1.5">
+                        <CheckCircle className="w-3.5 h-3.5 text-success shrink-0" />
+                        <span>Use the <strong className="text-success">Approve</strong> button on each record below to approve individually</span>
                       </div>
                       <Button
                         size="sm"
@@ -677,12 +659,14 @@ export default function AuditPage() {
                       </Button>
                     </div>
                   )}
-                  <RecordsTable
-                    records={issueRecords}
-                    isLoading={isLoading}
-                    variant={viewMode === "card" ? "default" : "compact"}
-                    onApproveRecord={handleApproveRecord}
-                  />
+                  <ErrorBoundary>
+                    <RecordsTable
+                      records={issueRecords}
+                      isLoading={isLoading}
+                      variant={viewMode === "card" ? "default" : "compact"}
+                      onApproveRecord={handleApproveRecord}
+                    />
+                  </ErrorBoundary>
                 </TabsContent>
 
                 {/* Overdue tab */}
@@ -694,7 +678,9 @@ export default function AuditPage() {
                       <p className="text-xs text-muted-foreground mt-1">All records are up to date</p>
                     </div>
                   ) : (
-                  <RecordsTable records={overdueRecords} isLoading={isLoading} />
+                  <ErrorBoundary>
+                    <RecordsTable records={overdueRecords} isLoading={isLoading} variant={viewMode === "card" ? "default" : "compact"} onApproveRecord={handleApproveRecord} />
+                  </ErrorBoundary>
                   )}
                 </TabsContent>
 
@@ -707,7 +693,9 @@ export default function AuditPage() {
                       <p className="text-xs text-muted-foreground mt-1">No empty templates found</p>
                     </div>
                   ) : (
-                  <RecordsTable records={neverFilledRecords} isLoading={isLoading} />
+                  <ErrorBoundary>
+                    <RecordsTable records={neverFilledRecords} isLoading={isLoading} variant={viewMode === "card" ? "default" : "compact"} />
+                  </ErrorBoundary>
                   )}
                 </TabsContent>
               </Tabs>
@@ -720,9 +708,6 @@ export default function AuditPage() {
             />
 
           </div>
-        </main>
-        <Footer />
-      </div>
-    </div>
+    </AppShell>
   );
 }

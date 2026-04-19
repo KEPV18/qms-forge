@@ -41,7 +41,7 @@ export function RiskHeatMap({ risks }: RiskHeatMapProps) {
   }, [risks]);
 
   return (
-    <div className="bg-card rounded-xl border border-border p-5">
+    <div className="bg-card rounded-sm border border-border p-5">
       <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">
         Risk Heat Map
       </h3>
@@ -68,7 +68,7 @@ export function RiskHeatMap({ risks }: RiskHeatMapProps) {
                       <TooltipTrigger asChild>
                         <div
                           className={cn(
-                            "aspect-square rounded-lg border flex flex-col items-center justify-center relative transition-all hover:scale-105 cursor-default min-h-[40px]",
+                            "aspect-square rounded-sm border flex flex-col items-center justify-center relative transition-all hover:scale-105 cursor-default min-h-[40px]",
                             getCellBg(score),
                             cellRisks.length > 0 ? getCellColor(score) : "bg-muted/20 border-border/30 text-muted-foreground/40"
                           )}

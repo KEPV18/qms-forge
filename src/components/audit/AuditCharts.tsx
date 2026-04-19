@@ -31,7 +31,7 @@ export function AuditCharts({ stats, categoryBreakdown }: AuditChartsProps) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       {/* Pie Chart */}
-      <div className="bg-card rounded-xl border border-border p-5">
+      <div className="bg-card rounded-sm border border-border p-5">
         <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">
           File Review Distribution
         </h3>
@@ -88,7 +88,7 @@ export function AuditCharts({ stats, categoryBreakdown }: AuditChartsProps) {
       </div>
 
       {/* Bar Chart - Category Breakdown */}
-      <div className="bg-card rounded-xl border border-border p-5">
+      <div className="bg-card rounded-sm border border-border p-5">
         <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">
           Compliance by Module
         </h3>

@@ -1,4 +1,3 @@
-import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -7,7 +6,7 @@ import { lazy, Suspense } from "react";
 import { Loader2 } from "lucide-react";
 import { AuthProvider } from "./hooks/useAuth";
 import { RequireAuth, RequireRole } from "./components/auth/Guards";
-import { ErrorBoundary } from "./components/ui/ErrorBoundary";
+import { ErrorBoundary, ErrorFallback } from "./components/ui/ErrorBoundary";
 import { ThemeProvider } from "./hooks/useTheme";
 
 // Lazy loaded routes
@@ -28,7 +27,16 @@ const ProjectsPage = lazy(() => import("./pages/ProjectsPage"));
 const ProjectDetailPage = lazy(() => import("./pages/ProjectDetailPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,        // 1 minute default
+      gcTime: 10 * 60_000,      // 10 minutes
+      retry: 2,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 function PageLoader() {
   return (
@@ -38,32 +46,51 @@ function PageLoader() {
   );
 }
 
-const App = () => (
+// Page-level error boundary with retry button
+function PageBoundary({ children }: { children: React.ReactNode }) {
+  return (
+    <ErrorBoundary fallback={
+      <ErrorFallback
+        title="Page Error"
+        message="Something went wrong on this page. Try refreshing or go back to the dashboard."
+        onRetry={() => window.location.reload()}
+      />
+    }>
+      {children}
+    </ErrorBoundary>
+  );
+}
+
+const App = () => {
+  // Apply saved accent color on boot
+  const savedAccent = localStorage.getItem('accentColor') || 'cyan';
+  document.documentElement.setAttribute('data-accent', savedAccent);
+
+  return (
   <QueryClientProvider client={queryClient}>
     <ErrorBoundary>
       <ThemeProvider>
         <AuthProvider>
           <TooltipProvider>
-          <Toaster />
           <Sonner />
           <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <Suspense fallback={<PageLoader />}>
               <Routes>
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/auth/callback" element={<AuthCallback />} />
-                <Route path="/" element={<RequireAuth><Index /></RequireAuth>} />
-                <Route path="/module/:moduleId" element={<RequireAuth><ModulePage /></RequireAuth>} />
-                <Route path="/record/*" element={<RequireAuth><RecordDetail /></RequireAuth>} />
-                 <Route path="/audit" element={<RequireAuth><AuditPage /></RequireAuth>} />
-                <Route path="/projects" element={<RequireAuth><ProjectsPage /></RequireAuth>} />
-                <Route path="/project/:projectName" element={<RequireAuth><ProjectDetailPage /></RequireAuth>} />
-                <Route path="/archive" element={<RequireAuth><ArchivePage /></RequireAuth>} />
-                <Route path="/risk-management" element={<RequireAuth><RiskManagementPage /></RequireAuth>} />
-                <Route path="/activity" element={<RequireAuth><ActivityPage /></RequireAuth>} />
-                <Route path="/procedures" element={<RequireAuth><ProceduresPage /></RequireAuth>} />
-                <Route path="/iso-manual" element={<RequireAuth><ISOManualPage /></RequireAuth>} />
-                <Route path="/admin/accounts" element={<RequireRole roles={["admin"]}><AdminAccounts /></RequireRole>} />
+                <Route path="/login" element={<PageBoundary><Login /></PageBoundary>} />
+                <Route path="/register" element={<PageBoundary><Register /></PageBoundary>} />
+                <Route path="/auth/callback" element={<PageBoundary><AuthCallback /></PageBoundary>} />
+                <Route path="/" element={<RequireAuth><PageBoundary><Index /></PageBoundary></RequireAuth>} />
+                <Route path="/module/:moduleId" element={<RequireAuth><PageBoundary><ModulePage /></PageBoundary></RequireAuth>} />
+                <Route path="/record/*" element={<RequireAuth><PageBoundary><RecordDetail /></PageBoundary></RequireAuth>} />
+                <Route path="/audit" element={<RequireAuth><PageBoundary><AuditPage /></PageBoundary></RequireAuth>} />
+                <Route path="/projects" element={<RequireAuth><PageBoundary><ProjectsPage /></PageBoundary></RequireAuth>} />
+                <Route path="/project/:projectName" element={<RequireAuth><PageBoundary><ProjectDetailPage /></PageBoundary></RequireAuth>} />
+                <Route path="/archive" element={<RequireAuth><PageBoundary><ArchivePage /></PageBoundary></RequireAuth>} />
+                <Route path="/risk-management" element={<RequireAuth><PageBoundary><RiskManagementPage /></PageBoundary></RequireAuth>} />
+                <Route path="/activity" element={<RequireAuth><PageBoundary><ActivityPage /></PageBoundary></RequireAuth>} />
+                <Route path="/procedures" element={<RequireAuth><PageBoundary><ProceduresPage /></PageBoundary></RequireAuth>} />
+                <Route path="/iso-manual" element={<RequireAuth><PageBoundary><ISOManualPage /></PageBoundary></RequireAuth>} />
+                <Route path="/admin/accounts" element={<RequireRole roles={["admin"]}><PageBoundary><AdminAccounts /></PageBoundary></RequireRole>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
@@ -73,6 +100,7 @@ const App = () => (
       </ThemeProvider>
     </ErrorBoundary>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;

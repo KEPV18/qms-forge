@@ -33,8 +33,8 @@ export function RiskStats({ risks, capas }: RiskStatsProps) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
       {stats.map(s => (
-        <div key={s.label} className="bg-card rounded-xl border border-border p-4 flex items-center gap-3">
-          <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center", s.bg)}>
+        <div key={s.label} className="bg-card rounded-sm border border-border p-4 flex items-center gap-3">
+          <div className={cn("w-9 h-9 rounded-sm flex items-center justify-center", s.bg)}>
             <s.icon className={cn("w-4 h-4", s.color)} />
           </div>
           <div>

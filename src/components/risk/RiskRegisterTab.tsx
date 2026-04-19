@@ -261,7 +261,7 @@ export function RiskRegisterTab() {
             </div>
 
             {/* Table */}
-            <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
+            <div className="rounded-sm border border-border/50 bg-card overflow-hidden">
                 <Table>
                     <TableHeader>
                         <TableRow className="bg-muted/30 border-b border-border/50">
@@ -470,7 +470,7 @@ export function RiskRegisterTab() {
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         {/* Risk summary */}
-                        <div className="p-3 rounded-lg bg-muted/30 border border-border/30 space-y-1">
+                        <div className="p-3 rounded-sm bg-muted/30 border border-border/30 space-y-1">
                             <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Source Risk</div>
                             <div className="text-sm font-semibold">{capaSourceRisk?.riskDescription}</div>
                             <div className="text-xs text-muted-foreground">Cause: {capaSourceRisk?.cause}</div>
@@ -562,7 +562,7 @@ export function RiskRegisterTab() {
                         {selectedCAPAId && (() => {
                             const sc = capas.find(c => c.capaId === selectedCAPAId);
                             return sc ? (
-                                <div className="p-3 rounded-lg bg-muted/30 border border-border/30 space-y-1 text-xs">
+                                <div className="p-3 rounded-sm bg-muted/30 border border-border/30 space-y-1 text-xs">
                                     <div className="font-bold">{sc.capaId}</div>
                                     <div className="text-muted-foreground">{sc.description}</div>
                                     <div className="flex gap-2 mt-1">

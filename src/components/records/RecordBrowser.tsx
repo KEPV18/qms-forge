@@ -9,7 +9,7 @@ import type { QMSRecord } from "@/lib/googleSheets";
 import { ExternalLink, FileText, Loader2, FolderOpen, Settings, Trash2, Briefcase, CalendarClock, UserCheck, CalendarDays } from "lucide-react";
 import { formatTimeAgo } from "@/lib/googleSheets";
 import { EditMetadataModal } from "./EditMetadataModal";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNotifications, getAdminUserIds } from "@/hooks/useNotifications";
 
@@ -24,9 +24,23 @@ export function RecordBrowser({ record, isFlat = false }: RecordBrowserProps) {
     const [isExpanded, setIsExpanded] = useState(isFlat || false);
     const [error, setError] = useState<string | null>(null);
     const [editingFile, setEditingFile] = useState<{ id: string; name: string } | null>(null);
-    const { toast } = useToast();
     const queryClient = useQueryClient();
     const { addNotification } = useNotifications();
+
+    const loadFiles = useCallback(async () => {
+        setIsLoading(true);
+        setError(null);
+
+        try {
+            const driveFiles = await listFolderFiles(record.folderLink);
+            setFiles(driveFiles);
+        } catch (err) {
+            setError("Failed to load files from Drive");
+            console.error("Error");
+        } finally {
+            setIsLoading(false);
+        }
+    }, [record.folderLink]);
 
     const handleArchive = async (fileId: string, fileName: string) => {
         if (!window.confirm(`Are you sure you want to archive "${fileName}"? It will be moved to the archive folder for 30 days.`)) return;
@@ -51,18 +65,11 @@ export function RecordBrowser({ record, isFlat = false }: RecordBrowserProps) {
                 });
             }
 
-            toast({
-                title: "Record Archived",
-                description: `Moved ${fileName} to the archive folder.`,
-            });
+            toast.success("Record Archived", { description: `Moved ${fileName} to the archive folder.` });
             await loadFiles();
             queryClient.invalidateQueries({ queryKey: ["qms-data"] });
         } catch (err: unknown) {
-            toast({
-                title: "Archive Failed",
-                description: err.message || "Failed to archive record",
-                variant: "destructive"
-            });
+            toast.error("Archive Failed", { description: err.message || "Failed to archive record" });
         } finally {
             setIsLoading(false);
         }
@@ -84,26 +91,11 @@ export function RecordBrowser({ record, isFlat = false }: RecordBrowserProps) {
         }
     }, [isExpanded, files.length, record.files, record.fileReviews, isFlat, loadFiles]);
 
-    const loadFiles = useCallback(async () => {
-        setIsLoading(true);
-        setError(null);
-
-        try {
-            const driveFiles = await listFolderFiles(record.folderLink);
-            setFiles(driveFiles);
-        } catch (err) {
-            setError("Failed to load files from Drive");
-            console.error("Error");
-        } finally {
-            setIsLoading(false);
-        }
-    }, [record.folderLink]);
-
     const recordStatus = parseStatusFromAuditField(record.auditStatus);
 
     return (
         <div className={cn(
-            isFlat ? "" : "bg-card rounded-xl border border-border p-4 space-y-3"
+            isFlat ? "" : "bg-card rounded-sm border border-border p-4 space-y-3"
         )}>
             {!isFlat && (
                 <>
@@ -119,7 +111,7 @@ export function RecordBrowser({ record, isFlat = false }: RecordBrowserProps) {
                     </div>
 
                     {/* Stats */}
-                    <div className="grid grid-cols-3 gap-4 p-3 bg-muted/30 rounded-lg">
+                    <div className="grid grid-cols-3 gap-4 p-3 bg-muted/30 rounded-sm">
                         <div>
                             <div className="text-xs text-muted-foreground">Total Records</div>
                             <div className="text-2xl font-bold">{record.actualRecordCount || 0}</div>
@@ -152,7 +144,8 @@ export function RecordBrowser({ record, isFlat = false }: RecordBrowserProps) {
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => window.open(record.folderLink, '_blank')}
+                            aria-label="Open folder"
+                            onClick={() => window.open(record.folderLink, '_blank', 'noopener,noreferrer')}
                             disabled={!record.folderLink || record.folderLink.includes("No Files Yet")}
                         >
                             <ExternalLink className="w-4 h-4" />
@@ -190,20 +183,20 @@ export function RecordBrowser({ record, isFlat = false }: RecordBrowserProps) {
                                 return (
                                     <div
                                         key={file.id}
-                                        className="group relative bg-card/40 backdrop-blur-xl border border-border/40 hover:border-sidebar-primary/40 rounded-3xl p-5 md:p-6 transition-all duration-500 shadow-sm hover:shadow-2xl hover:-translate-y-1 overflow-hidden"
+                                        className="group relative bg-card/40 backdrop-blur-xl border border-border/40 hover:border-primary/40 rounded-sm p-5 md:p-6 transition-all duration-500 shadow-sm hover:shadow-2xl hover:-translate-y-1 overflow-hidden"
                                     >
                                         {/* Subtle Background Glow */}
-                                        <div className="absolute inset-0 bg-gradient-to-br from-sidebar-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                                        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
                                         
                                         <div className="relative z-10">
                                             {/* Header */}
                                             <div className="flex flex-col md:flex-row md:items-start justify-between gap-5 mb-6">
                                                 <div className="flex items-start gap-4 flex-1 min-w-0">
-                                                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-sidebar-primary/20 to-sidebar-primary/5 flex items-center justify-center shrink-0 shadow-inner border border-sidebar-primary/10 group-hover:scale-105 transition-transform duration-500">
-                                                        <FileText className="w-6 h-6 text-sidebar-primary" />
+                                                    <div className="w-12 h-12 rounded-sm bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shrink-0 shadow-inner border border-primary/10 group-hover:scale-105 transition-transform duration-500">
+                                                        <FileText className="w-6 h-6 text-primary" />
                                                     </div>
                                                     <div className="flex-1 min-w-0 pt-0.5">
-                                                        <h4 className="text-base font-bold text-foreground line-clamp-1 group-hover:text-sidebar-primary transition-colors duration-300">{file.name}</h4>
+                                                        <h4 className="text-base font-bold text-foreground line-clamp-1 group-hover:text-primary transition-colors duration-300">{file.name}</h4>
                                                         <div className="flex items-center gap-2 mt-2 flex-wrap">
                                                             {serial && <span className="text-[10px] font-mono font-bold bg-background/80 shadow-sm px-2 py-0.5 rounded-md border border-border/50">{serial}</span>}
                                                             {(() => {
@@ -218,12 +211,12 @@ export function RecordBrowser({ record, isFlat = false }: RecordBrowserProps) {
                                                     </div>
                                                 </div>
                                                 {/* Actions */}
-                                                <div className="flex items-center gap-2 shrink-0 self-start bg-background/50 rounded-xl p-1 border border-border/40 shadow-sm transition-opacity opacity-80 group-hover:opacity-100">
+                                                <div className="flex items-center gap-2 shrink-0 self-start bg-background/50 rounded-sm p-1 border border-border/40 shadow-sm transition-opacity opacity-80 group-hover:opacity-100">
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
-                                                        className="h-8 gap-1.5 text-xs font-semibold hover:bg-sidebar-primary/10 hover:text-sidebar-primary rounded-lg transition-colors"
-                                                        onClick={() => window.open(file.webViewLink, '_blank')}
+                                                        className="h-8 gap-1.5 text-xs font-semibold hover:bg-primary/10 hover:text-primary rounded-sm transition-colors"
+                                                        onClick={() => window.open(file.webViewLink, '_blank', 'noopener,noreferrer')}
                                                     >
                                                         <ExternalLink className="w-3.5 h-3.5" />
                                                         Open
@@ -232,9 +225,10 @@ export function RecordBrowser({ record, isFlat = false }: RecordBrowserProps) {
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded-lg transition-colors"
+                                                        className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded-sm transition-colors"
                                                         onClick={() => handleArchive(file.id, file.name)}
                                                         disabled={isLoading}
+                                                        aria-label="Delete file"
                                                         title="Delete File"
                                                     >
                                                         <Trash2 className="w-4 h-4" />
@@ -243,11 +237,11 @@ export function RecordBrowser({ record, isFlat = false }: RecordBrowserProps) {
                                             </div>
 
                                             {/* Metadata Grid (Premium Style) */}
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-muted/20 rounded-2xl p-4 border border-border/40 relative overflow-hidden">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-muted/20 rounded-sm p-4 border border-border/40 relative overflow-hidden">
                                                 <div className="absolute inset-0 bg-background/20 backdrop-blur-3xl pointer-events-none" />
-                                                <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-background/80 transition-colors relative z-10 border border-transparent hover:border-border/50 shadow-sm hover:shadow">
-                                                    <div className="w-8 h-8 rounded-lg bg-sidebar-primary/10 flex items-center justify-center shrink-0">
-                                                        <Briefcase className="w-4 h-4 text-sidebar-primary" />
+                                                <div className="flex items-start gap-3 p-3 rounded-sm hover:bg-background/80 transition-colors relative z-10 border border-transparent hover:border-border/50 shadow-sm hover:shadow">
+                                                    <div className="w-8 h-8 rounded-sm bg-primary/10 flex items-center justify-center shrink-0">
+                                                        <Briefcase className="w-4 h-4 text-primary" />
                                                     </div>
                                                     <div className="min-w-0 pt-0.5">
                                                         <p className="text-[9px] uppercase font-bold text-muted-foreground tracking-widest mb-0.5">Project</p>
@@ -257,8 +251,8 @@ export function RecordBrowser({ record, isFlat = false }: RecordBrowserProps) {
                                                     </div>
                                                 </div>
 
-                                                <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-background/80 transition-colors relative z-10 border border-transparent hover:border-border/50 shadow-sm hover:shadow">
-                                                    <div className="w-8 h-8 rounded-lg bg-info/10 flex items-center justify-center shrink-0">
+                                                <div className="flex items-start gap-3 p-3 rounded-sm hover:bg-background/80 transition-colors relative z-10 border border-transparent hover:border-border/50 shadow-sm hover:shadow">
+                                                    <div className="w-8 h-8 rounded-sm bg-info/10 flex items-center justify-center shrink-0">
                                                         <CalendarClock className="w-4 h-4 text-info" />
                                                     </div>
                                                     <div className="min-w-0 pt-0.5">
@@ -269,8 +263,8 @@ export function RecordBrowser({ record, isFlat = false }: RecordBrowserProps) {
                                                     </div>
                                                 </div>
 
-                                                <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-background/80 transition-colors relative z-10 border border-transparent hover:border-border/50 shadow-sm hover:shadow">
-                                                    <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center shrink-0">
+                                                <div className="flex items-start gap-3 p-3 rounded-sm hover:bg-background/80 transition-colors relative z-10 border border-transparent hover:border-border/50 shadow-sm hover:shadow">
+                                                    <div className="w-8 h-8 rounded-sm bg-success/10 flex items-center justify-center shrink-0">
                                                         <UserCheck className="w-4 h-4 text-success" />
                                                     </div>
                                                     <div className="min-w-0 pt-0.5">
@@ -281,8 +275,8 @@ export function RecordBrowser({ record, isFlat = false }: RecordBrowserProps) {
                                                     </div>
                                                 </div>
 
-                                                <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-background/80 transition-colors relative z-10 border border-transparent hover:border-border/50 shadow-sm hover:shadow">
-                                                    <div className="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center shrink-0">
+                                                <div className="flex items-start gap-3 p-3 rounded-sm hover:bg-background/80 transition-colors relative z-10 border border-transparent hover:border-border/50 shadow-sm hover:shadow">
+                                                    <div className="w-8 h-8 rounded-sm bg-warning/10 flex items-center justify-center shrink-0">
                                                         <CalendarDays className="w-4 h-4 text-warning" />
                                                     </div>
                                                     <div className="min-w-0 pt-0.5">
@@ -318,7 +312,7 @@ export function RecordBrowser({ record, isFlat = false }: RecordBrowserProps) {
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
-                                                    className="h-10 px-4 gap-2 text-xs shrink-0 font-bold bg-background shadow-sm hover:shadow-md text-primary border-primary/20 hover:border-primary/50 hover:bg-primary/5 self-start sm:self-center transition-all rounded-xl"
+                                                    className="h-10 px-4 gap-2 text-xs shrink-0 font-bold bg-background shadow-sm hover:shadow-md text-primary border-primary/20 hover:border-primary/50 hover:bg-primary/5 self-start sm:self-center transition-all rounded-sm"
                                                     onClick={() => setEditingFile({ id: file.id, name: file.name })}
                                                 >
                                                     <Settings className="w-4 h-4" />
@@ -336,7 +330,7 @@ export function RecordBrowser({ record, isFlat = false }: RecordBrowserProps) {
                                     <div className="flex items-center gap-3 px-2">
                                         <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
                                         <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                                            <FileText className="w-4 h-4 text-sidebar-primary/60" />
+                                            <FileText className="w-4 h-4 text-primary/60" />
                                             PDF Records
                                         </div>
                                         <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
@@ -350,15 +344,15 @@ export function RecordBrowser({ record, isFlat = false }: RecordBrowserProps) {
                                             return (
                                                 <div 
                                                     key={file.id}
-                                                    className="group flex flex-col md:flex-row md:items-center justify-between p-4 bg-card/30 backdrop-blur-md border border-border/40 hover:border-sidebar-primary/30 rounded-2xl transition-all duration-300 hover:shadow-lg gap-4"
+                                                    className="group flex flex-col md:flex-row md:items-center justify-between p-4 bg-card/30 backdrop-blur-md border border-border/40 hover:border-primary/30 rounded-sm transition-all duration-300 hover:shadow-lg gap-4"
                                                 >
                                                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                                                        <div className="w-10 h-10 rounded-xl bg-sidebar-primary/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300">
-                                                            <FileText className="w-5 h-5 text-sidebar-primary" />
+                                                        <div className="w-10 h-10 rounded-sm bg-primary/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300">
+                                                            <FileText className="w-5 h-5 text-primary" />
                                                         </div>
                                                         <div className="flex-1 min-w-0">
                                                             <div className="flex items-center gap-2 mb-1">
-                                                                <h4 className="text-sm font-bold text-foreground truncate group-hover:text-sidebar-primary transition-colors">{file.name}</h4>
+                                                                <h4 className="text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors">{file.name}</h4>
                                                                 {serial && <span className="text-[9px] font-mono font-bold bg-muted px-1.5 py-0.5 rounded border border-border/50 shrink-0">{serial}</span>}
                                                             </div>
                                                             <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
@@ -377,8 +371,8 @@ export function RecordBrowser({ record, isFlat = false }: RecordBrowserProps) {
                                                         <Button
                                                             variant="ghost"
                                                             size="sm"
-                                                            className="h-8 gap-1.5 text-[11px] font-bold hover:bg-sidebar-primary/10 hover:text-sidebar-primary rounded-lg transition-all"
-                                                            onClick={() => window.open(file.webViewLink, '_blank')}
+                                                            className="h-8 gap-1.5 text-[11px] font-bold hover:bg-primary/10 hover:text-primary rounded-sm transition-all"
+                                                            onClick={() => window.open(file.webViewLink, '_blank', 'noopener,noreferrer')}
                                                         >
                                                             <ExternalLink className="w-3.5 h-3.5" />
                                                             Open
@@ -386,17 +380,19 @@ export function RecordBrowser({ record, isFlat = false }: RecordBrowserProps) {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-8 w-8 text-muted-foreground hover:bg-sidebar-primary/10 hover:text-sidebar-primary rounded-lg"
+                                                            className="h-8 w-8 text-muted-foreground hover:bg-primary/10 hover:text-primary rounded-sm"
                                                             onClick={() => setEditingFile({ id: file.id, name: file.name })}
+                                                            aria-label="Edit file metadata"
                                                         >
                                                             <Settings className="w-3.5 h-3.5" />
                                                         </Button>
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded-lg"
+                                                            className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded-sm"
                                                             onClick={() => handleArchive(file.id, file.name)}
                                                             disabled={isLoading}
+                                                            aria-label="Delete file"
                                                         >
                                                             <Trash2 className="w-3.5 h-3.5" />
                                                         </Button>

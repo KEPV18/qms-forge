@@ -118,7 +118,7 @@ export function FormDetailsModal({ record, open, onOpenChange, onViewInDrive }: 
 
           {/* Next Serial Info */}
           {record.nextSerial && record.nextSerial !== "N/A" && (
-            <div className="bg-muted/50 rounded-lg p-4">
+            <div className="bg-muted/50 rounded-sm p-4">
               <label className="text-sm font-medium text-muted-foreground">Next Serial Number</label>
               <div className="text-lg font-mono font-semibold">{record.nextSerial}</div>
             </div>
@@ -128,7 +128,7 @@ export function FormDetailsModal({ record, open, onOpenChange, onViewInDrive }: 
           {(record.isAtomic
             ? (record.fileStatus === 'approved' || record.fileStatus === 'rejected')
             : record.reviewed) && (
-              <div className="bg-success/10 rounded-lg p-4">
+              <div className="bg-success/10 rounded-sm p-4">
                 <label className="text-sm font-medium text-success">Review Status</label>
                 <div className="text-sm text-success">
                   Reviewed by {record.isAtomic ? record.fileReviewedBy : record.reviewedBy}
@@ -139,7 +139,7 @@ export function FormDetailsModal({ record, open, onOpenChange, onViewInDrive }: 
 
           {/* No Records Message */}
           {(!record.actualRecordCount || record.actualRecordCount === 0) && (
-            <div className="bg-warning/10 rounded-lg p-4 text-center">
+            <div className="bg-warning/10 rounded-sm p-4 text-center">
               <Folder className="w-8 h-8 text-warning mx-auto mb-2" />
               <div className="text-sm text-warning">No records found for this form yet</div>
               <div className="text-xs text-warning/70 mt-1">

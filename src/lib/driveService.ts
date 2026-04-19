@@ -9,6 +9,45 @@ const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || "";
 const DRIVE_API_BASE = "https://www.googleapis.com/drive/v3";
 const SHEETS_API_BASE = "https://sheets.googleapis.com/v4/spreadsheets";
 
+// Custom error class for Drive API errors
+export class DriveApiError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = 'DriveApiError';
+    this.status = status;
+  }
+}
+
+// Concurrency limit for batch operations (Google API best practice: ~6 concurrent requests)
+const BATCH_CONCURRENCY = 6;
+
+async function limitConcurrency<T>(
+  items: T[],
+  fn: (item: T) => Promise<{ link: string; result: unknown }>,
+  concurrency: number = BATCH_CONCURRENCY
+): Promise<Map<string, unknown>> {
+  const results = new Map<string, unknown>();
+  let index = 0;
+
+  async function worker() {
+    while (index < items.length) {
+      const currentIndex = index++;
+      const item = items[currentIndex];
+      try {
+        const { link, result } = await fn(item);
+        results.set(link, result);
+      } catch {
+        // Individual failures are skipped in batch operations
+      }
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(concurrency, items.length) }, () => worker());
+  await Promise.all(workers);
+  return results;
+}
+
 export interface DriveSearchResult extends DriveFile {
   parentName?: string;
   path?: string;
@@ -112,46 +151,32 @@ export async function getFolderFileCount(folderLink: string): Promise<number> {
     return 0;
   }
 
-  try {
-    const token = await getAccessToken();
+  const token = await getAccessToken();
 
-    // Query for files in the folder (excluding trashed items and the Archive folder)
-    const query = `'${folderId}' in parents and trashed=false and name != 'Archive'`;
-    const url = `${DRIVE_API_BASE}/files?q=${encodeURIComponent(query)}&fields=files(id)&t=${Date.now()}`;
+  // Query for files in the folder (excluding trashed items and the Archive folder)
+  const query = `'${folderId}' in parents and trashed=false and name != 'Archive'`;
+  const url = `${DRIVE_API_BASE}/files?q=${encodeURIComponent(query)}&fields=files(id)`;
 
-    const response = await fetch(url, { 
-      cache: "no-store", 
-      headers: token ? { 
-        'Authorization': `Bearer ${token}`,
-        'Pragma': 'no-cache', 
-        'Cache-Control': 'no-cache' 
-      } : {
-        'Pragma': 'no-cache', 
-        'Cache-Control': 'no-cache' 
-      }
-    });
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    if (!response.ok && !token) {
-      // Try with API key if token failed or missing
-      const fallbackUrl = `${url}${url.includes('?') ? '&' : '?'}key=${API_KEY}`;
-      const fallbackResponse = await fetch(fallbackUrl);
-      if (fallbackResponse.ok) {
-        const data = await fallbackResponse.json();
-        return (data.files || []).filter((f: DriveApiFile) => !f.name?.toLowerCase().endsWith('.json')).length;
-      }
-    }
+  let response = await fetch(url, { headers });
 
-    if (!response.ok) {
-      // Error logged
-      return 0;
-    }
-
-    const data = await response.json();
-    return (data.files || []).filter((f: DriveApiFile) => !f.name?.toLowerCase().endsWith('.json')).length;
-  } catch (error) {
-    // Error logged
-    return 0;
+  // Try with API key if token-based request failed
+  if (!response.ok && token) {
+    const fallbackUrl = `${url}${url.includes('?') ? '&' : '?'}key=${API_KEY}`;
+    response = await fetch(fallbackUrl);
+  } else if (!response.ok && !token) {
+    const fallbackUrl = `${url}${url.includes('?') ? '&' : '?'}key=${API_KEY}`;
+    response = await fetch(fallbackUrl);
   }
+
+  if (!response.ok) {
+    throw new DriveApiError(response.status, `Failed to count files in folder: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return (data.files || []).filter((f: DriveApiFile) => !f.name?.toLowerCase().endsWith('.json')).length;
 }
 
 /**
@@ -166,47 +191,33 @@ export async function listFolderFiles(folderLink: string): Promise<DriveFile[]> 
     return [];
   }
 
-  try {
-    const token = await getAccessToken();
+  const token = await getAccessToken();
 
-    // Query for files in the folder (excluding trashed items and the Archive folder)
-    const query = `'${folderId}' in parents and trashed=false and name != 'Archive'`;
-    const fields = "files(id,name,mimeType,createdTime,modifiedTime,webViewLink,size,parents,description)";
-    const url = `${DRIVE_API_BASE}/files?q=${encodeURIComponent(query)}&fields=${fields}&orderBy=createdTime desc&t=${Date.now()}`;
+  // Query for files in the folder (excluding trashed items and the Archive folder)
+  const query = `'${folderId}' in parents and trashed=false and name != 'Archive'`;
+  const fields = "files(id,name,mimeType,createdTime,modifiedTime,webViewLink,size,parents,description)";
+  const url = `${DRIVE_API_BASE}/files?q=${encodeURIComponent(query)}&fields=${fields}&orderBy=createdTime desc`;
 
-    const response = await fetch(url, { 
-      cache: "no-store", 
-      headers: token ? { 
-        'Authorization': `Bearer ${token}`,
-        'Pragma': 'no-cache', 
-        'Cache-Control': 'no-cache' 
-      } : {
-        'Pragma': 'no-cache', 
-        'Cache-Control': 'no-cache' 
-      }
-    });
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    if (!response.ok && !token) {
-      // Try with API key if token failed or missing
-      const fallbackUrl = `${url}${url.includes('?') ? '&' : '?'}key=${API_KEY}`;
-      const fallbackResponse = await fetch(fallbackUrl);
-      if (fallbackResponse.ok) {
-        const data = await fallbackResponse.json();
-        return (data.files || []).filter((f: DriveApiFile) => !f.name?.toLowerCase().endsWith('.json'));
-      }
-    }
+  let response = await fetch(url, { headers });
 
-    if (!response.ok) {
-      // Error logged
-      return [];
-    }
-
-    const data = await response.json();
-    return (data.files || []).filter((f: DriveApiFile) => !f.name?.toLowerCase().endsWith('.json'));
-  } catch (error) {
-    // Error logged
-    return [];
+  // Try with API key if token-based request failed
+  if (!response.ok && token) {
+    const fallbackUrl = `${url}${url.includes('?') ? '&' : '?'}key=${API_KEY}`;
+    response = await fetch(fallbackUrl);
+  } else if (!response.ok && !token) {
+    const fallbackUrl = `${url}${url.includes('?') ? '&' : '?'}key=${API_KEY}`;
+    response = await fetch(fallbackUrl);
   }
+
+  if (!response.ok) {
+    throw new DriveApiError(response.status, `Failed to list files in folder: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return (data.files || []).filter((f: DriveApiFile) => !f.name?.toLowerCase().endsWith('.json'));
 }
 
 /**
@@ -215,52 +226,39 @@ export async function listFolderFiles(folderLink: string): Promise<DriveFile[]> 
  * @returns File metadata
  */
 export async function getFileMetadata(fileId: string): Promise<FileMetadata | null> {
-  try {
-    const token = await getAccessToken();
-    
-    const fields = "id,name,createdTime,modifiedTime,webViewLink,mimeType";
-    const url = `${DRIVE_API_BASE}/files/${fileId}?fields=${encodeURIComponent(fields)}&t=${Date.now()}`;
-    
-    let response = await fetch(url, { 
-      cache: "no-store", 
-      headers: token ? { 
-        'Authorization': `Bearer ${token}`,
-        'Pragma': 'no-cache', 
-        'Cache-Control': 'no-cache, no-store, must-revalidate' 
-      } : {
-        'Pragma': 'no-cache', 
-        'Cache-Control': 'no-cache, no-store, must-revalidate' 
-      }
-    });
+  const token = await getAccessToken();
 
-    if (!response.ok && !token) {
-      // Try with API key if token failed or missing
-      const fallbackUrl = `${url}${url.includes('?') ? '&' : '?'}key=${API_KEY}`;
-      const fallbackResponse = await fetch(fallbackUrl);
-      if (fallbackResponse.ok) {
-        response = fallbackResponse; // Use the fallback response if successful
-      }
-    }
+  const fields = "id,name,createdTime,modifiedTime,webViewLink,mimeType";
+  const url = `${DRIVE_API_BASE}/files/${fileId}?fields=${encodeURIComponent(fields)}`;
 
-    if (!response.ok) {
-      // Error logged
-      return null;
-    }
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    const data = await response.json();
+  let response = await fetch(url, { headers });
 
-    return {
-      id: data.id,
-      name: data.name,
-      createdTime: new Date(data.createdTime),
-      modifiedTime: new Date(data.modifiedTime),
-      link: data.webViewLink,
-      mimeType: data.mimeType,
-    };
-  } catch (error) {
-    // Error logged
-    return null;
+  // Try with API key if token-based request failed
+  if (!response.ok && token) {
+    const fallbackUrl = `${url}${url.includes('?') ? '&' : '?'}key=${API_KEY}`;
+    response = await fetch(fallbackUrl);
+  } else if (!response.ok && !token) {
+    const fallbackUrl = `${url}${url.includes('?') ? '&' : '?'}key=${API_KEY}`;
+    response = await fetch(fallbackUrl);
   }
+
+  if (!response.ok) {
+    throw new DriveApiError(response.status, `Failed to get file metadata: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+
+  return {
+    id: data.id,
+    name: data.name,
+    createdTime: new Date(data.createdTime),
+    modifiedTime: new Date(data.modifiedTime),
+    link: data.webViewLink,
+    mimeType: data.mimeType,
+  };
 }
 
 /**
@@ -273,57 +271,47 @@ export function parseSerialFromFilename(filename: string): string | null {
 }
 
 /**
- * Batch get file counts for multiple folders
+ * Batch get file counts for multiple folders (concurrency-limited)
  * @param folderLinks - Array of Google Drive folder URLs
  * @returns Map of folder link to file count
  */
 export async function batchGetFolderCounts(
   folderLinks: string[]
 ): Promise<Map<string, number>> {
-  const results = new Map<string, number>();
-
-  // Process in parallel for better performance
-  const promises = folderLinks.map(async (link) => {
-    const count = await getFolderFileCount(link);
-    return { link, count };
-  });
-
-  const settled = await Promise.allSettled(promises);
-
-  settled.forEach((result) => {
-    if (result.status === "fulfilled") {
-      results.set(result.value.link, result.value.count);
+  const results = await limitConcurrency(
+    folderLinks,
+    async (link) => {
+      try {
+        const count = await getFolderFileCount(link);
+        return { link, result: count };
+      } catch {
+        return { link, result: 0 };
+      }
     }
-  });
-
-  return results;
+  );
+  return results as Map<string, number>;
 }
 
 /**
- * Batch get file lists for multiple folders
+ * Batch get file lists for multiple folders (concurrency-limited)
  * @param folderLinks - Array of Google Drive folder URLs
  * @returns Map of folder link to array of DriveFiles
  */
 export async function batchGetFolderFiles(
   folderLinks: string[]
 ): Promise<Map<string, DriveFile[]>> {
-  const results = new Map<string, DriveFile[]>();
-
-  // Process in parallel for better performance
-  const promises = folderLinks.map(async (link) => {
-    const files = await listFolderFiles(link);
-    return { link, files };
-  });
-
-  const settled = await Promise.allSettled(promises);
-
-  settled.forEach((result) => {
-    if (result.status === "fulfilled") {
-      results.set(result.value.link, result.value.files);
+  const results = await limitConcurrency(
+    folderLinks,
+    async (link) => {
+      try {
+        const files = await listFolderFiles(link);
+        return { link, result: files };
+      } catch {
+        return { link, result: [] };
+      }
     }
-  });
-
-  return results;
+  );
+  return results as Map<string, DriveFile[]>;
 }
 
 /**

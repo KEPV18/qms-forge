@@ -6,7 +6,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import {
   getAllProcesses,
   addProcess,
@@ -25,8 +25,6 @@ const QUERY_KEY = ["processes"];
  */
 export function useProcessData() {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
-
   // Fetch all processes
   const {
     data: processes = [],
@@ -46,18 +44,13 @@ export function useProcessData() {
     mutationFn: (input: ProcessInput) => addProcess(input),
     onSuccess: (newProcess) => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEY });
-      toast({
-        title: "Process Added",
-        description: `Process "${newProcess.processName}" has been created successfully.`,
-      });
+      toast.success("Process Added", { description: `Process "${newProcess.processName}" has been created successfully.` });
     },
     onError: (error: Error) => {
-      toast({
-        title: "Failed to Add Process",
+      toast.error("Failed to Add Process", {
         description: error.message.includes("API key")
           ? "Write operations require OAuth authentication. Current API key is read-only."
           : error.message,
-        variant: "destructive",
       });
     },
   });
@@ -68,18 +61,13 @@ export function useProcessData() {
       updateProcess(processName, updates),
     onSuccess: (updatedProcess) => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEY });
-      toast({
-        title: "Process Updated",
-        description: `Process "${updatedProcess.processName}" has been updated successfully.`,
-      });
+      toast.success("Process Updated", { description: `Process "${updatedProcess.processName}" has been updated successfully.` });
     },
     onError: (error: Error) => {
-      toast({
-        title: "Failed to Update Process",
+      toast.error("Failed to Update Process", {
         description: error.message.includes("API key")
           ? "Write operations require OAuth authentication. Current API key is read-only."
           : error.message,
-        variant: "destructive",
       });
     },
   });

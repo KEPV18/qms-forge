@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useState, useMemo } from "react";
 import { addRisk } from "@/lib/riskRegisterService";
 import { addCAPA } from "@/lib/capaRegisterService";
@@ -24,7 +24,6 @@ const quickActionItems = [
 
 export function QuickActions() {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { data: records } = useQMSData();
   const auditSummary = useAuditSummary(records);
 
@@ -113,11 +112,11 @@ export function QuickActions() {
         actionControl: riskForm.actionControl,
         owner: riskForm.owner,
       });
-      toast({ title: "تم إضافة الخطر", description: "تم تسجيل الخطر في Risk Register" });
+      toast.success("Risk Added", { description: "The risk has been registered in the Risk Register" });
       setRiskOpen(false);
       navigate("/risk-management");
     } catch (e: unknown) {
-      toast({ title: "فشل إضافة الخطر", description: e.message || "خطأ غير متوقع", variant: "destructive" });
+      toast.error("Failed to Add Risk", { description: (e as Error)?.message || "An unexpected error occurred" });
     }
   };
 
@@ -135,11 +134,11 @@ export function QuickActions() {
         targetCompletionDate: capaForm.targetCompletionDate,
         relatedRisk: capaForm.relatedRisk,
       });
-      toast({ title: "تم تسجيل CAPA", description: "تم إضافة الإجراء في CAPA Register" });
+      toast.success("CAPA Logged", { description: "The action has been added to the CAPA Register" });
       setCapaOpen(false);
       navigate("/risk-management");
     } catch (e: unknown) {
-      toast({ title: "فشل تسجيل CAPA", description: e.message || "خطأ غير متوقع", variant: "destructive" });
+      toast.error("Failed to Log CAPA", { description: (e as Error)?.message || "An unexpected error occurred" });
     }
   };
 
@@ -151,19 +150,19 @@ export function QuickActions() {
         targetFolderLink = `https://drive.google.com/folders/${created.id}`;
       }
       if (!uploadFile || !targetFolderLink) {
-        toast({ title: "بيانات غير مكتملة", description: "يرجى اختيار ملف ومجلد", variant: "destructive" });
+        toast.error("Incomplete Data", { description: "Please select a file and folder" });
         return;
       }
       const uploaded = await uploadFileToDrive(uploadFile, targetFolderLink);
       if (uploaded) {
-        toast({ title: "تم الرفع", description: uploaded.name });
+        toast.success("Uploaded", { description: uploaded.name });
         setUploadOpen(false);
         navigate("/archive");
       } else {
-        toast({ title: "فشل الرفع", description: "لم يتم رفع الملف", variant: "destructive" });
+        toast.error("Upload Failed", { description: "The file was not uploaded" });
       }
     } catch (e: unknown) {
-      toast({ title: "فشل الرفع", description: e.message || "خطأ غير متوقع", variant: "destructive" });
+      toast.error("Upload Failed", { description: (e as Error)?.message || "An unexpected error occurred" });
     }
   };
   const [isUpdatingReviewer, setIsUpdatingReviewer] = useState(false);
@@ -173,9 +172,9 @@ export function QuickActions() {
     setIsUpdatingReviewer(true);
     try {
       await batchUpdateReviewedBy(records, "Ahmed khaled");
-      toast({ title: "تم التحديث", description: "تم تعيين Ahmed khaled كمراجع لجميع السجلات" });
+      toast.success("Updated", { description: "Ahmed khaled has been set as reviewer for all records" });
     } catch (e: unknown) {
-      toast({ title: "فشل التحديث", description: e.message, variant: "destructive" });
+      toast.error("Update Failed", { description: (e as Error)?.message });
     } finally {
       setIsUpdatingReviewer(false);
     }
@@ -189,7 +188,7 @@ export function QuickActions() {
   };
 
   return (
-    <div className="bg-card rounded-xl border border-border/50 overflow-hidden">
+    <div className="bg-card rounded-sm border border-border/50 overflow-hidden accent-line-top">
       <div className="px-5 py-4 border-b border-border/50">
         <h3 className="text-sm font-bold text-foreground">Quick Actions</h3>
         <p className="text-[10px] text-muted-foreground mt-0.5">Common operations</p>
@@ -202,7 +201,7 @@ export function QuickActions() {
               key={item.id}
               onClick={actionHandlers[item.id]}
               className={cn(
-                "flex flex-col items-center gap-2 p-4 rounded-xl border transition-all duration-200 hover:scale-[1.02]",
+                "flex flex-col items-center gap-2 p-4 rounded-sm border transition-all duration-200 hover:scale-[1.02]",
                 item.color
               )}
             >
@@ -216,7 +215,7 @@ export function QuickActions() {
         <button
           onClick={handleBatchReviewer}
           disabled={isUpdatingReviewer}
-          className="w-full flex items-center justify-center gap-2 p-3 rounded-xl border border-border/50 text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-all duration-200 text-[11px] font-semibold"
+          className="w-full flex items-center justify-center gap-2 p-3 rounded-sm border border-border/50 text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-all duration-200 text-[11px] font-semibold"
         >
           <UserCheck className="w-4 h-4" />
           <span>{isUpdatingReviewer ? "جاري التحديث..." : "Set Reviewer: Ahmed khaled"}</span>
@@ -292,28 +291,28 @@ export function QuickActions() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-3">
-              <div className="p-3 rounded-md border">
+              <div className="p-3 rounded-sm border">
                 <div className="text-sm text-muted-foreground">Form Templates</div>
-                <div className="text-xl font-semibold">{auditSummary.total}</div>
+                <div className="text-xl font-semibold font-mono">{auditSummary.total}</div>
               </div>
-              <div className="p-3 rounded-md border">
+              <div className="p-3 rounded-sm border">
                 <div className="text-sm text-muted-foreground">Filled Records</div>
-                <div className="text-xl font-semibold">{records?.reduce((sum, r) => sum + (r.actualRecordCount || 0), 0) || 0}</div>
+                <div className="text-xl font-semibold font-mono">{records?.reduce((sum, r) => sum + (r.actualRecordCount || 0), 0) || 0}</div>
               </div>
-              <div className="p-3 rounded-md border">
+              <div className="p-3 rounded-sm border">
                 <div className="text-sm text-muted-foreground">Compliance</div>
-                <div className="text-xl font-semibold">{complianceDisplay}%</div>
+                <div className="text-xl font-semibold font-mono">{complianceDisplay}%</div>
               </div>
-              <div className="p-3 rounded-md border">
+              <div className="p-3 rounded-sm border">
                 <div className="text-sm text-muted-foreground">Never Filled</div>
-                <div className="text-xl font-semibold">{zeroRecordForms.length}</div>
+                <div className="text-xl font-semibold font-mono">{zeroRecordForms.length}</div>
               </div>
             </div>
             <div>
               <div className="font-medium mb-2">Templates Without Records</div>
               <div className="space-y-2 max-h-40 overflow-auto">
                 {zeroRecordForms.map(f => (
-                  <div key={f.code} className="flex justify-between items-center p-2 rounded border">
+                  <div key={f.code} className="flex justify-between items-center p-2 rounded-sm border">
                     <div className="text-sm">{f.code} — {f.recordName}</div>
                     <Button variant="outline" size="sm" onClick={() => navigate(`/record/${encodeURIComponent(f.code)}`)}>View</Button>
                   </div>
@@ -326,7 +325,7 @@ export function QuickActions() {
                 <div className="font-medium mb-2">Overdue</div>
                 <div className="space-y-2 max-h-32 overflow-auto">
                   {overdueForms.map(f => (
-                    <div key={f.code} className="flex justify-between items-center p-2 rounded border">
+                    <div key={f.code} className="flex justify-between items-center p-2 rounded-sm border">
                       <div className="text-sm">{f.code} — {f.recordName}</div>
                       <Button variant="outline" size="sm" onClick={() => navigate(`/record/${encodeURIComponent(f.code)}`)}>View</Button>
                     </div>
@@ -338,7 +337,7 @@ export function QuickActions() {
                 <div className="font-medium mb-2">Near Due</div>
                 <div className="space-y-2 max-h-32 overflow-auto">
                   {nearDueForms.map(f => (
-                    <div key={f.code} className="flex justify-between items-center p-2 rounded border">
+                    <div key={f.code} className="flex justify-between items-center p-2 rounded-sm border">
                       <div className="text-sm">{f.code} — {f.recordName}</div>
                       <Button variant="outline" size="sm" onClick={() => navigate(`/record/${encodeURIComponent(f.code)}`)}>View</Button>
                     </div>
@@ -432,7 +431,7 @@ export function QuickActions() {
                 </Button>
               </div>
               {folderResults.length > 0 && (
-                <div className="border rounded-md max-h-32 overflow-auto">
+                <div className="border rounded-sm max-h-32 overflow-auto">
                   {folderResults.map(f => (
                     <button key={f.id} className="w-full text-left px-3 py-2 text-sm hover:bg-muted" onClick={() => {
                       setUploadTarget({ ...uploadTarget, folderLink: f.webViewLink });

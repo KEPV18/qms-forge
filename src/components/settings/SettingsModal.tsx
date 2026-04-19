@@ -13,9 +13,10 @@ import {
     Mail, UserCircle, Crown
 } from "lucide-react";
 import { checkDriveWritePermission } from "@/lib/driveService";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/hooks/useTheme";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 
@@ -25,6 +26,7 @@ interface SettingsModalProps {
 }
 
 const ACCENT_COLORS = [
+    { id: 'cyan', label: 'Cyan', hsl: '186 100% 50%' },
     { id: 'blue', label: 'Blue', hsl: '221 83% 53%' },
     { id: 'green', label: 'Green', hsl: '142 71% 45%' },
     { id: 'purple', label: 'Purple', hsl: '262 83% 58%' },
@@ -37,48 +39,37 @@ const ACCENT_COLORS = [
 type TabId = 'account' | 'appearance' | 'diagnostics';
 
 export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
-    const { toast } = useToast();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const { user, logout, changePassword, updateUser } = useAuth();
+    const { theme, setTheme, resolvedTheme } = useTheme();
 
     const [activeTab, setActiveTab] = useState<TabId>(user?.role === 'admin' ? 'diagnostics' : 'account');
     const [driveStatus, setDriveStatus] = useState<'idle' | 'checking' | 'success' | 'error'>('idle');
     const [driveMessage, setDriveMessage] = useState("");
     const [serverStatus, setServerStatus] = useState<'idle' | 'checking' | 'online' | 'offline'>('idle');
-    const [isDarkMode, setIsDarkMode] = useState(false);
     const [oldPass, setOldPass] = useState("");
     const [newPass, setNewPass] = useState("");
     const [showOldPass, setShowOldPass] = useState(false);
     const [showNewPass, setShowNewPass] = useState(false);
     const [displayName, setDisplayName] = useState(user?.name || "");
     const [isEditingName, setIsEditingName] = useState(false);
-    const [accentColor, setAccentColor] = useState(localStorage.getItem('accentColor') || 'blue');
+    const [accentColor, setAccentColor] = useState(localStorage.getItem('accentColor') || 'cyan');
+
+    const isDarkMode = resolvedTheme === 'dark';
 
     useEffect(() => {
         if (user?.name) setDisplayName(user.name);
     }, [user?.name]);
 
     useEffect(() => {
-        const isDark = localStorage.getItem('theme') === 'dark' ||
-            (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
-        setIsDarkMode(isDark);
-        if (isDark) document.documentElement.classList.add('dark');
-
-        const savedAccent = localStorage.getItem('accentColor') || 'blue';
+        const savedAccent = localStorage.getItem('accentColor') || 'cyan';
         setAccentColor(savedAccent);
         document.documentElement.setAttribute('data-accent', savedAccent);
     }, []);
 
     const toggleDarkMode = (checked: boolean) => {
-        setIsDarkMode(checked);
-        if (checked) {
-            document.documentElement.classList.add('dark');
-            localStorage.setItem('theme', 'dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-            localStorage.setItem('theme', 'light');
-        }
+        setTheme(checked ? 'dark' : 'light');
     };
 
     const handleCheckDrive = async () => {
@@ -89,11 +80,11 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
             if (result.success) {
                 setDriveStatus('success');
                 setDriveMessage(result.message);
-                toast({ title: "Drive Permission Verified", description: "Read/Write access confirmed." });
+                toast.success("Drive Permission Verified", { description: "Read/Write access confirmed." });
             } else {
                 setDriveStatus('error');
                 setDriveMessage(result.message);
-                toast({ title: "Drive Permission Failed", description: result.message, variant: "destructive" });
+                toast.error("Drive Permission Failed", { description: result.message });
             }
         } catch {
             setDriveStatus('error');
@@ -111,14 +102,14 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
         try {
             const response = await fetch('/api/auth?health=true');
             setServerStatus(response.ok ? 'online' : 'offline');
-            toast({
-                title: response.ok ? "Server Online" : "Server Error",
-                description: response.ok ? "Backend connection active." : "Could not reach backend.",
-                variant: response.ok ? "default" : "destructive",
-            });
+            if (response.ok) {
+                toast.success("Server Online", { description: "Backend connection active." });
+            } else {
+                toast.error("Server Error", { description: "Could not reach backend." });
+            }
         } catch {
             setServerStatus('offline');
-            toast({ title: "Server Offline", description: "Network error.", variant: "destructive" });
+            toast.error("Server Offline", { description: "Network error." });
         }
     };
 
@@ -127,22 +118,22 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
         navigate("/login");
     };
 
-    const handleChangePassword = () => {
+    const handleChangePassword = async () => {
         if (!user) return;
-        const ok = changePassword(user.id, oldPass, newPass);
+        const ok = await changePassword(user.id, oldPass, newPass);
         if (!ok) {
-            toast({ title: "Password not changed", description: "Old password incorrect", variant: "destructive" });
+            toast.error("Password not changed", { description: "Old password incorrect" });
             return;
         }
         setOldPass(""); setNewPass("");
-        toast({ title: "Password updated", description: "Your password has been changed" });
+        toast.success("Password updated", { description: "Your password has been changed" });
     };
 
     const handleSaveName = () => {
         if (!user || !displayName.trim()) return;
         updateUser(user.id, { name: displayName.trim() });
         setIsEditingName(false);
-        toast({ title: "Name updated", description: "Your display name has been changed" });
+        toast.success("Name updated", { description: "Your display name has been changed" });
     };
 
     const handleAccentColorChange = (color: string) => {
@@ -175,7 +166,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                 <div className="px-6 pt-6 pb-4">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2.5 text-lg">
-                            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <div className="w-8 h-8 rounded-sm bg-primary/10 flex items-center justify-center">
                                 <SettingsIcon className="w-4 h-4 text-primary" />
                             </div>
                             Settings
@@ -214,8 +205,8 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                         <div className="space-y-6">
                             {/* Profile Card */}
                             {user && (
-                                <div className="flex items-start gap-4 p-4 rounded-xl bg-muted/30 border border-border/50">
-                                    <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                <div className="flex items-start gap-4 p-4 rounded-sm bg-muted/30 border border-border/50">
+                                    <div className="w-14 h-14 rounded-sm bg-primary/10 flex items-center justify-center flex-shrink-0">
                                         <UserCircle className="w-7 h-7 text-primary" />
                                     </div>
                                     <div className="flex-1 min-w-0">
@@ -327,9 +318,9 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     {activeTab === 'appearance' && (
                         <div className="space-y-6">
                             {/* Theme Toggle */}
-                            <div className="flex items-center justify-between p-4 rounded-xl bg-muted/30 border border-border/50">
+                            <div className="flex items-center justify-between p-4 rounded-sm bg-muted/30 border border-border/50">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                                    <div className="w-9 h-9 rounded-sm bg-primary/10 flex items-center justify-center">
                                         {isDarkMode ? <Moon className="w-4 h-4 text-primary" /> : <Sun className="w-4 h-4 text-primary" />}
                                     </div>
                                     <div>
@@ -355,14 +346,14 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                                                 key={color.id}
                                                 onClick={() => handleAccentColorChange(color.id)}
                                                 className={cn(
-                                                    "group relative flex flex-col items-center gap-1.5 p-2 rounded-lg transition-all",
+                                                    "group relative flex flex-col items-center gap-1.5 p-2 rounded-sm transition-all",
                                                     isSelected ? "bg-primary/10 ring-2 ring-primary" : "hover:bg-muted/50"
                                                 )}
                                                 title={color.label}
                                             >
                                                 <div
                                                     className={cn(
-                                                        "w-7 h-7 rounded-full transition-transform",
+                                                        "w-7 h-7 rounded-sm transition-transform",
                                                         isSelected && "scale-110 ring-2 ring-offset-2 ring-offset-background"
                                                     )}
                                                     style={{ backgroundColor: `hsl(${color.hsl})`, boxShadow: isSelected ? `0 0 12px hsl(${color.hsl} / 0.4)` : undefined }}
@@ -383,11 +374,11 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     {activeTab === 'diagnostics' && user?.role === 'admin' && (
                         <div className="space-y-4">
                             {/* Google Drive */}
-                            <div className="rounded-xl border border-border overflow-hidden">
+                            <div className="rounded-sm border border-border overflow-hidden">
                                 <div className="flex items-center justify-between p-4 bg-muted/20">
                                     <div className="flex items-center gap-3">
                                         <div className={cn(
-                                            "w-9 h-9 rounded-lg flex items-center justify-center",
+                                            "w-9 h-9 rounded-sm flex items-center justify-center",
                                             driveStatus === 'success' ? "bg-success/10" : driveStatus === 'error' ? "bg-destructive/10" : "bg-muted"
                                         )}>
                                             <HardDrive className={cn(
@@ -425,11 +416,11 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                             </div>
 
                             {/* Server */}
-                            <div className="rounded-xl border border-border overflow-hidden">
+                            <div className="rounded-sm border border-border overflow-hidden">
                                 <div className="flex items-center justify-between p-4 bg-muted/20">
                                     <div className="flex items-center gap-3">
                                         <div className={cn(
-                                            "w-9 h-9 rounded-lg flex items-center justify-center",
+                                            "w-9 h-9 rounded-sm flex items-center justify-center",
                                             serverStatus === 'online' ? "bg-success/10" : serverStatus === 'offline' ? "bg-destructive/10" : "bg-muted"
                                         )}>
                                             <Server className={cn(
@@ -461,7 +452,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                             </div>
 
                             {/* System Info */}
-                            <div className="rounded-xl border border-border p-4 bg-muted/10">
+                            <div className="rounded-sm border border-border p-4 bg-muted/10">
                                 <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">System Info</h4>
                                 <div className="grid grid-cols-2 gap-3">
                                     {[

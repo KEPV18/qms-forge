@@ -45,7 +45,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { FormDetailsModal } from "./FormDetailsModal";
 import { EditMetadataModal } from "./EditMetadataModal";
@@ -73,30 +73,25 @@ export function RecordsTable({ records, isLoading = false, variant = "default", 
   const updateRecord = useUpdateRecord();
   const deleteRecord = useDeleteRecord();
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   const { user } = useAuth();
   const [updatingRows, setUpdatingRows] = useState<Record<string, boolean>>({});
   const [editingFileRecord, setEditingFileRecord] = useState<QMSRecord | null>(null);
 
   const handleUpdateStatus = async (record: QMSRecord, status: RecordStatus) => {
-    const key = record.isAtomic ? `file-${record.fileId}` : `${record.rowIndex}-audit`;
+    const key = record.isAtomic ? `file-${record.fileId || record.rowIndex}` : `${record.rowIndex}-audit`;
     setUpdatingRows(prev => ({ ...prev, [key]: true }));
 
     try {
       const { updateRecordStatus } = await import("@/lib/statusService");
       const success = await updateRecordStatus(record, status, user?.name || "User");
       if (success) {
-        toast({ title: "Status Updated", description: `Record marked as ${status}.` });
+        toast.success("Status Updated", { description: `Record marked as ${status}.` });
         queryClient.invalidateQueries({ queryKey: ["qms-data"] });
       } else {
         throw new Error("Update failed");
       }
     } catch (err: unknown) {
-      toast({
-        title: "Update Failed",
-        description: (err as Error)?.message || "Google Sheets rejected the write operation.",
-        variant: "destructive"
-      });
+      toast.error("Update Failed", { description: (err as Error)?.message || "Google Sheets rejected the write operation." });
     } finally {
       setUpdatingRows(prev => ({ ...prev, [key]: false }));
     }
@@ -106,10 +101,10 @@ export function RecordsTable({ records, isLoading = false, variant = "default", 
     if (!window.confirm("Are you sure you want to delete this record?")) return;
     try {
       await deleteRecord.mutateAsync(rowIndex);
-      toast({ title: "Record Deleted" });
+      toast.success("Record Deleted");
       queryClient.invalidateQueries({ queryKey: ["qms-data"] });
     } catch (error: unknown) {
-      toast({ title: "Delete Failed", description: (error as Error)?.message, variant: "destructive" });
+      toast.error("Delete Failed", { description: (error as Error)?.message });
     }
   };
 
@@ -117,15 +112,15 @@ export function RecordsTable({ records, isLoading = false, variant = "default", 
     return (
       <div className="p-6 space-y-6">
         {[1, 2, 3].map(i => (
-          <div key={i} className="bg-card rounded-2xl border border-border/50 p-6 space-y-4">
+          <div key={i} className="bg-card rounded-sm border border-border/50 p-6 space-y-4">
             <div className="flex justify-between items-start">
               <div className="space-y-2">
-                <Skeleton className="h-4 w-24 rounded-full" />
+                <Skeleton className="h-4 w-24 rounded-sm" />
                 <Skeleton className="h-6 w-48" />
               </div>
               <Skeleton className="h-8 w-8 rounded-full" />
             </div>
-            <Skeleton className="h-10 w-full rounded-xl" />
+            <Skeleton className="h-10 w-full rounded-sm" />
           </div>
         ))}
       </div>
@@ -135,7 +130,7 @@ export function RecordsTable({ records, isLoading = false, variant = "default", 
   if (records.length === 0) {
     return (
       <div className="p-20 text-center flex flex-col items-center justify-center">
-        <div className="w-20 h-20 rounded-full bg-muted/30 flex items-center justify-center mb-6">
+        <div className="w-20 h-20 rounded-sm bg-muted/30 flex items-center justify-center mb-6">
           <FileText className="w-10 h-10 text-muted-foreground/50" />
         </div>
         <h3 className="text-xl font-bold text-foreground mb-2">No Records Found</h3>
@@ -150,13 +145,15 @@ export function RecordsTable({ records, isLoading = false, variant = "default", 
     <div className={cn("container mx-auto", variant === "compact" ? "p-2 sm:p-4" : "p-6")}>
       <div className={cn(
         "grid gap-4",
-        variant === "compact" 
-          ? "grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 w-full" 
-          : "grid-cols-1 max-w-4xl mx-auto gap-6"
+        variant === "compact"
+          ? "grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 w-full"
+          : records[0]?.isAtomic
+            ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3 w-full"
+            : "grid-cols-1 max-w-4xl mx-auto gap-6"
       )}>
         {records.map((record: QMSRecord) => (
           <RecordCard
-            key={record.isAtomic ? `file-${record.fileId}` : `${record.code}-${record.rowIndex}`}
+            key={record.isAtomic ? `file-${record.fileId || record.rowIndex}` : `${record.code}-${record.rowIndex}`}
             record={record}
             onViewDetails={(r) => {
               if (r.isAtomic && r.fileId) {
@@ -171,16 +168,16 @@ export function RecordsTable({ records, isLoading = false, variant = "default", 
               try {
                 const { permanentlyDeleteDriveFile } = await import("@/lib/driveService");
                 await permanentlyDeleteDriveFile(fileId);
-                toast({ title: "File Deleted", description: "File removed from Drive" });
+                toast.success("File Deleted", { description: "File removed from Drive" });
                 queryClient.invalidateQueries({ queryKey: ["qms-data"] });
               } catch (err: unknown) {
-                toast({ title: "Delete Failed", description: (err as Error)?.message, variant: "destructive" });
+                toast.error("Delete Failed", { description: (err as Error)?.message });
               }
             }}
             onDeleteRecord={handleDelete}
             onUpdateStatus={handleUpdateStatus}
             onApproveRecord={onApproveRecord}
-            isUpdating={updatingRows[record.isAtomic ? `file-${record.fileId}` : `${record.rowIndex}-audit`]}
+            isUpdating={updatingRows[record.isAtomic ? `file-${record.fileId || record.rowIndex}` : `${record.rowIndex}-audit`]}
             variant={variant}
           />
         ))}

@@ -39,7 +39,7 @@ export function TechnicalSpec({ record }: TechnicalSpecProps) {
   ];
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card p-6 shadow-sm">
+    <div className="rounded-sm border border-border/50 bg-card p-6 shadow-sm">
       <h2 className="text-xs font-bold uppercase tracking-[0.15em] text-muted-foreground mb-6 flex items-center gap-2">
         <div className="w-1.5 h-1.5 rounded-full bg-primary" />
         Technical Specification
@@ -49,9 +49,9 @@ export function TechnicalSpec({ record }: TechnicalSpecProps) {
         {specItems.map((item, i) => (
           <div
             key={i}
-            className={`flex items-start gap-3 p-3.5 rounded-xl bg-muted/40 border border-border/30 ${item.full ? "sm:col-span-2" : ""}`}
+            className={`flex items-start gap-3 p-3.5 rounded-sm bg-muted/40 border border-border/30 ${item.full ? "sm:col-span-2" : ""}`}
           >
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+            <div className="w-8 h-8 rounded-sm bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
               <item.icon className="w-4 h-4 text-primary" />
             </div>
             <div className="min-w-0">

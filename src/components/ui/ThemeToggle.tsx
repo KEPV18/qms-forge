@@ -17,7 +17,7 @@ export function ThemeToggle() {
   return (
     <button
       onClick={toggleTheme}
-      className="relative p-2 rounded-md hover:bg-muted transition-colors"
+      className="relative p-2 rounded-sm hover:bg-muted transition-colors"
       aria-label={`Current theme: ${theme}. Click to change.`}
     >
       {resolvedTheme === 'dark' ? (
@@ -51,6 +51,7 @@ export function ThemeToggleCompact() {
     <button
       onClick={cycleTheme}
       className="p-1.5 rounded hover:bg-muted transition-colors"
+      aria-label={`Theme: ${theme}. Click to change.`}
       title={`Theme: ${theme}`}
     >
       {icons[theme]}

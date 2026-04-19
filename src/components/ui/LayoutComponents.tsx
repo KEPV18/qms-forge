@@ -84,7 +84,7 @@ export function CardSection({
   noPadding = false,
 }: CardSectionProps) {
   return (
-    <div className={cn('border rounded-lg', className)}>
+    <div className={cn('border rounded-sm', className)}>
       <div className="flex items-center justify-between p-4 border-b">
         <div>
           <h3 className="font-semibold">{title}</h3>

@@ -6,7 +6,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import {
   getAllRisks,
   addRisk,
@@ -24,8 +24,6 @@ const QUERY_KEY = ["risks"];
  */
 export function useRiskData() {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
-
   // Fetch all risks
   const {
     data: risks = [],
@@ -45,18 +43,13 @@ export function useRiskData() {
     mutationFn: (input: RiskInput) => addRisk(input),
     onSuccess: (newRisk) => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEY });
-      toast({
-        title: "Risk Added",
-        description: `Risk ${newRisk.riskId} has been created successfully.`,
-      });
+      toast.success("Risk Added", { description: `Risk ${newRisk.riskId} has been created successfully.` });
     },
     onError: (error: Error) => {
-      toast({
-        title: "Failed to Add Risk",
+      toast.error("Failed to Add Risk", {
         description: error.message.includes("API key")
           ? "Write operations require OAuth authentication. Current API key is read-only."
           : error.message,
-        variant: "destructive",
       });
     },
   });
@@ -67,18 +60,13 @@ export function useRiskData() {
       updateRisk(riskId, updates),
     onSuccess: (updatedRisk) => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEY });
-      toast({
-        title: "Risk Updated",
-        description: `Risk ${updatedRisk.riskId} has been updated successfully.`,
-      });
+      toast.success("Risk Updated", { description: `Risk ${updatedRisk.riskId} has been updated successfully.` });
     },
     onError: (error: Error) => {
-      toast({
-        title: "Failed to Update Risk",
+      toast.error("Failed to Update Risk", {
         description: error.message.includes("API key")
           ? "Write operations require OAuth authentication. Current API key is read-only."
           : error.message,
-        variant: "destructive",
       });
     },
   });

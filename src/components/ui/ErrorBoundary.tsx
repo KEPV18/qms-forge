@@ -43,7 +43,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
             </p>
             <button
               onClick={() => this.setState({ hasError: false, error: undefined })}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity"
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-sm hover:opacity-90 transition-opacity"
             >
               Try Again
             </button>
@@ -93,7 +93,7 @@ export function ErrorFallback({
       {onRetry && (
         <button
           onClick={onRetry}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-md"
+          className="px-4 py-2 bg-primary text-primary-foreground rounded-sm"
         >
           Try Again
         </button>

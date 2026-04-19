@@ -20,13 +20,13 @@ export function RecordHeader({ code, name, description, category, onRefresh }: R
           variant="ghost"
           size="icon"
           onClick={() => navigate(-1)}
-          className="mt-1 hover:bg-primary/10 hover:text-primary transition-all rounded-xl"
+          className="mt-1 hover:bg-primary/10 hover:text-primary transition-all rounded-sm"
         >
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div className="space-y-2">
           <div className="flex items-center gap-3 flex-wrap">
-            <span className="px-3 py-1 rounded-lg bg-primary/10 text-primary border border-primary/20 font-mono text-xs font-bold tracking-wider">
+            <span className="px-3 py-1 rounded-sm bg-primary/10 text-primary border border-primary/20 font-mono text-xs font-bold tracking-wider">
               {code}
             </span>
             <span className="px-2.5 py-0.5 rounded-md bg-secondary text-secondary-foreground text-[10px] font-bold uppercase tracking-widest">
@@ -41,7 +41,7 @@ export function RecordHeader({ code, name, description, category, onRefresh }: R
         onClick={onRefresh}
         variant="outline"
         size="sm"
-        className="border-border/50 hover:bg-primary/5 transition-all rounded-xl font-bold uppercase tracking-widest text-[10px] h-9 px-4 shrink-0"
+        className="border-border/50 hover:bg-primary/5 transition-all rounded-sm font-bold uppercase tracking-widest text-[10px] h-9 px-4 shrink-0"
       >
         <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
         Sync

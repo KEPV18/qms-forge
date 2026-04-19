@@ -1,21 +1,11 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Sidebar } from "@/components/layout/Sidebar";
-import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
-import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
+import { AppShell } from "@/components/layout/AppShell";
 import { useQMSData } from "@/hooks/useQMSData";
 import { RecordsTable } from "@/components/records/RecordsTable";
 import { RecordBrowser } from "@/components/records/RecordBrowser";
 import {
   ArrowLeft,
-  Users,
-  Settings,
-  ClipboardCheck,
-  ShoppingCart,
-  GraduationCap,
-  Lightbulb,
-  Building2,
   FileText,
   RefreshCw,
   AlertCircle,
@@ -32,76 +22,18 @@ import { AddFormModal } from "@/components/records/AddFormModal";
 import { EditFrequencyModal } from "@/components/records/EditFrequencyModal";
 import { QMSRecord, formatTimeAgo } from "@/lib/googleSheets";
 import type { DriveFile } from "@/lib/driveService";
-import type { LucideIcon } from "lucide-react";
+import { MODULE_CONFIG } from "@/config/modules";
 
-const moduleConfig: Record<string, {
-  name: string;
-  icon: LucideIcon;
-  description: string;
-  isoClause: string;
-  categoryPatterns: string[];
-}> = {
-  sales: {
-    name: "Sales & Customer Service",
-    icon: Users,
-    description: "Manage customer lifecycle from requirements capture to post-delivery feedback.",
-    isoClause: "Clause 8.2, 9.1.2",
-    categoryPatterns: ["sales", "01"],
-  },
-  operations: {
-    name: "Operations & Production",
-    icon: Settings,
-    description: "Plan, control, and execute operational activities with project timelines.",
-    isoClause: "Clause 8.1, 8.5",
-    categoryPatterns: ["operations", "02"],
-  },
-  quality: {
-    name: "Quality & Audit",
-    icon: ClipboardCheck,
-    description: "Core module for quality control, nonconformity handling, and corrective actions.",
-    isoClause: "Clause 9, 10",
-    categoryPatterns: ["quality", "03"],
-  },
-  procurement: {
-    name: "Procurement & Vendors",
-    icon: ShoppingCart,
-    description: "Ensure all purchased items and vendors meet quality requirements.",
-    isoClause: "Clause 8.4",
-    categoryPatterns: ["procurement", "04"],
-  },
-  hr: {
-    name: "HR & Training",
-    icon: GraduationCap,
-    description: "Track personnel competence, training records, and performance appraisals.",
-    isoClause: "Clause 7.2, 7.3",
-    categoryPatterns: ["hr", "05", "training"],
-  },
-  rnd: {
-    name: "R&D & Design",
-    icon: Lightbulb,
-    description: "Manage innovation, development requests, and technical validation.",
-    isoClause: "Clause 8.3",
-    categoryPatterns: ["r&d", "rnd", "06", "design"],
-  },
-  management: {
-    name: "Management & Documentation",
-    icon: Building2,
-    description: "Control governance, documentation, KPI tracking, and leadership decisions.",
-    isoClause: "Clause 5, 6, 7.5",
-    categoryPatterns: ["management", "07", "documentation"],
-  },
-};
+const moduleConfig = MODULE_CONFIG;
 
 export default function ModulePage() {
   const { moduleId } = useParams<{ moduleId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [activeModule, setActiveModule] = useState(moduleId || "dashboard");
   const [isAddRecordModalOpen, setIsAddRecordModalOpen] = useState(false);
   const [isAddFormModalOpen, setIsAddFormModalOpen] = useState(false);
   const [editingFreqRecord, setEditingFreqRecord] = useState<QMSRecord | null>(null);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(localStorage.getItem('sidebarCollapsed') === 'true');
 
   const toggleGroup = (code: string) => {
     setExpandedGroups(prev => ({ ...prev, [code]: !prev[code] }));
@@ -110,15 +42,6 @@ export default function ModulePage() {
   const { data: records, isLoading, error, dataUpdatedAt } = useQMSData();
 
   const module = moduleId ? moduleConfig[moduleId] : null;
-
-  useEffect(() => {
-    const handleToggle = (event: Event) => {
-      const customEvent = event as CustomEvent<boolean>;
-      setSidebarCollapsed(customEvent.detail);
-    };
-    window.addEventListener('qms-sidebar-toggle', handleToggle as EventListener);
-    return () => window.removeEventListener('qms-sidebar-toggle', handleToggle as EventListener);
-  }, []);
 
   // Filter records for this module
   const filteredRecords = useMemo(() => {
@@ -174,14 +97,6 @@ export default function ModulePage() {
     queryClient.invalidateQueries({ queryKey: ["qms-data"] });
   };
 
-  const handleModuleChange = (newModuleId: string) => {
-    setActiveModule(newModuleId);
-    if (newModuleId === "dashboard") {
-      navigate("/");
-    } else if (newModuleId !== "documents") {
-      navigate(`/module/${newModuleId}`);
-    }
-  };
 
   const lastUpdated = dataUpdatedAt
     ? new Date(dataUpdatedAt).toLocaleTimeString("en-US", {
@@ -208,20 +123,8 @@ export default function ModulePage() {
   const Icon = module.icon;
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
-      <Sidebar activeModule={activeModule} onModuleChange={handleModuleChange} />
-
-      <div className={cn("flex-1 flex flex-col ml-0 transition-all duration-300", sidebarCollapsed ? "md:ml-16" : "md:ml-64")}>
-        <Header />
-
-        <main className="flex-1">
-          <div className="p-6 space-y-6">
-            <Breadcrumbs
-              items={[
-                { label: "Dashboard", path: "/" },
-                { label: module.name }
-              ]}
-            />
+    <AppShell breadcrumbs={[{ label: "Dashboard", path: "/" }, { label: module.name }]}>
+      <div className="space-y-5">
             {/* Page Header */}
             <div className="flex items-start justify-between animate-fade-in">
               <div className="flex items-start gap-4">
@@ -235,11 +138,11 @@ export default function ModulePage() {
                 </Button>
                 <div>
                   <div className="flex items-center gap-3 mb-1">
-                    <div className="w-12 h-12 rounded-xl glass-card flex items-center justify-center shadow-lg shadow-accent/10">
+                    <div className="w-12 h-12 rounded-sm glass-card flex items-center justify-center shadow-lg shadow-accent/10">
                       <Icon className="w-6 h-6 text-accent" />
                     </div>
                     <div>
-                      <h1 className="text-3xl font-bold text-foreground tracking-tight font-heading">{module.name}</h1>
+                      <h1 className="text-2xl font-bold text-foreground tracking-tight font-heading">{module.name}</h1>
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] text-muted-foreground font-black uppercase tracking-[0.2em] opacity-60">{module.isoClause}</span>
                         {lastUpdated && (
@@ -271,8 +174,8 @@ export default function ModulePage() {
 
             {/* Stats Summary */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="glass-card rounded-2xl p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-muted/50 flex items-center justify-center">
+              <div className="glass-card rounded-sm p-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-sm bg-muted/50 flex items-center justify-center">
                   <FileText className="w-5 h-5 text-foreground/60" />
                 </div>
                 <div>
@@ -297,8 +200,8 @@ export default function ModulePage() {
 
                 return (
                   <>
-                    <div className="glass-card rounded-2xl p-4 flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
+                    <div className="glass-card rounded-sm p-4 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-sm bg-success/10 flex items-center justify-center">
                         <ClipboardCheck className="w-5 h-5 text-success" />
                       </div>
                       <div>
@@ -306,8 +209,8 @@ export default function ModulePage() {
                         <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Filled</p>
                       </div>
                     </div>
-                    <div className="glass-card rounded-2xl p-4 flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center">
+                    <div className="glass-card rounded-sm p-4 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-sm bg-warning/10 flex items-center justify-center">
                         <Settings className="w-5 h-5 text-warning" />
                       </div>
                       <div>
@@ -315,8 +218,8 @@ export default function ModulePage() {
                         <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Pending</p>
                       </div>
                     </div>
-                    <div className="glass-card rounded-2xl p-4 flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-info/10 flex items-center justify-center">
+                    <div className="glass-card rounded-sm p-4 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-sm bg-info/10 flex items-center justify-center">
                         <Users className="w-5 h-5 text-info" />
                       </div>
                       <div>
@@ -333,7 +236,7 @@ export default function ModulePage() {
             <div className="space-y-12">
               <div className="flex items-center justify-between border-b border-border pb-4">
                 <div className="flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-sidebar-primary" />
+                  <FileText className="w-5 h-5 text-primary" />
                   <h2 className="text-xl font-bold text-foreground">Documentation & Records Alignment</h2>
                 </div>
                 <div className="flex gap-2">
@@ -360,12 +263,12 @@ export default function ModulePage() {
               {isLoading ? (
                 [1, 2, 3].map(i => (
                   <div key={i} className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div className="h-48 bg-muted animate-pulse rounded-xl" />
-                    <div className="h-48 bg-muted animate-pulse rounded-xl" />
+                    <div className="h-48 bg-muted animate-pulse rounded-sm" />
+                    <div className="h-48 bg-muted animate-pulse rounded-sm" />
                   </div>
                 ))
               ) : filteredRecords.length === 0 ? (
-                <div className="bg-card rounded-xl border border-border p-12 text-center">
+                <div className="bg-card rounded-sm border border-border p-12 text-center">
                   <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-20" />
                   <p className="text-muted-foreground">No templates or records found for this module.</p>
                 </div>
@@ -379,11 +282,11 @@ export default function ModulePage() {
                     return (
                       <div key={record.code} className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start animate-fade-in group/row">
                         {/* Left: Form Template Card */}
-                        <div className="glass-card rounded-2xl p-6 hover:shadow-2xl transition-all duration-300 group border-l-4 border-l-primary/30 hover:border-l-primary relative h-full flex flex-col">
+                        <div className="glass-card rounded-sm p-6 hover:shadow-2xl transition-all duration-300 group border-l-4 border-l-primary/30 hover:border-l-primary relative h-full flex flex-col">
                           <div className="flex items-start justify-between mb-4">
                             <div className="min-w-0 flex-1">
                               <div className="flex flex-col gap-2 mb-2">
-                                <span className="inline-flex items-center justify-center bg-primary text-primary-foreground font-mono font-black text-sm md:text-base px-3 py-1 rounded-lg shadow-sm self-start tracking-wider">
+                                <span className="inline-flex items-center justify-center bg-primary text-primary-foreground font-mono font-black text-sm md:text-base px-3 py-1 rounded-sm shadow-sm self-start tracking-wider">
                                   {record.code}
                                 </span>
                                 <h3 className="font-black text-xl md:text-2xl text-foreground leading-tight line-clamp-2">{record.recordName}</h3>
@@ -391,7 +294,7 @@ export default function ModulePage() {
                               <p className="text-sm text-foreground/80 leading-relaxed line-clamp-2">{record.description}</p>
                             </div>
                             {hasFiles && (
-                              <div className="ml-2 px-3 py-1.5 rounded-full bg-sidebar-primary/10 text-sidebar-primary text-xs font-bold border border-sidebar-primary/20 shrink-0 shadow-sm mt-1">
+                              <div className="ml-2 px-3 py-1.5 rounded-sm bg-primary/10 text-primary text-xs font-bold border border-primary/20 shrink-0 shadow-sm mt-1">
                                 {group.files.length} Records
                               </div>
                             )}
@@ -436,7 +339,7 @@ export default function ModulePage() {
                           </div>
 
                           <div className="flex gap-2 pt-4 mt-auto border-t border-border/10">
-                            <Button size="sm" className="flex-1 gap-2" onClick={() => window.open(record.templateLink, '_blank')}>
+                            <Button size="sm" className="flex-1 gap-2" onClick={() => window.open(record.templateLink, '_blank', 'noopener,noreferrer')}>
                               <FileText className="w-4 h-4" />
                               Open Template
                             </Button>
@@ -455,12 +358,12 @@ export default function ModulePage() {
                         {/* Right: Corresponding Records Group */}
                         <div className="relative h-full">
                           {hasFiles ? (
-                            <div className="glass-card rounded-2xl overflow-hidden hover:shadow-2xl transition-all h-full flex flex-col duration-300">
+                            <div className="glass-card rounded-sm overflow-hidden hover:shadow-2xl transition-all h-full flex flex-col duration-300">
                               <div
                                 className="flex items-center gap-3 p-5 cursor-pointer hover:bg-muted/50 transition-colors bg-muted/5 border-b border-border/50"
                                 onClick={() => toggleGroup(record.code)}
                               >
-                                <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
+                                <div className="w-10 h-10 rounded-sm bg-success/10 flex items-center justify-center">
                                   <ClipboardCheck className="w-5 h-5 text-success" />
                                 </div>
                                 <div className="flex-1 min-w-0">
@@ -471,7 +374,7 @@ export default function ModulePage() {
                                   <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">View Collected Evidence</p>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                  <div className="text-xs font-bold text-success bg-success/5 px-2 py-1 rounded-lg border border-success/10">
+                                  <div className="text-xs font-bold text-success bg-success/5 px-2 py-1 rounded-sm border border-success/10">
                                     {group.files.length} {group.files.length !== 1 ? 'Files' : 'File'}
                                   </div>
                                   {isExpanded ? <ChevronUp className="w-5 h-5 text-muted-foreground" /> : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
@@ -492,7 +395,7 @@ export default function ModulePage() {
                                 </div>
                               ) : (
                                 <div className="p-12 flex flex-col items-center justify-center text-center space-y-4 flex-1">
-                                  <div className="w-16 h-16 rounded-full bg-success/5 flex items-center justify-center border border-success/10">
+                                  <div className="w-16 h-16 rounded-sm bg-success/5 flex items-center justify-center border border-success/10">
                                     <ClipboardCheck className="w-8 h-8 text-success" />
                                   </div>
                                   <div>
@@ -507,7 +410,7 @@ export default function ModulePage() {
                               )}
                             </div>
                           ) : (
-                            <div className="h-full border-2 border-dashed border-border/50 rounded-xl flex flex-col items-center justify-center p-8 text-center bg-muted/5 group-hover/row:border-sidebar-primary/20 transition-colors">
+                            <div className="h-full border-2 border-dashed border-border/50 rounded-sm flex flex-col items-center justify-center p-8 text-center bg-muted/5 group-hover/row:border-primary/20 transition-colors">
                               <AlertCircle className="w-10 h-10 text-muted-foreground/20 mb-3" />
                               <p className="text-sm font-medium text-muted-foreground/60">No records filled yet</p>
                               <p className="text-[10px] text-muted-foreground/40 mt-1 uppercase tracking-wider">Awaiting first submission</p>
@@ -517,7 +420,7 @@ export default function ModulePage() {
                                     size="sm"
                                     variant="outline"
                                     className="gap-2"
-                                    onClick={() => window.open(record.folderLink, '_blank')}
+                                    onClick={() => window.open(record.folderLink, '_blank', 'noopener,noreferrer')}
                                   >
                                     <FolderOpen className="w-3 h-3" />
                                     Open Folder
@@ -564,10 +467,7 @@ export default function ModulePage() {
                 record={editingFreqRecord}
               />
             )}
-          </div>
-        </main>
-        <Footer />
       </div>
-    </div>
+    </AppShell>
   );
 }

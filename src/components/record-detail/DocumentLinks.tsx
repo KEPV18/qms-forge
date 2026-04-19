@@ -7,7 +7,7 @@ interface DocumentLinksProps {
 
 export function DocumentLinks({ templateLink, folderLink }: DocumentLinksProps) {
   return (
-    <div className="rounded-2xl border border-border/50 bg-card p-6 shadow-sm">
+    <div className="rounded-sm border border-border/50 bg-card p-6 shadow-sm">
       <h2 className="text-xs font-bold uppercase tracking-[0.15em] text-muted-foreground mb-5 flex items-center gap-2">
         <div className="w-1.5 h-1.5 rounded-full bg-info" />
         Quick Access
@@ -52,7 +52,7 @@ function LinkCard({
 }) {
   if (!href) {
     return (
-      <div className="p-4 rounded-xl bg-muted/30 border border-dashed border-border/50 text-center flex flex-col items-center justify-center gap-1 opacity-50">
+      <div className="p-4 rounded-sm bg-muted/30 border border-dashed border-border/50 text-center flex flex-col items-center justify-center gap-1 opacity-50">
         <Icon className="w-5 h-5 text-muted-foreground" />
         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Not Available</p>
       </div>
@@ -64,9 +64,9 @@ function LinkCard({
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className={`flex items-center gap-3 p-4 rounded-xl bg-card border border-border/50 transition-all group/link ${hoverClass}`}
+      className={`flex items-center gap-3 p-4 rounded-sm bg-card border border-border/50 transition-all group/link ${hoverClass}`}
     >
-      <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 group-hover/link:scale-105 transition-transform ${accentClass}`}>
+      <div className={`w-10 h-10 rounded-sm flex items-center justify-center shrink-0 group-hover/link:scale-105 transition-transform ${accentClass}`}>
         <Icon className="w-5 h-5" />
       </div>
       <div className="flex-1 min-w-0">

@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Sidebar } from "@/components/layout/Sidebar";
-import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
+import { AppShell } from "@/components/layout/AppShell";
 import { useProcessData } from "@/hooks/useProcessData";
 import { extractRecordCodes } from "@/lib/processInteractionService";
 import type { ProcessInput } from "@/lib/processInteractionService";
@@ -32,7 +30,6 @@ import {
 
 export default function ProcessInteractionPage() {
   const navigate = useNavigate();
-  const [activeModule, setActiveModule] = useState("processes");
   const { processes, stats, processFlow, isLoading, isError, error, refetch, addProcess, isAdding } = useProcessData();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedProcess, setSelectedProcess] = useState<string | null>(null);
@@ -66,12 +63,8 @@ export default function ProcessInteractionPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar activeModule={activeModule} onModuleChange={setActiveModule} />
-
-      <div className="flex-1 flex flex-col md:ml-64 ml-0">
-        <Header />
-        <main className="flex-1 p-6 space-y-6">
+    <AppShell breadcrumbs={[{ label: "Dashboard", path: "/" }, { label: "Process Interaction" }]}>
+      <div className="space-y-6">
           {/* Page Header */}
           <div className="flex items-center justify-between">
             <div>
@@ -285,11 +278,11 @@ export default function ProcessInteractionPage() {
                   <p>No process flows defined yet</p>
                 </div>
               ) : (
-                <div className="flex flex-wrap gap-4 p-4 bg-muted/30 rounded-lg">
+                <div className="flex flex-wrap gap-4 p-4 bg-muted/30 rounded-sm">
                   {processFlow.map((flow, index) => (
                     <div
                       key={index}
-                      className="flex items-center gap-2 bg-background p-3 rounded-lg border shadow-sm"
+                      className="flex items-center gap-2 bg-background p-3 rounded-sm border shadow-sm"
                     >
                       <Badge variant="outline" className="font-medium">
                         {flow.from}
@@ -467,9 +460,7 @@ export default function ProcessInteractionPage() {
               </CardContent>
             </Card>
           )}
-        </main>
-        <Footer />
       </div>
-    </div>
+    </AppShell>
   );
 }

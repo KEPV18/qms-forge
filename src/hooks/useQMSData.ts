@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   fetchSheetData,
@@ -15,45 +16,92 @@ import {
   ReviewSummary,
   MonthlyComparison,
 } from "@/lib/googleSheets";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
-export function useQMSData() {
+/**
+ * Lightweight hook: fetches only sheet data (no Drive files).
+ * Use this in layout components (Sidebar, TopNav) and for stats
+ * that don't need file listings.
+ */
+export function useQMSRecords() {
   return useQuery({
-    queryKey: ["qms-data"],
-    queryFn: fetchSheetDataWithAllFiles, // Use comprehensive fetcher
-    refetchInterval: 60000,
-    staleTime: 30000,
+    queryKey: ["qms-records"],
+    queryFn: fetchSheetData,
+    staleTime: 60_000,       // 1 minute
+    gcTime: 10 * 60_000,    // 10 minutes
+    refetchInterval: 120_000, // 2 minutes
   });
 }
 
+/**
+ * Heavy hook: fetches Drive file listings for all record folders.
+ * Use this only in pages that need to display file details
+ * (ModulePage, RecordDetail, AuditPage).
+ */
+export function useQMSDriveFiles() {
+  return useQuery({
+    queryKey: ["qms-drive-files"],
+    queryFn: fetchSheetDataWithAllFiles,
+    staleTime: 120_000,      // 2 minutes
+    gcTime: 10 * 60_000,     // 10 minutes
+    refetchInterval: 300_000, // 5 minutes
+  });
+}
+
+/**
+ * Backward-compatible hook: returns the same data as the old useQMSData.
+ * Internally uses the comprehensive fetcher with Drive files.
+ * Prefer useQMSRecords() for lightweight consumers that don't need file listings.
+ */
+export function useQMSData() {
+  return useQuery({
+    queryKey: ["qms-data"],
+    queryFn: fetchSheetDataWithAllFiles,
+    staleTime: 60_000,
+    gcTime: 10 * 60_000,
+    refetchInterval: 120_000,
+  });
+}
+
+// Memoized stat hooks — these now use useMemo to avoid recalculating every render
+
 export function useModuleStats(records: QMSRecord[] | undefined): ModuleStats[] {
-  if (!records) return [];
-  return calculateModuleStats(records);
+  return useMemo(() => {
+    if (!records) return [];
+    return calculateModuleStats(records);
+  }, [records]);
 }
 
 export function useAuditSummary(records: QMSRecord[] | undefined): AuditSummary {
-  if (!records) return { total: 0, compliant: 0, pending: 0, issues: 0, complianceRate: 0 };
-  return calculateAuditSummary(records);
+  return useMemo(() => {
+    if (!records) return { total: 0, compliant: 0, pending: 0, issues: 0, complianceRate: 0 };
+    return calculateAuditSummary(records);
+  }, [records]);
 }
 
 export function useReviewSummary(records: QMSRecord[] | undefined): ReviewSummary {
-  if (!records) return { completed: 0, pending: 0, total: 0 };
-  return calculateReviewSummary(records);
+  return useMemo(() => {
+    if (!records) return { completed: 0, pending: 0, total: 0 };
+    return calculateReviewSummary(records);
+  }, [records]);
 }
 
 export function useMonthlyComparison(records: QMSRecord[] | undefined): MonthlyComparison {
-  if (!records) return { currentMonth: 0, previousMonth: 0, percentageChange: 0, isPositive: true };
-  return calculateMonthlyComparison(records);
+  return useMemo(() => {
+    if (!records) return { currentMonth: 0, previousMonth: 0, percentageChange: 0, isPositive: true };
+    return calculateMonthlyComparison(records);
+  }, [records]);
 }
 
 export function useRecentActivity(records: QMSRecord[] | undefined, limit: number = 5): QMSRecord[] {
-  if (!records) return [];
-  return getRecentActivity(records, limit);
+  return useMemo(() => {
+    if (!records) return [];
+    return getRecentActivity(records, limit);
+  }, [records, limit]);
 }
 
 export function useUpdateRecord() {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   return useMutation({
     mutationFn: async ({
@@ -65,9 +113,8 @@ export function useUpdateRecord() {
       field: "auditStatus" | "reviewed" | "reviewedBy" | "reviewDate";
       value: string;
     }) => {
-      // Column mapping
       const columnMap: Record<string, string> = {
-        auditStatus: "L", // Should technically use statusService for this now
+        auditStatus: "L",
         reviewed: "R",
         reviewedBy: "N",
         reviewDate: "O",
@@ -84,17 +131,12 @@ export function useUpdateRecord() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["qms-data"] });
-      toast({
-        title: "Record Updated",
-        description: "The record has been successfully updated.",
-      });
+      queryClient.invalidateQueries({ queryKey: ["qms-records"] });
+      queryClient.invalidateQueries({ queryKey: ["qms-drive-files"] });
+      toast.success("Record Updated", { description: "The record has been successfully updated." });
     },
     onError: (error) => {
-      toast({
-        title: "Update Failed",
-        description: "Google Sheets rejected the write operation. This may require authentication beyond API key access.",
-        variant: "destructive",
-      });
+      toast.error("Update Failed", { description: "Google Sheets rejected the write operation. This may require authentication beyond API key access." });
       console.error("Update error:", error);
     },
   });
@@ -102,7 +144,6 @@ export function useUpdateRecord() {
 
 export function useDeleteRecord() {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (rowIndex: number) => {
@@ -111,17 +152,12 @@ export function useDeleteRecord() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["qms-data"] });
-      toast({
-        title: "تم الحذف بنجاح",
-        description: "تم حذف السجل بنجاح",
-      });
+      queryClient.invalidateQueries({ queryKey: ["qms-records"] });
+      queryClient.invalidateQueries({ queryKey: ["qms-drive-files"] });
+      toast.success("Record Deleted", { description: "The record has been successfully deleted." });
     },
     onError: (error) => {
-      toast({
-        title: "خطأ في الحذف",
-        description: "حدث خطأ أثناء حذف السجل",
-        variant: "destructive",
-      });
+      toast.error("Delete Failed", { description: "An error occurred while deleting the record." });
       console.error("Delete error:", error);
     },
   });

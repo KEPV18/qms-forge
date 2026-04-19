@@ -29,20 +29,19 @@ function getModuleProgress(s: ModuleStats): number {
   return Math.round((s.compliantFormsCount / s.formsCount) * 100);
 }
 
-// Circular progress component
-function CircularProgress({ value, size = 36, strokeWidth = 3, className }: { value: number; size?: number; strokeWidth?: number; className?: string }) {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (value / 100) * circumference;
-  const color = value >= 80 ? "hsl(var(--success))" : value >= 50 ? "hsl(var(--warning))" : "hsl(var(--destructive))";
+// Linear angular progress bar
+function LinearProgress({ value, className }: { value: number; className?: string }) {
+  const color = value >= 80 ? "bg-success" : value >= 50 ? "bg-warning" : "bg-destructive";
 
   return (
-    <div className={cn("relative flex items-center justify-center", className)} style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="hsl(var(--muted))" strokeWidth={strokeWidth} opacity={0.3} />
-        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={color} strokeWidth={strokeWidth} strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round" className="transition-all duration-700 ease-out" />
-      </svg>
-      <span className="absolute text-[9px] font-bold text-foreground">{value}%</span>
+    <div className={cn("flex items-center gap-2", className)}>
+      <div className="h-1.5 w-10 rounded-none bg-muted/30 overflow-hidden">
+        <div
+          className={cn("h-full rounded-none transition-all duration-700 ease-out", color)}
+          style={{ width: `${value}%` }}
+        />
+      </div>
+      <span className="text-[9px] font-bold font-mono text-foreground w-7 text-right">{value}%</span>
     </div>
   );
 }
@@ -50,7 +49,7 @@ function CircularProgress({ value, size = 36, strokeWidth = 3, className }: { va
 export function AuditReadiness({ moduleStats, complianceRate, isLoading = false, onRefresh, emptyFormsCount = 0 }: AuditReadinessProps) {
   if (isLoading) {
     return (
-      <div className="bg-card rounded-xl border border-border/50 p-5">
+      <div className="bg-card rounded-sm border border-border/50 p-5">
         <Skeleton className="h-4 w-32 mb-4" />
         {[1, 2, 3].map(i => <Skeleton key={i} className="h-6 w-full mb-3" />)}
       </div>
@@ -61,10 +60,10 @@ export function AuditReadiness({ moduleStats, complianceRate, isLoading = false,
   const displayCompliance = validModules.length > 0 ? Math.max(0, Math.min(100, complianceRate)) : 0;
 
   return (
-    <div className="bg-card rounded-xl border border-border/50 overflow-hidden">
+    <div className="bg-card rounded-sm border border-border/50 overflow-hidden accent-line-top neon-border-hover">
       <div className="px-5 py-4 border-b border-border/50 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-sm bg-success/10 flex items-center justify-center">
             <Shield className="w-4 h-4 text-success" />
           </div>
           <div>
@@ -73,9 +72,9 @@ export function AuditReadiness({ moduleStats, complianceRate, isLoading = false,
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xl font-bold text-foreground">{displayCompliance}%</span>
+          <span className="text-xl font-bold font-mono text-foreground">{displayCompliance}%</span>
           {onRefresh && (
-            <Button onClick={onRefresh} variant="ghost" size="icon" className="h-7 w-7 rounded-md">
+            <Button onClick={onRefresh} variant="ghost" size="icon" className="h-7 w-7 rounded-sm">
               <RefreshCw className="w-3.5 h-3.5" />
             </Button>
           )}
@@ -94,7 +93,7 @@ export function AuditReadiness({ moduleStats, complianceRate, isLoading = false,
 
             return (
               <div key={module.id} className="flex items-center gap-3 group">
-                <CircularProgress value={progress} size={36} strokeWidth={3} />
+                <LinearProgress value={progress} className="flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-foreground truncate">{module.name}</span>
@@ -102,8 +101,8 @@ export function AuditReadiness({ moduleStats, complianceRate, isLoading = false,
                   </div>
                   {(module.issuesCount > 0 || module.pendingCount > 0) && (
                     <div className="flex gap-2 text-[9px] mt-0.5">
-                      {module.pendingCount > 0 && <span className="text-warning font-semibold">{module.pendingCount} pending</span>}
-                      {module.issuesCount > 0 && <span className="text-destructive font-semibold">{module.issuesCount} issues</span>}
+                      {module.pendingCount > 0 && <span className="text-warning font-semibold"><span className="font-mono">{module.pendingCount}</span> pending</span>}
+                      {module.issuesCount > 0 && <span className="text-destructive font-semibold"><span className="font-mono">{module.issuesCount}</span> issues</span>}
                     </div>
                   )}
                 </div>
@@ -116,7 +115,7 @@ export function AuditReadiness({ moduleStats, complianceRate, isLoading = false,
       {emptyFormsCount > 0 && (
         <div className="px-5 py-3 bg-warning/5 border-t border-warning/10 flex items-center justify-between">
           <span className="text-[10px] font-semibold text-warning">Documentation Gaps</span>
-          <span className="text-[10px] font-bold text-warning">{emptyFormsCount} empty</span>
+          <span className="text-[10px] font-bold font-mono text-warning">{emptyFormsCount} empty</span>
         </div>
       )}
     </div>
