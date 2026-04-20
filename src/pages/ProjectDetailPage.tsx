@@ -108,22 +108,13 @@ export default function ProjectDetailPage() {
   return (
     <AppShell breadcrumbs={[{ label: "Dashboard", path: "/" }, { label: "Projects", path: "/projects" }, { label: decodedProject }]} maxWidth="max-w-[1600px]">
       <div className="space-y-8">
-        <div className="space-y-4">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div className="space-y-2">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-sm bg-primary/10 flex items-center justify-center shadow-lg shadow-primary/10">
-                  <Briefcase className="w-6 h-6 text-primary" />
-                </div>
-                <h1 className="text-4xl font-black tracking-tight text-foreground">{decodedProject}</h1>
-              </div>
-              <p className="text-muted-foreground text-lg">
-                Detailed view of all records and compliance status for project <span className="text-foreground font-bold">{decodedProject}</span>.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3">
-               <div className="flex h-11 p-1 bg-card border border-border/40 rounded-sm">
+        <PageHeader
+              icon={Briefcase}
+              iconClassName="text-primary"
+              title={decodedProject}
+              description={`Detailed view of all records and compliance status for project ${decodedProject}.`}
+            >
+              <div className="flex h-11 p-1 bg-card border border-border/40 rounded-sm">
                   <Button
                       variant="ghost"
                       size="sm"
@@ -142,53 +133,70 @@ export default function ProjectDetailPage() {
                       <LayoutGrid className="w-4 h-4" />
                       Cards
                   </Button>
-               </div>
+              </div>
+             </PageHeader>
+
+        {/* Decision Banner */}
+        {stats.rejected > 0 ? (
+          <DecisionBanner
+            priority="critical"
+            title={`${stats.rejected} Issue${stats.rejected > 1 ? "s" : ""} Need Attention`}
+            description="Rejected records require immediate review before your next audit."
+            action={{ label: `Fix ${stats.rejected} Issue${stats.rejected > 1 ? "s" : ""}`, onClick: () => setActiveTab("issues") }}
+          />
+        ) : stats.pending > 0 ? (
+          <DecisionBanner
+            priority="info"
+            title={`${stats.pending} Record${stats.pending > 1 ? "s" : ""} Pending Review`}
+            description="Approve pending records to maintain compliance status."
+            action={{ label: `Review ${stats.pending} Pending`, onClick: () => setActiveTab("pending") }}
+          />
+        ) : stats.total > 0 && stats.approved === stats.total ? (
+          <DecisionBanner
+            priority="success"
+            title="All Records Compliant"
+            description="No outstanding actions needed for this project."
+          />
+        ) : null}
+
+        <StatsRow stats={[
+          { icon: FolderOpen, value: stats.total, label: "Total Files", variant: "default" },
+          { icon: CheckCircle2, value: stats.approved, label: "Approved", variant: "success" },
+          { icon: Clock, value: stats.pending, label: "Pending", variant: "warning" },
+          { icon: AlertCircle, value: stats.rejected, label: "Issues", variant: "destructive" },
+        ]} />
+
+        {/* Overall Progress Bar */}
+        {stats.total > 0 && (
+          <div className="bg-card rounded-sm border border-border/50 p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Overall Compliance</span>
+              <span className="text-sm font-black text-foreground">{Math.round((stats.approved / stats.total) * 100)}%</span>
+            </div>
+            <div className="w-full bg-muted/30 rounded-sm h-2.5 overflow-hidden">
+              <div className={cn(
+                "h-2.5 rounded-sm transition-all duration-700",
+                (stats.approved / stats.total) > 0.7 ? "bg-success" : (stats.approved / stats.total) > 0.3 ? "bg-primary" : "bg-warning"
+              )} style={{ width: `${Math.round((stats.approved / stats.total) * 100)}%` }} />
             </div>
           </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="glass-card backdrop-blur-xl p-6 rounded-sm flex items-center gap-4">
-              <div className="w-12 h-12 rounded-sm bg-primary/10 flex items-center justify-center">
-                  <FolderOpen className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                  <p className="text-2xl font-black text-foreground">{stats.total}</p>
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Total Files</p>
-              </div>
-          </div>
-          <div className="bg-success/5 border border-success/20 p-6 rounded-sm flex items-center gap-4">
-              <div className="w-12 h-12 rounded-sm bg-success/10 flex items-center justify-center">
-                  <CheckCircle2 className="w-6 h-6 text-success" />
-              </div>
-              <div>
-                  <p className="text-2xl font-black text-success">{stats.approved}</p>
-                  <p className="text-xs font-bold text-success/70 uppercase tracking-widest">Approved</p>
-              </div>
-          </div>
-          <div className="bg-warning/5 border border-warning/20 p-6 rounded-sm flex items-center gap-4">
-              <div className="w-12 h-12 rounded-sm bg-warning/10 flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-warning" />
-              </div>
-              <div>
-                  <p className="text-2xl font-black text-warning">{stats.pending}</p>
-                  <p className="text-xs font-bold text-warning/70 uppercase tracking-widest">Pending</p>
-              </div>
-          </div>
-          <div className="bg-destructive/5 border border-destructive/20 p-6 rounded-sm flex items-center gap-4">
-              <div className="w-12 h-12 rounded-sm bg-destructive/10 flex items-center justify-center">
-                  <AlertCircle className="w-6 h-6 text-destructive" />
-              </div>
-              <div>
-                  <p className="text-2xl font-black text-destructive">{stats.rejected}</p>
-                  <p className="text-xs font-bold text-destructive/70 uppercase tracking-widest">Issues</p>
-              </div>
-          </div>
-        </div>
+        )}
 
         <div className="space-y-6">
            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full md:w-auto">
+              <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-xs h-9"
+              onClick={() => navigate(`/audit?project=${encodeURIComponent(decodedProject)}&tab=pending`)}
+            >
+              <CheckCircle className="w-3.5 h-3.5" />
+              Open in Audit
+            </Button>
+          </div>
+
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full md:w-auto">
                 <TabsList className="bg-muted/50 p-1 rounded-sm h-11 border border-border/40">
                   <TabsTrigger value="all" className="rounded-sm font-bold px-6">All</TabsTrigger>
                   <TabsTrigger value="pending" className="rounded-sm font-bold px-6">Pending</TabsTrigger>
@@ -208,7 +216,7 @@ export default function ProjectDetailPage() {
               </div>
            </div>
 
-           <div className="glass-card backdrop-blur-xl rounded-sm p-4 md:p-8 min-h-[400px]">
+           <div className="ds-card-elevated rounded-sm p-4 md:p-8 min-h-[400px]">
               {isError ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
                     <AlertTriangle className="w-12 h-12 text-destructive mb-4" />

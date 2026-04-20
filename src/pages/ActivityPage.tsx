@@ -5,6 +5,8 @@ import { AppShell } from "@/components/layout/AppShell";
 import { useQMSData } from "@/hooks/useQMSData";
 import { QMSRecord, formatTimeAgo, getModuleForCategory } from "@/lib/googleSheets";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { StateScreen } from "@/components/ui/StateScreen";
 import {
   FileText, CheckCircle, AlertTriangle, Clock, User, ExternalLink,
   ArrowLeft, Activity, Inbox, RefreshCw,
@@ -83,26 +85,50 @@ export default function ActivityPage() {
     ? allActivity
     : allActivity.filter(r => getActivityType(r) === filter);
 
+  // Group activity by time period
+  const groupedActivity = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today.getTime() - 86400000);
+    const thisWeek = new Date(today.getTime() - 7 * 86400000);
+
+    const groups: { label: string; items: typeof filteredActivity }[] = [];
+    const todayItems = filteredActivity.filter(r => {
+      const d = r.lastFileDate ? new Date(r.lastFileDate) : null;
+      return d && d >= today;
+    });
+    const yesterdayItems = filteredActivity.filter(r => {
+      const d = r.lastFileDate ? new Date(r.lastFileDate) : null;
+      return d && d >= yesterday && d < today;
+    });
+    const thisWeekItems = filteredActivity.filter(r => {
+      const d = r.lastFileDate ? new Date(r.lastFileDate) : null;
+      return d && d >= thisWeek && d < yesterday;
+    });
+    const olderItems = filteredActivity.filter(r => {
+      const d = r.lastFileDate ? new Date(r.lastFileDate) : null;
+      return !d || d < thisWeek;
+    });
+
+    if (todayItems.length > 0) groups.push({ label: 'Today', items: todayItems });
+    if (yesterdayItems.length > 0) groups.push({ label: 'Yesterday', items: yesterdayItems });
+    if (thisWeekItems.length > 0) groups.push({ label: 'This Week', items: thisWeekItems });
+    if (olderItems.length > 0) groups.push({ label: 'Older', items: olderItems });
+
+    return groups;
+  }, [filteredActivity]);
+
   return (
     <AppShell breadcrumbs={[{ label: "Dashboard", path: "/" }, { label: "Recent Activity" }]}>
       <div className="space-y-5">
         {/* Header */}
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => navigate("/")}>
-            <ArrowLeft className="w-4 h-4" />
-          </Button>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-sm bg-primary/10 flex items-center justify-center">
-              <Activity className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-foreground tracking-tight">Recent Activity</h1>
-              <p className="text-xs text-muted-foreground">
-                {allActivity.length} records across all modules
-              </p>
-            </div>
-          </div>
-        </div>
+        <PageHeader
+          icon={Activity}
+          iconClassName="text-primary"
+          title="Recent Activity"
+          description={`${allActivity.length} records across all modules`}
+          onBack="/"
+        />
 
         {/* Filter tabs — only show those with data */}
         <div className="flex items-center gap-2 flex-wrap">
@@ -153,14 +179,15 @@ export default function ActivityPage() {
               ))}
             </div>
           ) : filteredActivity.length === 0 ? (
-            <div className="p-12 text-center">
-              <Inbox className="w-8 h-8 text-muted-foreground/30 mx-auto mb-3" />
-              <p className="text-sm font-medium text-muted-foreground">No activity yet</p>
-              <p className="text-xs text-muted-foreground/60 mt-1">Records will appear here once data is synced</p>
-            </div>
+            <StateScreen state="empty" title="No activity yet" message="Records will appear here once data is synced" />
           ) : (
-            <div className="divide-y divide-border/50">
-              {filteredActivity.map((record, i) => {
+            groupedActivity.map(group => (
+                <div key={group.label}>
+                  <div className="px-5 py-2 bg-muted/30 border-b border-border/30">
+                    <span className="text-[10px] font-mono font-bold text-muted-foreground uppercase tracking-[0.15em]">{group.label}</span>
+                  </div>
+                  <div className="divide-y divide-border/50">
+                  {group.items.map((record, i) => {
                 const type = getActivityType(record);
                 const config = typeConfig[type];
                 const Icon = config.icon;
@@ -169,7 +196,11 @@ export default function ActivityPage() {
                 return (
                   <div
                     key={`${record.code}-${i}`}
-                    className="px-5 py-4 hover:bg-muted/30 transition-colors cursor-pointer group"
+                    className={cn(
+                    "px-5 py-4 hover:bg-muted/30 transition-colors cursor-pointer group",
+                    type === "approved" && "bg-success/[0.02]",
+                    type === "issue" && "bg-destructive/[0.02]"
+                  )}
                     onClick={() => navigate(`/record/${encodeURIComponent(record.code)}`)}
                   >
                     <div className="flex items-center gap-4">
@@ -217,8 +248,10 @@ export default function ActivityPage() {
                     </div>
                   </div>
                 );
-              })}
-            </div>
+                  })}
+                  </div>
+                </div>
+              ))
           )}
         </div>
       </div>

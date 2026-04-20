@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useNavigate } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { useQMSData } from "@/hooks/useQMSData";
@@ -23,6 +24,7 @@ export default function ProjectsPage() {
   const navigate = useNavigate();
   const { data: records, isLoading, isError, error, refetch } = useQMSData();
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<string>("files-desc");
 
   const projectStats = useMemo(() => {
     if (!records) return [];
@@ -77,36 +79,69 @@ export default function ProjectsPage() {
     return Object.values(statsMap).sort((a, b) => b.totalFiles - a.totalFiles);
   }, [records]);
 
-  const filteredProjects = projectStats.filter(p =>
-    p.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredProjects = projectStats
+    .filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'name-asc': return a.name.localeCompare(b.name);
+        case 'name-desc': return b.name.localeCompare(a.name);
+        case 'approval-asc': return (a.approved / Math.max(a.totalFiles, 1)) - (b.approved / Math.max(b.totalFiles, 1));
+        case 'approval-desc': return (b.approved / Math.max(b.totalFiles, 1)) - (a.approved / Math.max(a.totalFiles, 1));
+        default: return b.totalFiles - a.totalFiles;
+      }
+    });
 
   return (
     <AppShell breadcrumbs={[{ label: "Dashboard", path: "/" }, { label: "Projects Overview" }]}>
       <div className="space-y-5">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-sm bg-primary/10 flex items-center justify-center shadow-lg shadow-primary/10">
-                <Briefcase className="w-6 h-6 text-primary" />
+        <PageHeader
+            icon={Briefcase}
+            iconClassName="text-primary"
+            title="Projects Dashboard"
+            description="Manage and track compliance across all your projects. Real-time stats and progress monitoring."
+          >
+            <div className="flex items-center gap-2">
+              <div className="relative w-full md:w-80">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search projects..."
+                  className="pl-10 h-11 bg-card border-border/50 rounded-sm"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
               </div>
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">Projects Dashboard</h1>
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-[160px] h-11 bg-card border-border/50 rounded-sm text-xs">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="files-desc">Most Files</SelectItem>
+                  <SelectItem value="name-asc">Name A-Z</SelectItem>
+                  <SelectItem value="name-desc">Name Z-A</SelectItem>
+                  <SelectItem value="approval-desc">Highest Compliance</SelectItem>
+                  <SelectItem value="approval-asc">Lowest Compliance</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <p className="text-muted-foreground text-lg max-w-2xl">
-              Manage and track compliance across all your projects. Real-time stats and progress monitoring.
-            </p>
-          </div>
+          </PageHeader>
 
-          <div className="relative w-full md:w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search projects..."
-              className="pl-10 h-11 bg-card border-border/50 rounded-sm"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-        </div>
+        {/* Top Priority Decision */}
+        {!isLoading && !isError && projectStats.length > 0 && (() => {
+          const criticalProject = projectStats.reduce((worst, p) => {
+            const pri = p.rejected > 0 ? 0 : p.pending > 0 ? 1 : 2;
+            const worstPri = worst.rejected > 0 ? 0 : worst.pending > 0 ? 1 : 2;
+            return pri < worstPri ? p : worst;
+          }, projectStats[0]);
+          const decision = getProjectDecision({
+            rejected: criticalProject.rejected,
+            pending: criticalProject.pending,
+            approved: criticalProject.approved,
+            total: criticalProject.totalFiles,
+            projectName: criticalProject.name,
+          });
+          if (!decision || !decision.action) return null;
+          return <DecisionBanner {...decision} />;
+        })()}
 
         {isError ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -122,6 +157,46 @@ export default function ProjectsPage() {
             ))}
           </div>
         ) : (
+          <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="glass-card rounded-sm p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-sm bg-primary/10 flex items-center justify-center">
+                <Briefcase className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-2xl font-black text-foreground">{projectStats.length}</p>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Projects</p>
+              </div>
+            </div>
+            <div className="glass-card rounded-sm p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-sm bg-success/10 flex items-center justify-center">
+                <CheckCircle2 className="w-5 h-5 text-success" />
+              </div>
+              <div>
+                <p className="text-2xl font-black text-success">{projectStats.reduce((s, p) => s + p.approved, 0)}</p>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Approved</p>
+              </div>
+            </div>
+            <div className="glass-card rounded-sm p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-sm bg-warning/10 flex items-center justify-center">
+                <Clock className="w-5 h-5 text-warning" />
+              </div>
+              <div>
+                <p className="text-2xl font-black text-warning">{projectStats.reduce((s, p) => s + p.pending, 0)}</p>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Pending</p>
+              </div>
+            </div>
+            <div className="glass-card rounded-sm p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-sm bg-destructive/10 flex items-center justify-center">
+                <AlertCircle className="w-5 h-5 text-destructive" />
+              </div>
+              <div>
+                <p className="text-2xl font-black text-destructive">{projectStats.reduce((s, p) => s + p.rejected, 0)}</p>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Issues</p>
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredProjects.map((project) => {
               const percentApproved = project.totalFiles > 0
@@ -131,17 +206,15 @@ export default function ProjectsPage() {
               return (
                 <div
                   key={project.name}
-                  className="group relative bg-card/60 backdrop-blur-xl border border-border/40 hover:border-primary/40 rounded-sm p-8 transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 overflow-hidden flex flex-col h-full"
+                  className={cn(
+                      "group relative backdrop-blur-xl border rounded-sm p-8 transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 overflow-hidden flex flex-col h-full ",
+                      project.rejected > 0 ? "bg-destructive/[0.03] border-destructive/30 hover:border-destructive/50 ds-pulse-critical" : "bg-card border-border/50 hover:border-border"
+                    )}
                 >
-                  {/* Background decoration */}
-                  <div className={cn(
-                    "absolute top-0 right-0 w-32 h-32 blur-[80px] opacity-10 transition-opacity group-hover:opacity-20",
-                    percentApproved > 70 ? "bg-success" : "bg-primary"
-                  )} />
 
                   <div className="relative z-10 flex flex-col h-full">
                     <div className="flex justify-between items-start mb-6">
-                      <div className="w-14 h-14 rounded-sm bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shadow-inner border border-primary/10 group-hover:scale-110 transition-transform duration-500">
+                      <div className="w-14 h-14 rounded-sm bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shadow-inner border border-primary/10 transition-colors">
                         <LayoutGrid className="w-7 h-7 text-primary" />
                       </div>
                       <div className="text-right">
@@ -198,7 +271,7 @@ export default function ProjectsPage() {
 
                     <Button
                       onClick={() => navigate(`/project/${encodeURIComponent(project.name)}`)}
-                      className="w-full h-14 mt-8 bg-background border-border/50 hover:bg-primary hover:text-primary-foreground hover:border-primary rounded-sm font-black text-sm gap-2 transition-all group/btn shadow-sm hover:shadow-xl"
+                      className="w-full h-14 mt-8 bg-primary/10 border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground hover:border-primary rounded-sm font-black text-sm gap-2 transition-all group/btn shadow-md hover:shadow-xl hover:scale-[1.01]"
                       variant="outline"
                     >
                       View Project Records
@@ -209,6 +282,7 @@ export default function ProjectsPage() {
               );
             })}
           </div>
+        </>
         )}
 
         {(!isLoading && filteredProjects.length === 0) && (

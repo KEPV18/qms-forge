@@ -1,8 +1,8 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import {
-  LayoutDashboard, ChevronRight, Shield,
-  PanelLeftClose, PanelLeftOpen, LogOut, Menu, X,
-  Layers, Wrench, Briefcase, Settings
+  LayoutDashboard, ChevronRight,
+  PanelLeftClose, PanelLeftOpen, Menu, X,
+  Layers, Wrench, Briefcase,
 } from "lucide-react";
 import { useQMSRecords } from "@/hooks/useQMSData";
 import type { FileReview } from "@/lib/googleSheets";
@@ -11,14 +11,14 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import qmsLogo from "@/assets/qms-logo.png";
 import logoImg from "@/assets/logo.png";
-import { SettingsModal } from "@/components/settings/SettingsModal";
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ThemeToggleCompact } from "@/components/ui/ThemeToggle";
-import { MODULE_NAV_ITEMS, TOOL_NAV_ITEMS, type NavItem } from "@/config/modules";
+import { MODULE_NAV_ITEMS, DOCS_NAV_ITEMS, TOOL_NAV_ITEMS, type NavItem } from "@/config/modules";
+import { BookOpen } from "lucide-react";
 
 const moduleItems = MODULE_NAV_ITEMS;
+const docsItems = DOCS_NAV_ITEMS;
 const toolItems = TOOL_NAV_ITEMS;
 
 interface SidebarProps {
@@ -32,8 +32,7 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [isCollapsed, setIsCollapsed] = useState(localStorage.getItem('sidebarCollapsed') === 'true');
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const { user, logout, loading } = useAuth();
+  const { user, loading } = useAuth();
   const { data: records } = useQMSRecords();
 
   const projects = useMemo(() => {
@@ -70,8 +69,6 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
     return () => { document.body.style.overflow = ''; };
   }, [isMobileOpen]);
 
-  const adminItem: NavItem = { id: "admin", label: "Admin Panel", icon: Shield, path: "/admin/accounts" };
-
   if (loading) return null;
 
   const toggleSidebar = () => {
@@ -99,6 +96,8 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
     if (parentId === "projects-all" && child.code) {
       navigate(`/project/${encodeURIComponent(child.code)}`);
       onModuleChange("projects-all");
+    } else if (parentId === "docs" && child.code) {
+      navigate(child.code);
     } else if (child.code) {
       navigate(`/record/${encodeURIComponent(child.code)}`);
     } else {
@@ -191,8 +190,6 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
     );
   };
 
-  const userInitials = (user?.name || "U").slice(0, 2).toUpperCase();
-
   const sidebarContent = (isMobile: boolean) => (
     <>
       {/* Header */}
@@ -259,89 +256,34 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
           </>
         )}
 
+        {/* Manual & Procedures — expandable */}
+        <NavItemButton
+          item={{
+            id: "docs",
+            label: "Manual & Procedures",
+            icon: BookOpen,
+            path: "",
+            children: docsItems
+              .filter(item => item.id === "iso-manual" || item.id === "procedures")
+              .map(item => ({
+                id: item.id,
+                label: item.label,
+                code: item.path,
+              }))
+          }}
+        />
+
         <SectionLabel icon={Wrench} label="Tools" />
         <div className="space-y-0.5">
           {toolItems.map(item => <NavItemButton key={item.id} item={item} />)}
         </div>
-
-        {user?.role === "admin" && (
-          <>
-            <SectionLabel icon={Shield} label="Admin" />
-            <NavItemButton item={adminItem} />
-          </>
-        )}
       </nav>
 
-      {/* Footer */}
+      {/* Footer — branding only; user controls are in TopNav UserDropdown */}
       <div className={cn("border-t border-border/20", collapsed ? "p-2" : "p-4 space-y-3")}>
-        <div className={cn("flex items-center", collapsed ? "flex-col gap-1" : "gap-1")}>
-          <Tooltip delayDuration={0}>
-            <TooltipTrigger asChild>
-              <button
-                aria-label="Settings"
-                onClick={() => setIsSettingsOpen(true)}
-                className="p-2 rounded-sm text-foreground/30 hover:text-foreground hover:bg-muted transition-all duration-200"
-              >
-                <Settings className="w-4 h-4" />
-              </button>
-            </TooltipTrigger>
-            {collapsed && <TooltipContent side="right" sideOffset={8} className="text-xs">Settings</TooltipContent>}
-          </Tooltip>
-
-          <Tooltip delayDuration={0}>
-            <TooltipTrigger asChild>
-              <div className="flex items-center">
-                <ThemeToggleCompact />
-              </div>
-            </TooltipTrigger>
-            {collapsed && <TooltipContent side="right" sideOffset={8} className="text-xs">Theme</TooltipContent>}
-          </Tooltip>
-
-          {!collapsed && (
-            <Tooltip delayDuration={0}>
-              <TooltipTrigger asChild>
-                <button
-                  aria-label="Sign out"
-                  onClick={logout}
-                  className="p-2 rounded-sm text-foreground/30 hover:text-destructive hover:bg-destructive/10 transition-all duration-200 ml-auto"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="text-xs">Sign Out</TooltipContent>
-            </Tooltip>
-          )}
-        </div>
-
-        {/* User card */}
-        <div className={cn(
-          "flex items-center rounded-sm transition-all duration-200",
-          collapsed ? "justify-center p-2 bg-muted/50" : "gap-3 px-3 py-3 bg-gradient-to-r from-muted/80 to-muted/40 border border-border/20"
-        )}>
-          <Tooltip delayDuration={0}>
-            <TooltipTrigger asChild>
-              <div className="w-9 h-9 rounded-sm bg-gradient-to-br from-primary/40 to-primary/15 flex items-center justify-center flex-shrink-0 border border-primary/20 shadow-sm shadow-primary/10">
-                <span className="text-[11px] font-bold text-primary">{userInitials}</span>
-              </div>
-            </TooltipTrigger>
-            {collapsed && (
-              <TooltipContent side="right" sideOffset={8} className="text-xs">
-                <p className="font-semibold">{user?.name || "Guest"}</p>
-                <p className="text-muted-foreground capitalize">{user?.role}</p>
-              </TooltipContent>
-            )}
-          </Tooltip>
-          {!collapsed && (
-            <div className="flex-1 min-w-0">
-              <p className="text-[12px] font-semibold truncate text-foreground">{user?.name || "Guest"}</p>
-              <p className="text-[10px] text-foreground/30 font-semibold capitalize">{user?.role || "user"}</p>
-            </div>
-          )}
-        </div>
-
         {/* Vezloo Branding Badge */}
         {!collapsed && (
-          <div className="mt-4 p-3 rounded-sm bg-primary/5 border border-primary/10 flex items-center gap-3 animate-fade-in group/brand uppercase">
+          <div className="p-3 rounded-sm bg-primary/5 border border-primary/10 flex items-center gap-3 animate-fade-in group/brand uppercase">
             <div className="w-8 h-8 rounded-sm bg-white p-1.5 shadow-sm border border-border/50 group-hover/brand:scale-110 transition-transform duration-300">
                <img src={logoImg} alt="Vezloo" className="w-full h-full object-contain" />
             </div>
@@ -352,8 +294,6 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
           </div>
         )}
       </div>
-
-      <SettingsModal open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
     </>
   );
 

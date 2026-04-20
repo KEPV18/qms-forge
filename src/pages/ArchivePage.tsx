@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { formatTimeAgo } from "@/lib/googleSheets";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 type SortOption = "newest" | "oldest" | "name-asc" | "name-desc";
 
@@ -55,6 +56,12 @@ export default function ArchivePage() {
       }
     });
   }, [loadArchivedFiles, toast]);
+
+  // Expiring soon count
+  const expiringSoonCount = useMemo(() => {
+    const sevenDaysFromNow = new Date(Date.now() + 7 * 86400000);
+    return archivedFiles.filter(f => new Date(f.modifiedTime) <= sevenDaysFromNow).length;
+  }, [archivedFiles]);
 
   // Filtered & sorted files
   const filteredFiles = useMemo(() => {
@@ -297,7 +304,7 @@ export default function ArchivePage() {
         </div>
 
         {/* File List */}
-        <div className="bg-card rounded-sm border border-border overflow-hidden">
+        <div className="ds-card rounded-sm overflow-hidden">
           {isLoading && archivedFiles.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
               <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -376,16 +383,7 @@ export default function ArchivePage() {
           )}
         </div>
 
-        {/* Retention Notice */}
-        <div className="p-4 rounded-sm bg-warning/5 border border-warning/20 flex gap-3 items-start">
-          <AlertTriangle className="w-5 h-5 text-warning shrink-0 mt-0.5" />
-          <div>
-            <p className="text-xs font-bold text-warning uppercase tracking-wider mb-0.5">Retention Policy</p>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Archived files are retained for 30 days. After expiry, they are automatically removed. Permanent deletion is immediate and irreversible.
-            </p>
-          </div>
-        </div>
+        
       </div>
     </AppShell>
   );

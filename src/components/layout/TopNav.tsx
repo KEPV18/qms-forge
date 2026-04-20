@@ -1,11 +1,11 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import {
-  LayoutDashboard, ChevronDown, Shield,
+  LayoutDashboard, ChevronDown,
   Search, FileText, Folder, FileCode, Table, Loader2,
-  LogOut, Menu, X, Layers, Wrench, Briefcase,
-  ExternalLink, Settings, AlertTriangle,
+  Menu, X, Layers, Wrench, Briefcase, BookOpen,
+  ExternalLink, AlertTriangle,
 } from "lucide-react";
-import { NotificationBell } from "./NotificationBell";
+import { UserDropdown } from "./UserDropdown";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate as useRouterNavigate } from "react-router-dom";
@@ -15,20 +15,20 @@ import { useAuth } from "@/hooks/useAuth";
 import { getAccessToken } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { ThemeToggleCompact } from "@/components/ui/ThemeToggle";
 import { SettingsModal } from "@/components/settings/SettingsModal";
 import { useQMSRecords } from "@/hooks/useQMSData";
 import type { FileReview } from "@/lib/googleSheets";
-import { MODULE_NAV_ITEMS, TOOL_NAV_ITEMS, type NavItem } from "@/config/modules";
+import { MODULE_NAV_ITEMS, DOCS_NAV_ITEMS, TOOL_NAV_ITEMS, type NavItem } from "@/config/modules";
 import qmsLogo from "@/assets/qms-logo.png";
 
 const moduleItems = MODULE_NAV_ITEMS;
+const docsItems = DOCS_NAV_ITEMS;
 const toolItems = TOOL_NAV_ITEMS;
 
 export function TopNav() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { data: records } = useQMSRecords();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -203,7 +203,7 @@ export function TopNav() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-neon-cyan/8">
+      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-neon-cyan/8">
         <div className="flex items-center h-14 px-4 gap-2">
           {/* Left: Logo + Nav */}
           <div className="flex items-center gap-4">
@@ -238,6 +238,8 @@ export function TopNav() {
 
               <DropdownMenu id="modules" label="Modules" icon={Layers} items={moduleItems} />
 
+              <DropdownMenu id="docs" label="Manual & Procedures" icon={BookOpen} items={docsItems.filter(item => item.id === "iso-manual" || item.id === "procedures")} />
+
               <DropdownMenu id="tools" label="Tools" icon={Wrench} items={toolItems} />
 
               {(projects.length > 0 || true) && (
@@ -256,31 +258,16 @@ export function TopNav() {
                 </button>
               )}
 
-              {user?.role === "admin" && (
-                <button
-                  aria-label="Admin"
-                  onClick={() => navigate("/admin/accounts")}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium transition-colors rounded-sm",
-                    location.pathname.startsWith("/admin")
-                      ? "text-primary bg-primary/5"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                  )}
-                >
-                  <Shield className="w-4 h-4" />
-                  <span className="hidden lg:inline">Admin</span>
-                </button>
-              )}
             </nav>
           </div>
 
           {/* Center: Search */}
-          <div className="flex-1 max-w-md mx-4 hidden md:block" ref={searchRef}>
+          <div className="flex-1 max-w-xl mx-4 hidden md:block" ref={searchRef}>
             <div className="relative group">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground transition-colors group-focus-within:text-primary z-10" />
               <Input
                 placeholder="Search files..."
-                className="pl-9 pr-4 bg-muted/30 border-border rounded-sm h-9 text-[13px] focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:border-primary/30 transition-all"
+                className="pl-9 pr-4 bg-muted/30 border-border/50 rounded-sm h-10 text-sm focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:border-primary/30 transition-all placeholder:text-muted-foreground/50"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onFocus={() => searchTerm.length >= 2 && setShowSearchDropdown(true)}
@@ -359,32 +346,10 @@ export function TopNav() {
               </div>
             )}
 
-            <NotificationBell />
-            <ThemeToggleCompact />
-
-            <button
-              aria-label="Settings"
-              onClick={() => setIsSettingsOpen(true)}
-              className="p-2 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-            >
-              <Settings className="w-4 h-4" />
-            </button>
-
-            <button
-              aria-label="Sign out"
-              onClick={logout}
-              className="p-2 rounded-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-              title="Sign out"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
-
-            {/* User avatar */}
-            <div className="hidden sm:flex items-center">
-              <div className="w-7 h-7 rounded-sm bg-primary/10 border border-primary/20 flex items-center justify-center">
-                <span className="text-[9px] font-mono font-bold text-primary">{userInitials}</span>
-              </div>
-            </div>
+            <UserDropdown
+              onOpenSettings={() => setIsSettingsOpen(true)}
+              onNavigate={(path: string) => navigate(path)}
+            />
 
             {/* Mobile hamburger */}
             <button
@@ -454,7 +419,17 @@ export function TopNav() {
             />
           ))}
 
-          <div className="px-3 pt-4 pb-2 text-[9px] font-mono font-bold text-muted-foreground uppercase tracking-widest">Tools</div>
+          <div className="px-3 pt-4 pb-2 text-[9px] font-mono font-bold text-muted-foreground uppercase tracking-widest">Manual & Procedures</div>
+          {docsItems.filter(item => item.id === "iso-manual" || item.id === "procedures").map(item => (
+            <MobileNavItem
+              key={item.id}
+              icon={item.icon}
+              label={item.label}
+              active={isActive(item)}
+              onClick={() => { handleNavClick(item); setIsMobileOpen(false); }}
+            />
+          ))}
+                  <div className="px-3 pt-4 pb-2 text-[9px] font-mono font-bold text-muted-foreground uppercase tracking-widest">Tools</div>
           {toolItems.map(item => (
             <MobileNavItem
               key={item.id}
@@ -472,14 +447,6 @@ export function TopNav() {
             onClick={() => { navigate("/projects"); setIsMobileOpen(false); }}
           />
 
-          {user?.role === "admin" && (
-            <MobileNavItem
-              icon={Shield}
-              label="Admin Panel"
-              active={location.pathname.startsWith("/admin")}
-              onClick={() => { navigate("/admin/accounts"); setIsMobileOpen(false); }}
-            />
-          )}
         </nav>
 
         {/* Mobile footer */}

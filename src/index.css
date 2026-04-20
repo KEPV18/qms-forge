@@ -291,7 +291,7 @@
 
   .glass-card:hover {
     border-color: hsl(var(--neon-cyan) / 0.25);
-    box-shadow: var(--glow-sm);
+    box-shadow: var(--shadow-sm);
   }
 
   /* ── Card Variants — Angular ── */
@@ -302,7 +302,7 @@
   }
 
   .card-modern:hover {
-    box-shadow: var(--glow-sm);
+    box-shadow: var(--shadow-sm);
   }
 
   .card-elevated {
@@ -339,7 +339,7 @@
 
   .card-hover:hover {
     transform: translateY(-1px);
-    box-shadow: var(--glow-sm);
+    box-shadow: var(--shadow-sm);
     border-color: hsl(var(--neon-cyan) / 0.2);
   }
 
@@ -375,7 +375,7 @@
 
   .neon-border-hover:hover {
     border-color: hsl(var(--neon-cyan) / 0.4);
-    box-shadow: var(--glow-sm);
+    box-shadow: var(--shadow-sm);
   }
 
   /* ── Accent Line Top ── */
@@ -566,7 +566,7 @@
 
   .focus-ring:focus-visible {
     @apply outline-none ring-2 ring-primary/50 ring-offset-2;
-    box-shadow: var(--glow-sm);
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.15);
   }
 }
 
@@ -770,4 +770,105 @@
     animation: none !important;
     transition: none !important;
   }
+}
+/* ══════════════════════════════════════════════════
+   8. DESIGN SYSTEM — Unified Patterns
+   ══════════════════════════════════════════════════ */
+
+/* ── Unified Card Style ── */
+.ds-card {
+  @apply bg-card/60 backdrop-blur-xl border border-border/40 rounded-sm
+         transition-all duration-300 overflow-hidden relative;
+}
+
+.ds-card:hover {
+  @apply border-primary/30 shadow-lg;
+}
+
+.ds-card-elevated {
+  @apply ds-card shadow-md hover:shadow-xl hover:-translate-y-0.5;
+}
+
+/* ── Critical Item Highlighting ── */
+.ds-critical {
+  @apply border-l-4 border-l-destructive bg-destructive/[0.03];
+}
+
+.ds-critical-card {
+  @apply ds-card border-l-4 border-l-destructive;
+  box-shadow: inset 3px 0 0 hsl(var(--destructive) / 0.2), var(--shadow-sm);
+}
+
+.ds-warning-card {
+  @apply ds-card border-l-4 border-l-warning;
+  box-shadow: inset 3px 0 0 hsl(var(--warning) / 0.2), var(--shadow-sm);
+}
+
+.ds-success-card {
+  @apply ds-card border-l-4 border-l-success;
+  box-shadow: inset 3px 0 0 hsl(var(--success) / 0.2), var(--shadow-sm);
+}
+
+/* ── State Transitions ── */
+.ds-state-container {
+  @apply transition-opacity duration-300;
+}
+
+.ds-state-container[data-state="loading"] {
+  @apply opacity-60;
+}
+
+.ds-state-container[data-state="empty"] {
+  @apply opacity-80;
+}
+
+/* ── Micro-interactions ── */
+.ds-press {
+  @apply active:scale-[0.97] transition-transform duration-100;
+}
+
+.ds-hover-lift {
+  @apply transition-colors duration-150;
+}
+
+.ds-hover-glow {
+  @apply transition-colors duration-150;
+}
+
+.ds-focus-ring {
+  @apply focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background outline-none;
+}
+
+/* ── Pulse for critical items ── */
+.ds-pulse-critical {
+  border-left-color: hsl(var(--destructive) / 0.6);
+}
+
+/* ── Skeleton shimmer ── */
+.ds-skeleton {
+  @apply bg-muted/50 rounded-sm animate-pulse;
+  background-image: linear-gradient(90deg,
+    transparent 25%,
+    hsl(var(--muted-foreground) / 0.06) 50%,
+    transparent 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear, pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ── Stagger entrance ── */
+.ds-stagger > *:nth-child(1) { animation-delay: 0ms; }
+.ds-stagger > *:nth-child(2) { animation-delay: 50ms; }
+.ds-stagger > *:nth-child(3) { animation-delay: 100ms; }
+.ds-stagger > *:nth-child(4) { animation-delay: 150ms; }
+.ds-stagger > *:nth-child(5) { animation-delay: 200ms; }
+.ds-stagger > *:nth-child(6) { animation-delay: 250ms; }
+
+/* ── Smooth content transitions ── */
+.ds-fade-enter {
+  animation: ds-fade-in 0.3s ease-out both;
+}
+
+@keyframes ds-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }

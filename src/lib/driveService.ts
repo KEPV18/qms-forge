@@ -152,24 +152,14 @@ export async function getFolderFileCount(folderLink: string): Promise<number> {
   }
 
   const token = await getAccessToken();
+  if (!token) return 0;
 
-  // Query for files in the folder (excluding trashed items and the Archive folder)
   const query = `'${folderId}' in parents and trashed=false and name != 'Archive'`;
   const url = `${DRIVE_API_BASE}/files?q=${encodeURIComponent(query)}&fields=files(id)`;
 
-  const headers: Record<string, string> = {};
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-
-  let response = await fetch(url, { headers });
-
-  // Try with API key if token-based request failed
-  if (!response.ok && token) {
-    const fallbackUrl = `${url}${url.includes('?') ? '&' : '?'}key=${API_KEY}`;
-    response = await fetch(fallbackUrl);
-  } else if (!response.ok && !token) {
-    const fallbackUrl = `${url}${url.includes('?') ? '&' : '?'}key=${API_KEY}`;
-    response = await fetch(fallbackUrl);
-  }
+  const response = await fetch(url, {
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
 
   if (!response.ok) {
     throw new DriveApiError(response.status, `Failed to count files in folder: ${response.statusText}`);
@@ -193,24 +183,14 @@ export async function listFolderFiles(folderLink: string): Promise<DriveFile[]> 
 
   const token = await getAccessToken();
 
-  // Query for files in the folder (excluding trashed items and the Archive folder)
   const query = `'${folderId}' in parents and trashed=false and name != 'Archive'`;
   const fields = "files(id,name,mimeType,createdTime,modifiedTime,webViewLink,size,parents,description)";
-  const url = `${DRIVE_API_BASE}/files?q=${encodeURIComponent(query)}&fields=${fields}&orderBy=createdTime desc`;
+  const url = `${DRIVE_API_BASE}/files?q=${encodeURIComponent(query)}&fields=${fields}&orderBy=createdTime desc&key=${API_KEY}`;
 
   const headers: Record<string, string> = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  let response = await fetch(url, { headers });
-
-  // Try with API key if token-based request failed
-  if (!response.ok && token) {
-    const fallbackUrl = `${url}${url.includes('?') ? '&' : '?'}key=${API_KEY}`;
-    response = await fetch(fallbackUrl);
-  } else if (!response.ok && !token) {
-    const fallbackUrl = `${url}${url.includes('?') ? '&' : '?'}key=${API_KEY}`;
-    response = await fetch(fallbackUrl);
-  }
+  const response = await fetch(url, { headers });
 
   if (!response.ok) {
     throw new DriveApiError(response.status, `Failed to list files in folder: ${response.statusText}`);
@@ -229,21 +209,12 @@ export async function getFileMetadata(fileId: string): Promise<FileMetadata | nu
   const token = await getAccessToken();
 
   const fields = "id,name,createdTime,modifiedTime,webViewLink,mimeType";
-  const url = `${DRIVE_API_BASE}/files/${fileId}?fields=${encodeURIComponent(fields)}`;
+  const url = `${DRIVE_API_BASE}/files/${fileId}?fields=${encodeURIComponent(fields)}&key=${API_KEY}`;
 
   const headers: Record<string, string> = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  let response = await fetch(url, { headers });
-
-  // Try with API key if token-based request failed
-  if (!response.ok && token) {
-    const fallbackUrl = `${url}${url.includes('?') ? '&' : '?'}key=${API_KEY}`;
-    response = await fetch(fallbackUrl);
-  } else if (!response.ok && !token) {
-    const fallbackUrl = `${url}${url.includes('?') ? '&' : '?'}key=${API_KEY}`;
-    response = await fetch(fallbackUrl);
-  }
+  const response = await fetch(url, { headers });
 
   if (!response.ok) {
     throw new DriveApiError(response.status, `Failed to get file metadata: ${response.statusText}`);
@@ -319,23 +290,16 @@ export async function batchGetFolderFiles(
  */
 export async function searchProjectDrive(searchTerm: string): Promise<DriveSearchResult[]> {
   const token = await getAccessToken();
-  if (!token) {
-    // Error logged
-    return [];
-  }
 
   try {
-    // Search for name containing term or full content containing term, not trashed
-    // Note: fullText searches inside Google Docs, Sheets, PDFs, etc.
     const query = `(name contains '${searchTerm}' or fullText contains '${searchTerm}') and trashed = false`;
     const fields = "files(id,name,mimeType,webViewLink,parents,iconLink,thumbnailLink)";
     const url = `${DRIVE_API_BASE}/files?q=${encodeURIComponent(query)}&fields=${encodeURIComponent(fields)}&pageSize=15&key=${API_KEY}`;
 
-    const response = await fetch(url, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const response = await fetch(url, { headers });
 
     if (!response.ok) {
       throw new Error(`Drive search failed: ${response.status}`);
@@ -367,9 +331,9 @@ async function getParentName(folderId: string, token: string): Promise<string> {
 
   try {
     const url = `${DRIVE_API_BASE}/files/${folderId}?fields=name&key=${API_KEY}`;
-    const response = await fetch(url, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const response = await fetch(url, { headers });
     if (response.ok) {
       const data = await response.json();
       folderNameCache.set(folderId, data.name);
@@ -596,22 +560,20 @@ export async function checkDriveWritePermission(): Promise<{ success: boolean; m
  */
 export async function listAllArchivedFiles(): Promise<DriveFile[]> {
   const token = await getAccessToken();
-  if (!token) return [];
 
   try {
-    // Search for all folders named 'Archive'
     const folderQuery = "name = 'Archive' and mimeType = 'application/vnd.google-apps.folder' and trashed = false";
     const folderUrl = `${DRIVE_API_BASE}/files?q=${encodeURIComponent(folderQuery)}&fields=files(id)&key=${API_KEY}`;
 
-    const folderResponse = await fetch(folderUrl, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const folderResponse = await fetch(folderUrl, { headers });
     const folderData = await folderResponse.json();
     const archiveFolderIds = (folderData.files || []).map((f: DriveApiFile) => f.id);
 
     if (archiveFolderIds.length === 0) return [];
 
-    // Now search for all files in any of these Archive folders
     const allArchivedFiles: DriveFile[] = [];
     const chunkSize = 15;
     for (let i = 0; i < archiveFolderIds.length; i += chunkSize) {
@@ -619,9 +581,7 @@ export async function listAllArchivedFiles(): Promise<DriveFile[]> {
       const fileQuery = `(${chunk.map(id => `'${id}' in parents`).join(' or ')}) and trashed = false`;
       const fileUrl = `${DRIVE_API_BASE}/files?q=${encodeURIComponent(fileQuery)}&fields=files(id,name,mimeType,createdTime,modifiedTime,webViewLink,parents,description)&orderBy=createdTime desc&key=${API_KEY}`;
 
-      const fileResponse = await fetch(fileUrl, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const fileResponse = await fetch(fileUrl, { headers });
       const fileData = await fileResponse.json();
       if (fileData.files) {
         allArchivedFiles.push(...fileData.files.filter((f: DriveApiFile) => !f.name?.toLowerCase().endsWith('.json')));
@@ -630,7 +590,6 @@ export async function listAllArchivedFiles(): Promise<DriveFile[]> {
 
     return allArchivedFiles;
   } catch (error) {
-    // Error logged
     return [];
   }
 }

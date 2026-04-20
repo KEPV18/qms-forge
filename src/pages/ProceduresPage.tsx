@@ -1,18 +1,17 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { getAccessToken } from "@/lib/auth";
 import {
   FileText, Folder, ChevronLeft, ChevronRight, Maximize2, Minimize2,
   ExternalLink, Loader2, RefreshCw, List, Grid, Eye, Pencil,
   ArrowLeft, FileCode, Table as TableIcon, Search,
-  Library, Archive, Save, X, RotateCcw, ArrowRight, Layers, Info, Printer, User, History
+  Library, Archive, Save, X, RotateCcw, ArrowRight, Layers, Info, Printer, User, History, ArrowUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useProceduresData } from "@/hooks/useProceduresData";
@@ -85,9 +84,11 @@ export default function ProceduresPage() {
 
   // Digital Procedures State
   const { data: digitalProcedures, updateProcedure, resetToDefault, isLoaded: digitalLoaded } = useProceduresData();
-  const [selectedProcId, setSelectedProcId] = useState("");
-  const [procSearchQuery, setProcSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [isEditMode, setIsEditMode] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [activeSectionId, setActiveSectionId] = useState("");
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Drive State
   const [files, setFiles] = useState<DriveItem[]>([]);
@@ -101,9 +102,32 @@ export default function ProceduresPage() {
     { id: PROCEDURES_FOLDER_ID, name: "02. Procedures" }
   ]);
 
+  // Scroll-to-top visibility
   useEffect(() => {
-    if (digitalLoaded && !selectedProcId && digitalProcedures.length > 0) setSelectedProcId(digitalProcedures[0].id);
-  }, [digitalLoaded, digitalProcedures, selectedProcId]);
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const handleScroll = () => setShowScrollTop(container.scrollTop > 300);
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Intersection observer for active section
+  useEffect(() => {
+    if (!digitalLoaded || digitalProcedures.length === 0) return;
+    const sectionEls = digitalProcedures.map(s => document.getElementById(`proc-${s.id}`)).filter(Boolean);
+    if (sectionEls.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.find(e => e.isIntersecting);
+        if (visible) setActiveSectionId(visible.target.id.replace('proc-', ''));
+      },
+      { rootMargin: '-80px 0px -60% 0px', threshold: 0 }
+    );
+
+    sectionEls.forEach(el => observer.observe(el!));
+    return () => observer.disconnect();
+  }, [digitalLoaded, digitalProcedures]);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedDriveSearch(driveSearch), 500);
@@ -132,106 +156,103 @@ export default function ProceduresPage() {
     if (activeTab === "archive") loadDriveFiles();
   }, [activeTab, loadDriveFiles]);
 
-  const filteredDigitalProcedures = useMemo(() => {
-    if (!procSearchQuery) return digitalProcedures;
-    const query = procSearchQuery.toLowerCase();
+  const filteredProcedures = useMemo(() => {
+    if (!searchQuery) return digitalProcedures;
+    const query = searchQuery.toLowerCase();
     return digitalProcedures.filter(p =>
       p.title.toLowerCase().includes(query) ||
       p.purpose.toLowerCase().includes(query) ||
       p.procedureText.toLowerCase().includes(query)
     );
-  }, [procSearchQuery, digitalProcedures]);
-
-  const activeProcedure = useMemo(() =>
-    digitalProcedures.find(p => p.id === selectedProcId) || digitalProcedures[0]
-  , [selectedProcId, digitalProcedures]);
+  }, [searchQuery, digitalProcedures]);
 
   const nonFolderFiles = files.filter(f => !f.mimeType.includes("folder"));
   const selectedDriveFile = selectedIndex !== null ? nonFolderFiles[selectedIndex] : null;
 
+  const scrollToSection = useCallback((id: string) => {
+    document.getElementById(`proc-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
   return (
     <AppShell breadcrumbs={[{ label: "Dashboard", path: "/" }, { label: "Procedures" }]} className="!p-0 !max-w-none">
-      {/* Top Bar */}
-      <div className="border-b border-border/50 bg-gradient-to-r from-card to-card/80 backdrop-blur-sm px-4 md:px-6 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-gradient-to-br from-primary/15 to-primary/5 rounded-sm border border-primary/10">
+      {/* Sticky Top Bar */}
+      <div className="sticky top-0 z-40 border-b border-border/50 bg-background/95 backdrop-blur-xl px-4 md:px-8 py-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="p-2 rounded-lg bg-primary/10 border border-primary/15">
             <FileCode className="w-5 h-5 text-primary" />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Quality Procedures</h1>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-[0.15em] font-medium">Standard Operating Procedures (SOP)</p>
+          <div className="min-w-0">
+            <h1 className="text-lg font-bold tracking-tight truncate">Quality Procedures</h1>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-[0.12em] font-medium">Standard Operating Procedures (SOP)</p>
           </div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
-          <TabsList className="grid w-full grid-cols-2 h-9 p-0.5 bg-muted/30 backdrop-blur-sm rounded-sm">
-            <TabsTrigger value="digital" className="gap-1.5 text-xs rounded-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              <Library className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Digital</span>
-            </TabsTrigger>
-            <TabsTrigger value="archive" className="gap-1.5 text-xs rounded-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              <Archive className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Drive Archive</span>
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex items-center gap-2 shrink-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
+            <TabsList className="grid grid-cols-2 h-9 p-0.5 bg-muted/30 backdrop-blur-sm rounded-lg">
+              <TabsTrigger value="digital" className="gap-1.5 text-xs rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                <Library className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Digital</span>
+              </TabsTrigger>
+              <TabsTrigger value="archive" className="gap-1.5 text-xs rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                <Archive className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Drive Archive</span>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex h-[calc(100vh-52px)] overflow-hidden">
         {activeTab === "digital" ? (
           <>
-            {/* Sidebar */}
-            <div className="w-64 border-r border-border/40 bg-muted/10 flex flex-col hidden md:flex">
-              <div className="p-3 space-y-2">
-                <div className="relative group">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+            {/* TOC sidebar */}
+            <div className="hidden lg:flex w-56 shrink-0 flex-col border-r border-border/30 bg-muted/5 overflow-y-auto">
+              <div className="px-3 pt-4 pb-2 flex items-center justify-between">
+                <span className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-[0.15em]">Procedures</span>
+                <Badge variant="outline" className="h-4 px-1.5 text-[9px] bg-muted/40 border-border/40">{digitalProcedures.length}</Badge>
+              </div>
+              <nav className="flex-1 px-2 pb-4 space-y-0.5">
+                {digitalProcedures.map((proc, idx) => (
+                  <button
+                    key={proc.id}
+                    onClick={() => scrollToSection(proc.id)}
+                    className={cn(
+                      "w-full flex items-center gap-2 px-2.5 py-1.5 text-[11px] rounded-md transition-all text-left",
+                      activeSectionId === proc.id
+                        ? "bg-primary/10 text-primary font-semibold"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                    )}
+                  >
+                    <span className={cn(
+                      "w-5 h-5 rounded flex items-center justify-center text-[9px] font-bold shrink-0",
+                      activeSectionId === proc.id ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground/50"
+                    )}>
+                      {idx + 1}
+                    </span>
+                    <span className="truncate leading-tight">{proc.title.replace(/^\d+\.\s*/, '')}</span>
+                  </button>
+                ))}
+              </nav>
+              <div className="p-3 border-t border-border/20 bg-muted/10 space-y-2">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
                   <Input
                     placeholder="Search..."
-                    className="pl-8 h-8 text-xs bg-background/50 border-border/50 group-focus-within:ring-1 rounded-sm"
-                    value={procSearchQuery}
-                    onChange={(e) => setProcSearchQuery(e.target.value)}
+                    className="pl-7 h-7 text-[11px] bg-background/50 border-border/40 rounded-lg"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
-              </div>
-              <ScrollArea className="flex-1 px-2 pb-2">
-                <div className="space-y-0.5">
-                  {filteredDigitalProcedures.map((proc, idx) => {
-                    const isActive = selectedProcId === proc.id;
-                    return (
-                      <button
-                        key={proc.id}
-                        onClick={() => setSelectedProcId(proc.id)}
-                        className={cn(
-                          "w-full flex items-center gap-2.5 px-3 py-2 text-[12px] rounded-sm transition-all text-left group",
-                          isActive
-                            ? "bg-primary text-primary-foreground font-semibold shadow-sm shadow-primary/20"
-                            : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                        )}
-                      >
-                        <span className={cn(
-                          "w-5 h-5 rounded-sm flex items-center justify-center text-[9px] font-bold flex-shrink-0",
-                          isActive ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground/60"
-                          )}>
-                          {idx + 1}
-                        </span>
-                        <span className="truncate">{proc.title}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </ScrollArea>
-              <div className="p-3 border-t border-border/30 bg-muted/20 space-y-2">
                 <Button
                   variant={isEditMode ? "default" : "outline"}
                   size="sm"
-                  className="w-full gap-1.5 h-8 text-xs rounded-sm"
+                  className="w-full gap-1.5 h-7 text-[10px] rounded-lg"
                   onClick={() => setIsEditMode(!isEditMode)}
                 >
-                  {isEditMode ? <X className="w-3.5 h-3.5" /> : <Pencil className="w-3.5 h-3.5" />}
-                  {isEditMode ? "Exit Edit" : "Edit"}
+                  {isEditMode ? <X className="w-3 h-3" /> : <Pencil className="w-3 h-3" />}
+                  {isEditMode ? "Exit Edit" : "Edit All"}
                 </Button>
                 {isEditMode && (
-                  <Button
-                    variant="ghost" size="sm"
-                    className="w-full gap-1.5 h-7 text-[10px] text-destructive"
+                  <Button variant="ghost" size="sm" className="w-full gap-1.5 h-6 text-[10px] text-destructive"
                     onClick={() => confirm("Reset all procedures?") && resetToDefault()}
                   >
                     <RotateCcw className="w-3 h-3" /> Reset all
@@ -240,109 +261,106 @@ export default function ProceduresPage() {
               </div>
             </div>
 
-            {/* Main Content */}
-            <div className="flex-1 flex flex-col bg-gradient-to-b from-background to-muted/10 relative overflow-hidden">
-              <ScrollArea className="flex-1">
-                <div className="max-w-3xl mx-auto px-6 py-8 md:py-10">
-                  {activeProcedure && (
-                    <div className="space-y-6 animate-in fade-in duration-300">
-                      {/* Title */}
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2 text-[10px] font-bold text-primary/70 uppercase tracking-[0.2em]">
-                          <div className="w-6 h-px bg-primary/30" />
-                          <span>Standard Procedure</span>
+            {/* Scrollable Document */}
+            <div ref={scrollContainerRef} className="flex-1 overflow-y-auto scroll-smooth">
+              <div className="max-w-3xl mx-auto px-5 md:px-8 py-8 md:py-12 space-y-0">
+                {filteredProcedures.map((proc, procIdx) => (
+                  <div
+                    key={proc.id}
+                    id={`proc-${proc.id}`}
+                    className={cn(
+                      "scroll-mt-20",
+                      procIdx < filteredProcedures.length - 1 && "pb-8 mb-8 border-b border-border/20"
+                    )}
+                  >
+                    {/* Title */}
+                    <div className="mb-5 space-y-2">
+                      <div className="flex items-center gap-2 text-[10px] font-bold text-primary/50 uppercase tracking-[0.2em]">
+                        <div className="w-8 h-px bg-primary/20" />
+                        <span>SOP {procIdx + 1}</span>
+                      </div>
+                      {isEditMode ? (
+                        <Input
+                          value={proc.title}
+                          onChange={(e) => updateProcedure(proc.id, { title: e.target.value })}
+                          className="text-xl font-bold h-10 border-primary/20 rounded-lg"
+                        />
+                      ) : (
+                        <h2 className="text-xl md:text-2xl font-extrabold tracking-tight text-foreground">{proc.title}</h2>
+                      )}
+                      <div className="h-1 w-12 bg-gradient-to-r from-primary to-primary/20 rounded-full" />
+                    </div>
+
+                    {/* Purpose & Scope & Responsibilities */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
+                      <div className={cn("p-4 rounded-xl border transition-all", isEditMode ? "border-primary/10 bg-primary/[0.02]" : "border-border/25 bg-card/60")}>
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <Info className="w-3 h-3 text-primary/40" />
+                          <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground/40">Purpose</span>
                         </div>
                         {isEditMode ? (
-                          <Input
-                            value={activeProcedure.title}
-                            onChange={(e) => updateProcedure(activeProcedure.id, { title: e.target.value })}
-                            className="text-2xl font-bold h-12 border-primary/20"
-                          />
+                          <Input value={proc.purpose} onChange={(e) => updateProcedure(proc.id, { purpose: e.target.value })} className="bg-background text-xs h-7 rounded-lg" />
                         ) : (
-                          <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight text-foreground">{activeProcedure.title}</h2>
+                          <p className="text-xs text-foreground/70 leading-relaxed">{proc.purpose}</p>
                         )}
-                        <div className="h-1 w-16 bg-gradient-to-r from-primary to-primary/30 rounded-sm" />
                       </div>
-
-                      {/* Purpose & Responsibilities */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className={cn("p-4 rounded-sm border transition-all", isEditMode ? "border-primary/15 bg-primary/5" : "border-border/40 bg-card")}>
-                          <div className="flex items-center gap-2 mb-3">
-                            <Info className="w-3.5 h-3.5 text-primary/60" />
-                            <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/60">Purpose & Scope</span>
-                          </div>
-                          <div className="space-y-3">
-                            <div>
-                              <Label className="text-[9px] text-muted-foreground uppercase font-bold">Purpose</Label>
-                              {isEditMode ? (
-                                <Input value={activeProcedure.purpose} onChange={(e) => updateProcedure(activeProcedure.id, { purpose: e.target.value })} className="bg-background mt-1 h-8 text-xs" />
-                              ) : (
-                                <p className="text-xs text-foreground/80 mt-1">{activeProcedure.purpose}</p>
-                              )}
-                            </div>
-                            <div>
-                              <Label className="text-[9px] text-muted-foreground uppercase font-bold">Scope</Label>
-                              {isEditMode ? (
-                                <Input value={activeProcedure.scope} onChange={(e) => updateProcedure(activeProcedure.id, { scope: e.target.value })} className="bg-background mt-1 h-8 text-xs" />
-                              ) : (
-                                <p className="text-xs text-foreground/80 mt-1">{activeProcedure.scope}</p>
-                              )}
-                            </div>
-                          </div>
+                      <div className={cn("p-4 rounded-xl border transition-all", isEditMode ? "border-primary/10 bg-primary/[0.02]" : "border-border/25 bg-card/60")}>
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <Layers className="w-3 h-3 text-primary/40" />
+                          <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground/40">Scope</span>
                         </div>
-                        <div className={cn("p-4 rounded-sm border transition-all", isEditMode ? "border-primary/15 bg-primary/5" : "border-border/40 bg-card")}>
-                          <div className="flex items-center gap-2 mb-3">
-                            <User className="w-3.5 h-3.5 text-primary/60" />
-                            <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/60">Responsibilities</span>
-                          </div>
-                          {isEditMode ? (
-                            <Textarea value={activeProcedure.responsibilities} onChange={(e) => updateProcedure(activeProcedure.id, { responsibilities: e.target.value })} className="bg-background mt-1 min-h-[80px] text-xs" />
-                          ) : (
-                            <p className="text-xs text-foreground/80 leading-relaxed">{activeProcedure.responsibilities}</p>
-                          )}
-                        </div>
+                        {isEditMode ? (
+                          <Input value={proc.scope} onChange={(e) => updateProcedure(proc.id, { scope: e.target.value })} className="bg-background text-xs h-7 rounded-lg" />
+                        ) : (
+                          <p className="text-xs text-foreground/70 leading-relaxed">{proc.scope}</p>
+                        )}
                       </div>
-
-                      {/* Procedure Text */}
-                      <div className={cn(
-                        "p-5 rounded-sm border transition-all",
-                        isEditMode ? "ring-2 ring-primary/20 bg-primary/5 border-primary/15" : "bg-card border-border/50 shadow-sm"
-                      )}>
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-2">
-                            <Layers className="w-3.5 h-3.5 text-primary/60" />
-                            <h3 className="text-sm font-bold">Step-by-Step Procedure</h3>
-                          </div>
-                          {isEditMode && <Badge variant="outline" className="bg-primary/5 text-primary text-[9px]">Editing</Badge>}
-                          </div>
-
-                          {isEditMode ? (
-                            <Textarea
-                              value={activeProcedure.procedureText}
-                              onChange={(e) => updateProcedure(activeProcedure.id, { procedureText: e.target.value })}
-                              className="min-h-[350px] text-sm leading-relaxed bg-background border-primary/10"
-                            />
-                          ) : (
-                            <div className="text-sm text-foreground/80 whitespace-pre-wrap leading-relaxed">
-                              {activeProcedure.procedureText}
-                            </div>
-                          )}
+                      <div className={cn("p-4 rounded-xl border transition-all", isEditMode ? "border-primary/10 bg-primary/[0.02]" : "border-border/25 bg-card/60")}>
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <User className="w-3 h-3 text-primary/40" />
+                          <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground/40">Responsibilities</span>
                         </div>
-
-                      {/* Footer */}
-                      <div className="pt-6 border-t border-border/40 flex items-center justify-between text-[10px] text-muted-foreground">
-                        <div className="flex items-center gap-3">
-                          <span className="flex items-center gap-1"><History className="w-3 h-3" /> Rev: 01</span>
-                          <span className="flex items-center gap-1"><FileText className="w-3 h-3" /> P-SOP-{activeProcedure.id.toUpperCase()}</span>
-                        </div>
-                        <Button variant="ghost" size="sm" className="h-6 gap-1 text-[10px]" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
-                          Back to top
-                        </Button>
+                        {isEditMode ? (
+                          <Input value={proc.responsibilities} onChange={(e) => updateProcedure(proc.id, { responsibilities: e.target.value })} className="bg-background text-xs h-7 rounded-lg" />
+                        ) : (
+                          <p className="text-xs text-foreground/70 leading-relaxed">{proc.responsibilities}</p>
+                        )}
                       </div>
                     </div>
-                  )}
-                </div>
-              </ScrollArea>
+
+                    {/* Procedure Text */}
+                    <div className={cn(
+                      "p-5 rounded-xl border transition-all",
+                      isEditMode ? "ring-2 ring-primary/15 bg-primary/[0.02] border-primary/10" : "bg-card/60 border-border/25"
+                    )}>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <Layers className="w-3.5 h-3.5 text-primary/40" />
+                          <h3 className="text-sm font-bold">Step-by-Step Procedure</h3>
+                        </div>
+                        {isEditMode && <Badge variant="outline" className="bg-primary/5 text-primary text-[9px]">Editing</Badge>}
+                      </div>
+                      {isEditMode ? (
+                        <Textarea
+                          value={proc.procedureText}
+                          onChange={(e) => updateProcedure(proc.id, { procedureText: e.target.value })}
+                          className="min-h-[300px] text-sm leading-relaxed bg-background border-primary/10 rounded-lg"
+                        />
+                      ) : (
+                        <div className="text-sm text-foreground/75 whitespace-pre-wrap leading-relaxed">{proc.procedureText}</div>
+                      )}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="mt-4 flex items-center justify-between text-[10px] text-muted-foreground/50">
+                      <div className="flex items-center gap-3">
+                        <span className="flex items-center gap-1"><History className="w-3 h-3" /> Rev: 01</span>
+                        <span className="flex items-center gap-1"><FileText className="w-3 h-3" /> P-SOP-{proc.id.toUpperCase()}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </>
         ) : (
@@ -373,7 +391,7 @@ export default function ProceduresPage() {
               <div className="flex items-center gap-1.5">
                 <div className="relative w-full sm:w-56">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                  <Input placeholder="Search..." value={driveSearch} onChange={(e) => setDriveSearch(e.target.value)} className="pl-8 h-7 text-xs bg-muted/20 border-border/50 rounded-sm" />
+                  <Input placeholder="Search..." value={driveSearch} onChange={(e) => setDriveSearch(e.target.value)} className="pl-8 h-7 text-xs bg-muted/20 border-border/50 rounded-lg" />
                 </div>
                 <Button variant="ghost" size="icon" onClick={loadDriveFiles} className="h-7 w-7">
                   <RefreshCw className={cn("w-3.5 h-3.5", loading && "animate-spin")} />
@@ -389,7 +407,7 @@ export default function ProceduresPage() {
               <div className="flex-1 flex flex-col min-h-0">
                 <div className="flex items-center justify-between mb-2 gap-3">
                   <div className="flex items-center gap-2 min-w-0">
-                    <Button variant="outline" size="sm" onClick={() => setSelectedIndex(null)} className="h-7 gap-1 text-xs rounded-sm px-2">
+                    <Button variant="outline" size="sm" onClick={() => setSelectedIndex(null)} className="h-7 gap-1 text-xs rounded-lg px-2">
                       <ArrowLeft className="w-3.5 h-3.5" /> Files
                     </Button>
                     <div className="flex items-center gap-2 truncate">
@@ -401,23 +419,23 @@ export default function ProceduresPage() {
                     <Badge variant="outline" className="text-[9px] h-5 font-mono">
                       {(selectedIndex ?? 0) + 1}/{nonFolderFiles.length}
                     </Badge>
-                    <Button variant="outline" size="icon" className="h-7 w-7 rounded-sm" onClick={() => setSelectedIndex(selectedIndex! > 0 ? selectedIndex! - 1 : 0)} disabled={selectedIndex === 0}>
+                    <Button variant="outline" size="icon" className="h-7 w-7 rounded-lg" onClick={() => setSelectedIndex(selectedIndex! > 0 ? selectedIndex! - 1 : 0)} disabled={selectedIndex === 0}>
                       <ChevronLeft className="w-3.5 h-3.5" />
                     </Button>
-                    <Button variant="outline" size="icon" className="h-7 w-7 rounded-sm" onClick={() => setSelectedIndex(selectedIndex! < nonFolderFiles.length - 1 ? selectedIndex! + 1 : selectedIndex!)} disabled={selectedIndex === nonFolderFiles.length - 1}>
+                    <Button variant="outline" size="icon" className="h-7 w-7 rounded-lg" onClick={() => setSelectedIndex(selectedIndex! < nonFolderFiles.length - 1 ? selectedIndex! + 1 : selectedIndex!)} disabled={selectedIndex === nonFolderFiles.length - 1}>
                       <ChevronRight className="w-3.5 h-3.5" />
                     </Button>
                     <div className="h-5 w-px bg-border/50 mx-0.5" />
-                    <Button variant="outline" size="icon" className="h-7 w-7 rounded-sm" onClick={() => setIsFullscreen(!isFullscreen)}>
+                    <Button variant="outline" size="icon" className="h-7 w-7 rounded-lg" onClick={() => setIsFullscreen(!isFullscreen)}>
                       {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
                     </Button>
-                    <Button variant="outline" size="icon" className="h-7 w-7 rounded-sm" onClick={() => window.open(getEditUrl(selectedDriveFile), '_blank')}>
+                    <Button variant="outline" size="icon" className="h-7 w-7 rounded-lg" onClick={() => window.open(getEditUrl(selectedDriveFile), '_blank')}>
                       <ExternalLink className="w-3.5 h-3.5" />
                     </Button>
                   </div>
                 </div>
                 <div className={cn(
-                  "rounded-sm border border-border/50 overflow-hidden bg-card flex-1 shadow-sm",
+                  "rounded-lg border border-border/50 overflow-hidden bg-card flex-1 shadow-sm",
                   isFullscreen ? "h-[calc(100vh-80px)]" : "h-[calc(100vh-140px)]"
                 )}>
                   <iframe key={selectedDriveFile.id} src={getPreviewUrl(selectedDriveFile)} className="w-full h-full" title={selectedDriveFile.name} sandbox="allow-scripts allow-same-origin allow-popups allow-forms" />
@@ -426,8 +444,8 @@ export default function ProceduresPage() {
             ) : (
               /* File List */
               loading ? (
-                <div className="flex-1 flex items-center justify-center">
-                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                <div className="flex-1 flex items-center justify-center py-16 opacity-60">
+                  <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
                 </div>
               ) : viewMode === "grid" ? (
                 <div className="flex-1 overflow-auto">
@@ -436,9 +454,9 @@ export default function ProceduresPage() {
                       <button
                         key={file.id}
                         onClick={() => file.mimeType.includes("folder") ? setFolderStack(prev => [...prev, { id: file.id, name: file.name }]) : setSelectedIndex(nonFolderFiles.findIndex(f => f.id === file.id))}
-                        className="flex flex-col items-center gap-2 p-4 rounded-sm border border-border/30 hover:border-border/60 hover:bg-muted/30 transition-all text-center group"
+                        className="flex flex-col items-center gap-2 p-4 rounded-lg border border-border/30 hover:border-border/60 hover:bg-muted/30 transition-all text-center group ds-hover-lift"
                       >
-                        <div className="w-10 h-10 rounded-sm bg-muted/50 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <div className="w-10 h-10 rounded-lg bg-muted/50 flex items-center justify-center group-hover:scale-110 transition-transform">
                           {getFileIcon(file.mimeType)}
                         </div>
                         <span className="text-[11px] font-medium truncate w-full">{file.name}</span>
@@ -450,13 +468,13 @@ export default function ProceduresPage() {
                   </div>
                 </div>
               ) : (
-                <div className="rounded-sm border border-border/40 overflow-hidden bg-card flex-1 shadow-sm">
+                <div className="rounded-lg border border-border/40 overflow-hidden bg-card flex-1 shadow-sm">
                   <ScrollArea className="h-full">
                     {files.map((file) => (
                       <div
                         key={file.id}
                         onClick={() => file.mimeType.includes("folder") ? setFolderStack(prev => [...prev, { id: file.id, name: file.name }]) : setSelectedIndex(nonFolderFiles.findIndex(f => f.id === file.id))}
-                        className="flex items-center justify-between px-4 py-2.5 hover:bg-muted/30 cursor-pointer border-b border-border/20 last:border-0 transition-colors group"
+                        className="flex items-center justify-between px-4 py-2.5 hover:bg-muted/30 cursor-pointer border-b border-border/20 last:border-0 transition-colors group ds-hover-lift"
                       >
                         <div className="flex items-center gap-3 truncate">
                           {getFileIcon(file.mimeType)}
@@ -477,6 +495,16 @@ export default function ProceduresPage() {
           </div>
         )}
       </div>
+
+      {/* Scroll to top (digital tab only) */}
+      {activeTab === "digital" && showScrollTop && (
+        <button
+          onClick={() => scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="fixed bottom-6 right-6 z-50 w-10 h-10 rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20 flex items-center justify-center hover:scale-110 transition-transform"
+        >
+          <ArrowUp className="w-4 h-4" />
+        </button>
+      )}
     </AppShell>
   );
 }

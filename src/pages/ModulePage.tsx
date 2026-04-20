@@ -11,10 +11,13 @@ import {
   AlertCircle,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   FolderOpen,
   ClipboardCheck,
   Settings,
   Users,
+  Inbox,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -28,6 +31,7 @@ import type { DriveFile } from "@/lib/driveService";
 import { MODULE_CONFIG } from "@/config/modules";
 
 const moduleConfig = MODULE_CONFIG;
+const GROUPS_PER_PAGE = 10;
 
 export default function ModulePage() {
   const { moduleId } = useParams<{ moduleId: string }>();
@@ -37,6 +41,7 @@ export default function ModulePage() {
   const [isAddFormModalOpen, setIsAddFormModalOpen] = useState(false);
   const [editingFreqRecord, setEditingFreqRecord] = useState<QMSRecord | null>(null);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const [groupPage, setGroupPage] = useState(1);
 
   const toggleGroup = (code: string) => {
     setExpandedGroups(prev => ({ ...prev, [code]: !prev[code] }));
@@ -95,6 +100,10 @@ export default function ModulePage() {
 
     return groups;
   }, [moduleFiles]);
+
+  // Pagination
+  const totalGroupPages = Math.ceil(filteredRecords.length / GROUPS_PER_PAGE);
+  const pagedRecords = filteredRecords.slice((groupPage - 1) * GROUPS_PER_PAGE, groupPage * GROUPS_PER_PAGE);
 
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ["qms-data"] });
@@ -264,20 +273,12 @@ export default function ModulePage() {
               </div>
 
               {isLoading ? (
-                [1, 2, 3].map(i => (
-                  <div key={i} className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div className="h-48 bg-muted animate-pulse rounded-sm" />
-                    <div className="h-48 bg-muted animate-pulse rounded-sm" />
-                  </div>
-                ))
+                <StateScreen state="loading" title="Loading module data" />
               ) : filteredRecords.length === 0 ? (
-                <div className="bg-card rounded-sm border border-border p-12 text-center">
-                  <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-20" />
-                  <p className="text-muted-foreground">No templates or records found for this module.</p>
-                </div>
+                <StateScreen state="empty" title="No templates found" message="No templates or records found for this module." />
               ) : (
                 <div className="space-y-12">
-                  {filteredRecords.map((record) => {
+                  {pagedRecords.map((record) => {
                     const group = groupedModuleFiles[record.code] || { record, files: [] };
                     const hasFiles = group.files.length > 0;
                     const isExpanded = !!expandedGroups[record.code];
@@ -285,7 +286,7 @@ export default function ModulePage() {
                     return (
                       <div key={record.code} className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start animate-fade-in group/row">
                         {/* Left: Form Template Card */}
-                        <div className="glass-card rounded-sm p-6 hover:shadow-2xl transition-all duration-300 group border-l-4 border-l-primary/30 hover:border-l-primary relative h-full flex flex-col">
+                        <div className="ds-card rounded-sm p-6 group border-l-4 border-l-primary/30 hover:border-l-primary relative h-full flex flex-col ">
                           <div className="flex items-start justify-between mb-4">
                             <div className="min-w-0 flex-1">
                               <div className="flex flex-col gap-2 mb-2">
@@ -361,7 +362,7 @@ export default function ModulePage() {
                         {/* Right: Corresponding Records Group */}
                         <div className="relative h-full">
                           {hasFiles ? (
-                            <div className="glass-card rounded-sm overflow-hidden hover:shadow-2xl transition-all h-full flex flex-col duration-300">
+                            <div className="ds-card rounded-sm overflow-hidden transition-colors h-full flex flex-col">
                               <div
                                 className="flex items-center gap-3 p-5 cursor-pointer hover:bg-muted/50 transition-colors bg-muted/5 border-b border-border/50"
                                 onClick={() => toggleGroup(record.code)}
@@ -385,7 +386,7 @@ export default function ModulePage() {
                               </div>
 
                               {isExpanded ? (
-                                <div className="p-4 space-y-3 bg-muted/5 flex-1 animate-in fade-in slide-in-from-top-2 duration-200">
+                                <div className="p-4 space-y-3 bg-muted/5 flex-1 animate-in fade-in slide-in-from-top-2 duration-300">
                                     <div className="space-y-3">
                                       <RecordBrowser
                                         record={{
@@ -413,9 +414,11 @@ export default function ModulePage() {
                               )}
                             </div>
                           ) : (
-                            <div className="h-full border-2 border-dashed border-border/50 rounded-sm flex flex-col items-center justify-center p-8 text-center bg-muted/5 group-hover/row:border-primary/20 transition-colors">
-                              <AlertCircle className="w-10 h-10 text-muted-foreground/20 mb-3" />
-                              <p className="text-sm font-medium text-muted-foreground/60">No records filled yet</p>
+                            <div className="ds-card rounded-sm flex flex-col items-center justify-center p-8 text-center bg-muted/5 border-dashed">
+                              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-muted/60 to-muted/30 flex items-center justify-center mb-4 animate-pulse">
+                                <Inbox className="w-8 h-8 text-muted-foreground/30" />
+                              </div>
+                              <p className="text-sm font-semibold text-muted-foreground/80">No records filled yet</p>
                               <p className="text-[10px] text-muted-foreground/40 mt-1 uppercase tracking-wider">Awaiting first submission</p>
                               <div className="flex gap-2 mt-4">
                                 {record.folderLink && !record.folderLink.includes("No Files Yet") && (
@@ -432,7 +435,7 @@ export default function ModulePage() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="gap-2 opacity-0 group-hover/row:opacity-100 transition-opacity"
+                                  className="gap-2"
                                   onClick={() => setIsAddRecordModalOpen(true)}
                                 >
                                   <Settings className="w-3 h-3" />
@@ -445,6 +448,35 @@ export default function ModulePage() {
                       </div>
                     );
                   })}
+
+                  {/* Pagination */}
+                  {totalGroupPages > 1 && (
+                    <div className="flex items-center justify-center gap-3 pt-6 border-t border-border/40">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        disabled={groupPage === 1}
+                        onClick={() => setGroupPage(p => p - 1)}
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        Previous
+                      </Button>
+                      <span className="text-xs text-muted-foreground font-mono px-3">
+                        Page {groupPage} of {totalGroupPages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        disabled={groupPage === totalGroupPages}
+                        onClick={() => setGroupPage(p => p + 1)}
+                      >
+                        Next
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

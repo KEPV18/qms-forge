@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { Lock, Mail, Loader2, Eye, EyeOff, AlertCircle, ArrowRight } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import logoImg from "@/assets/logo.png";
 
 export default function Login() {
@@ -169,6 +170,13 @@ export default function Login() {
           </div>
         </CardContent>
 
+        <CardContent className="px-7 pb-2">
+          <div className="flex items-center gap-2">
+            <Checkbox id="remember" className="h-4 w-4 rounded-sm" />
+            <label htmlFor="remember" className="text-[10px] font-mono text-muted-foreground/70 cursor-pointer">Remember me</label>
+          </div>
+        </CardContent>
+
         <CardFooter className="flex flex-col gap-4 px-7 pb-9">
           <Button
             className="w-full h-11 rounded-sm bg-primary hover:bg-primary/90 text-primary-foreground font-semibold transition-all active:scale-[0.98] group"
@@ -187,6 +195,13 @@ export default function Login() {
               </span>
             )}
           </Button>
+
+          <button
+            onClick={() => toast.info("Password Reset", { description: "Please contact your administrator to reset your password." })}
+            className="text-[10px] text-muted-foreground/60 font-mono hover:text-primary transition-colors w-full text-center"
+          >
+            Forgot your password?
+          </button>
 
           <p className="text-center text-xs text-muted-foreground font-mono">
             Don't have an account?{" "}

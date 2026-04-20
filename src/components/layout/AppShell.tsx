@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { TopNav } from "./TopNav";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { cn } from "@/lib/utils";
@@ -10,6 +11,10 @@ interface AppShellProps {
 }
 
 export function AppShell({ children, breadcrumbs, className, maxWidth = "max-w-[1400px]" }: AppShellProps) {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   return (
     <div className="min-h-screen bg-background">
       <TopNav />
@@ -19,7 +24,9 @@ export function AppShell({ children, breadcrumbs, className, maxWidth = "max-w-[
             <Breadcrumbs items={breadcrumbs} />
           </div>
         )}
-        {children}
+        <div className="page-transition">
+          {children}
+        </div>
       </main>
     </div>
   );

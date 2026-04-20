@@ -23,8 +23,10 @@ const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 const ActivityPage = lazy(() => import("./pages/ActivityPage"));
 const ProceduresPage = lazy(() => import("./pages/ProceduresPage"));
 const ISOManualPage = lazy(() => import("./pages/ISOManualPage"));
+const FormsRegistryPage = lazy(() => import("./pages/FormsRegistryPage"));
 const ProjectsPage = lazy(() => import("./pages/ProjectsPage"));
 const ProjectDetailPage = lazy(() => import("./pages/ProjectDetailPage"));
+const RecordCreationPage = lazy(() => import("./pages/RecordCreationPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -67,39 +69,41 @@ const App = () => {
   document.documentElement.setAttribute('data-accent', savedAccent);
 
   return (
-  <QueryClientProvider client={queryClient}>
-    <ErrorBoundary>
-      <ThemeProvider>
-        <AuthProvider>
-          <TooltipProvider>
-          <Sonner />
-          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                <Route path="/login" element={<PageBoundary><Login /></PageBoundary>} />
-                <Route path="/register" element={<PageBoundary><Register /></PageBoundary>} />
-                <Route path="/auth/callback" element={<PageBoundary><AuthCallback /></PageBoundary>} />
-                <Route path="/" element={<RequireAuth><PageBoundary><Index /></PageBoundary></RequireAuth>} />
-                <Route path="/module/:moduleId" element={<RequireAuth><PageBoundary><ModulePage /></PageBoundary></RequireAuth>} />
-                <Route path="/record/*" element={<RequireAuth><PageBoundary><RecordDetail /></PageBoundary></RequireAuth>} />
-                <Route path="/audit" element={<RequireAuth><PageBoundary><AuditPage /></PageBoundary></RequireAuth>} />
-                <Route path="/projects" element={<RequireAuth><PageBoundary><ProjectsPage /></PageBoundary></RequireAuth>} />
-                <Route path="/project/:projectName" element={<RequireAuth><PageBoundary><ProjectDetailPage /></PageBoundary></RequireAuth>} />
-                <Route path="/archive" element={<RequireAuth><PageBoundary><ArchivePage /></PageBoundary></RequireAuth>} />
-                <Route path="/risk-management" element={<RequireAuth><PageBoundary><RiskManagementPage /></PageBoundary></RequireAuth>} />
-                <Route path="/activity" element={<RequireAuth><PageBoundary><ActivityPage /></PageBoundary></RequireAuth>} />
-                <Route path="/procedures" element={<RequireAuth><PageBoundary><ProceduresPage /></PageBoundary></RequireAuth>} />
-                <Route path="/iso-manual" element={<RequireAuth><PageBoundary><ISOManualPage /></PageBoundary></RequireAuth>} />
-                <Route path="/admin/accounts" element={<RequireRole roles={["admin"]}><PageBoundary><AdminAccounts /></PageBoundary></RequireRole>} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </BrowserRouter>
-        </TooltipProvider>
-      </AuthProvider>
-      </ThemeProvider>
-    </ErrorBoundary>
-  </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      <ErrorBoundary>
+        <ThemeProvider>
+          <AuthProvider>
+            <TooltipProvider>
+              <Sonner />
+              <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                <Suspense fallback={<PageLoader />}>
+                  <Routes>
+                    <Route path="/login" element={<PageBoundary><Login /></PageBoundary>} />
+                    <Route path="/register" element={<PageBoundary><Register /></PageBoundary>} />
+                    <Route path="/auth/callback" element={<PageBoundary><AuthCallback /></PageBoundary>} />
+                    <Route path="/" element={<RequireAuth><PageBoundary><Index /></PageBoundary></RequireAuth>} />
+                    <Route path="/module/:moduleId" element={<RequireAuth><PageBoundary><ModulePage /></PageBoundary></RequireAuth>} />
+                    <Route path="/record/*" element={<RequireAuth><PageBoundary><RecordDetail /></PageBoundary></RequireAuth>} />
+                    <Route path="/audit" element={<RequireAuth><PageBoundary><AuditPage /></PageBoundary></RequireAuth>} />
+                    <Route path="/projects" element={<RequireAuth><PageBoundary><ProjectsPage /></PageBoundary></RequireAuth>} />
+                    <Route path="/project/:projectName" element={<RequireAuth><PageBoundary><ProjectDetailPage /></PageBoundary></RequireAuth>} />
+                    <Route path="/archive" element={<RequireAuth><PageBoundary><ArchivePage /></PageBoundary></RequireAuth>} />
+                    <Route path="/risk-management" element={<RequireAuth><PageBoundary><RiskManagementPage /></PageBoundary></RequireAuth>} />
+                    <Route path="/activity" element={<RequireAuth><PageBoundary><ActivityPage /></PageBoundary></RequireAuth>} />
+                    <Route path="/procedures" element={<RequireAuth><PageBoundary><ProceduresPage /></PageBoundary></RequireAuth>} />
+                    <Route path="/iso-manual" element={<RequireAuth><PageBoundary><ISOManualPage /></PageBoundary></RequireAuth>} />
+                    <Route path="/forms" element={<RequireAuth><PageBoundary><FormsRegistryPage /></PageBoundary></RequireAuth>} />
+                    <Route path="/create" element={<RequireAuth><PageBoundary><RecordCreationPage /></PageBoundary></RequireAuth>} />
+                    <Route path="/admin/accounts" element={<RequireRole roles={["admin"]}><PageBoundary><AdminAccounts /></PageBoundary></RequireRole>} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </Suspense>
+              </BrowserRouter>
+            </TooltipProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </ErrorBoundary>
+    </QueryClientProvider>
   );
 };
 

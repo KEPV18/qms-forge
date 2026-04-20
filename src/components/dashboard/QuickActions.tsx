@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Plus, ClipboardCheck, AlertTriangle, Upload, UserCheck } from "lucide-react";
+import { Plus, ClipboardCheck, AlertTriangle, Upload, UserCheck, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -16,10 +16,10 @@ import { batchUpdateReviewedBy } from "@/lib/googleSheets";
 import { cn } from "@/lib/utils";
 
 const quickActionItems = [
-  { id: "risk", label: "New Risk", icon: Plus, color: "bg-primary/10 text-primary hover:bg-primary/15 border-primary/15" },
-  { id: "audit", label: "Start Audit", icon: ClipboardCheck, color: "bg-success/10 text-success hover:bg-success/15 border-success/15" },
-  { id: "capa", label: "Log CAPA", icon: AlertTriangle, color: "bg-warning/10 text-warning hover:bg-warning/15 border-warning/15" },
-  { id: "upload", label: "Upload File", icon: Upload, color: "bg-info/10 text-info hover:bg-info/15 border-info/15" },
+  { id: "risk", label: "New Risk", icon: Plus, iconBg: "bg-gradient-to-br from-primary/20 to-primary/10", textColor: "text-primary", borderColor: "border-primary/20 hover:border-primary/40" },
+  { id: "audit", label: "Start Audit", icon: ClipboardCheck, iconBg: "bg-gradient-to-br from-success/20 to-success/10", textColor: "text-success", borderColor: "border-success/20 hover:border-success/40" },
+  { id: "capa", label: "Log CAPA", icon: AlertTriangle, iconBg: "bg-gradient-to-br from-warning/20 to-warning/10", textColor: "text-warning", borderColor: "border-warning/20 hover:border-warning/40" },
+  { id: "upload", label: "Upload File", icon: Upload, iconBg: "bg-gradient-to-br from-info/20 to-info/10", textColor: "text-info", borderColor: "border-info/20 hover:border-info/40" },
 ];
 
 export function QuickActions() {
@@ -188,12 +188,17 @@ export function QuickActions() {
   };
 
   return (
-    <div className="bg-card rounded-sm border border-border/50 overflow-hidden accent-line-top">
-      <div className="px-5 py-4 border-b border-border/50">
-        <h3 className="text-sm font-bold text-foreground">Quick Actions</h3>
-        <p className="text-[10px] text-muted-foreground mt-0.5">Common operations</p>
+    <div className="bg-card/80 backdrop-blur-sm rounded-xl border border-border/50 overflow-hidden">
+      <div className="px-5 py-4 border-b border-border/50 flex items-center gap-3">
+        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
+          <Zap className="w-4 h-4 text-primary" />
+        </div>
+        <div>
+          <h3 className="text-sm font-bold text-foreground">Quick Actions</h3>
+          <p className="text-[10px] text-muted-foreground">Common operations</p>
+        </div>
       </div>
-      <div className="p-4 grid grid-cols-2 gap-2">
+      <div className="p-4 grid grid-cols-2 gap-3">
         {quickActionItems.map(item => {
           const Icon = item.icon;
           return (
@@ -201,12 +206,15 @@ export function QuickActions() {
               key={item.id}
               onClick={actionHandlers[item.id]}
               className={cn(
-                "flex flex-col items-center gap-2 p-4 rounded-sm border transition-all duration-200 hover:scale-[1.02]",
-                item.color
+                "flex items-center gap-3 p-3.5 rounded-xl border transition-all duration-300",
+                "hover:-translate-y-0.5 hover:shadow-lg",
+                item.borderColor
               )}
             >
-              <Icon className="w-5 h-5" />
-              <span className="text-[11px] font-semibold">{item.label}</span>
+              <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0", item.iconBg)}>
+                <Icon className={cn("w-4.5 h-4.5", item.textColor)} />
+              </div>
+              <span className="text-[11px] font-semibold text-foreground">{item.label}</span>
             </button>
           );
         })}
@@ -215,7 +223,7 @@ export function QuickActions() {
         <button
           onClick={handleBatchReviewer}
           disabled={isUpdatingReviewer}
-          className="w-full flex items-center justify-center gap-2 p-3 rounded-sm border border-border/50 text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-all duration-200 text-[11px] font-semibold"
+          className="w-full flex items-center justify-center gap-2 p-3 rounded-xl border border-border/50 text-muted-foreground hover:text-foreground hover:bg-muted/30 hover:-translate-y-0.5 transition-all duration-300 text-[11px] font-semibold"
         >
           <UserCheck className="w-4 h-4" />
           <span>{isUpdatingReviewer ? "جاري التحديث..." : "Set Reviewer: Ahmed khaled"}</span>
