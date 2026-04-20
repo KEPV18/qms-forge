@@ -14,6 +14,7 @@ import {
   Archive,
   Layers,
   FilePlus,
+  Database,
 } from "lucide-react";
 import type { RecordStatus } from "@/lib/googleSheets";
 
@@ -143,6 +144,7 @@ export const DOCS_NAV_ITEMS: NavItem[] = [
 /** Tool/navigation items — interactive tools */
 export const TOOL_NAV_ITEMS: NavItem[] = [
   { id: "create", label: "Create Record", icon: FilePlus, path: "/create" },
+  { id: "records", label: "Records", icon: Database, path: "/records" },
   { id: "forms", label: "Forms Registry", icon: Layers, path: "/forms" },
   { id: "risk", label: "Risk & Process", icon: AlertTriangle, path: "/risk-management" },
   { id: "activity", label: "Activity Log", icon: Activity, path: "/activity" },

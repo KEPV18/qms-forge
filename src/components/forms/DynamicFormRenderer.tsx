@@ -35,6 +35,7 @@ interface DynamicFormRendererProps {
   onSubmit: (data: RecordData) => void;
   onCancel?: () => void;
   readOnly?: boolean;
+  editMode?: boolean;  // true = "Save Changes" instead of "Create Record"
 }
 
 // ============================================================================
@@ -471,6 +472,7 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({
   onSubmit,
   onCancel,
   readOnly = false,
+  editMode = false,
 }) => {
   const selectedCode = formCode || '';
   const schema = selectedCode ? getFormSchema(selectedCode) : null;
@@ -499,9 +501,14 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({
     }
     setErrors({});
     setSubmitted(false);
-    setGatePassed(false);
+    // Skip gate in edit mode — record already exists
+    if (editMode) {
+      setGatePassed(true);
+    } else {
+      setGatePassed(false);
+    }
     setGateAnswers(null);
-  }, [formCode]);
+  }, [formCode, editMode]);
 
   // Handle form selection — show gate first
   const handleFormSelect = (code: string) => {
@@ -534,14 +541,8 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({
     if (!schema) return false;
     if (!selectedCode) return false;
 
-    // Convert date fields from YYYY-MM-DD to DD/MM/YYYY for validation
+    // Validate with dates in ISO format (YYYY-MM-DD as Zod expects ISO_DATE)
     const dataToValidate = { ...formData };
-    // Convert date fields from ISO to DD/MM/YYYY for validation
-    schema.fields.forEach(field => {
-      if (field.type === 'date' && dataToValidate[field.key]) {
-        dataToValidate[field.key] = isoToDisplay(dataToValidate[field.key] as string);
-      }
-    });
     // Auto-fill serial — replace placeholder with actual next serial
     if (!dataToValidate.serial || dataToValidate.serial === 'auto') {
       dataToValidate.serial = getNextSerial(selectedCode);
@@ -562,15 +563,8 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Convert dates to display format before validating
+    // Build data for validation — dates stay as YYYY-MM-DD (ISO_DATE format expected by Zod)
     const dataToValidate = { ...formData };
-    if (schema) {
-      schema.fields.forEach(field => {
-        if (field.type === 'date' && dataToValidate[field.key]) {
-          dataToValidate[field.key] = isoToDisplay(dataToValidate[field.key] as string);
-        }
-      });
-    }
 
     // Auto-generate serial
     if (!dataToValidate.serial || dataToValidate.serial === 'auto') {
@@ -583,9 +577,17 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({
     dataToValidate._creationReason = gateAnswers?.needReason || '';
     dataToValidate._businessEvent = gateAnswers?.businessEvent || '';
 
-    // Validate with Zod
+    // Validate with Zod (dates in YYYY-MM-DD format as Zod expects ISO_DATE)
     const result = validateFormData(selectedCode, dataToValidate);
     if (result.success) {
+      // Convert dates to DD/MM/YYYY for storage AFTER validation
+      if (schema) {
+        schema.fields.forEach(field => {
+          if (field.type === 'date' && result.data[field.key]) {
+            result.data[field.key] = isoToDisplay(result.data[field.key] as string);
+          }
+        });
+      }
       onSubmit(result.data as RecordData);
     } else {
       setErrors(result.errors);
@@ -752,7 +754,7 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({
                   type="submit"
                   className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-colors"
                 >
-                  Create Record
+                  {editMode ? 'Save Changes' : 'Create Record'}
                 </button>
                 {onCancel && (
                   <button
