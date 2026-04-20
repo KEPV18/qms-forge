@@ -161,11 +161,17 @@ const RecordViewPage: React.FC = () => {
   const doSave = (data: RecordData) => {
     if (!schema) return;
 
+    // Include the _editCount from when the user started editing (optimistic locking)
+    const dataWithVersion = {
+      ...data,
+      _editCount: originalRecord._editCount,
+    };
+
     // Submit to Google Sheets via mutation
     updateMutation.mutate(
       {
         serial: originalRecord.serial as string,
-        changes: data,
+        changes: dataWithVersion,
         reason: modificationReason || undefined,
       },
       {

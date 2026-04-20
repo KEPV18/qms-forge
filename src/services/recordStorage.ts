@@ -20,6 +20,38 @@ const SHEET_NAME = 'ForgeRecords';
 const HEADER_ROW = 1; // Row 1 is headers
 
 // ============================================================================
+// Operation Log — structured log of all write operations for observability
+// ============================================================================
+
+export interface OperationLogEntry {
+  timestamp: string;
+  operation: 'create' | 'update' | 'delete';
+  serial: string;
+  formCode: string;
+  success: boolean;
+  error?: string;
+  conflict?: boolean;
+  durationMs?: number;
+}
+
+const OPERATION_LOG: OperationLogEntry[] = [];
+const MAX_LOG_ENTRIES = 200;
+
+function logOperation(entry: OperationLogEntry) {
+  OPERATION_LOG.push(entry);
+  if (OPERATION_LOG.length > MAX_LOG_ENTRIES) {
+    OPERATION_LOG.shift();
+  }
+  // Also log to console for development debug
+  const prefix = entry.success ? '✅' : '❌';
+  console.log(`${prefix} [recordStorage] ${entry.operation.toUpperCase()} ${entry.serial} ${entry.success ? 'succeeded' : `failed: ${entry.error}`}${entry.conflict ? ' (CONFLICT)' : ''} (${entry.durationMs}ms)`);
+}
+
+export function getOperationLog(): OperationLogEntry[] {
+  return [...OPERATION_LOG];
+}
+
+// ============================================================================
 // Types
 // ============================================================================
 
@@ -250,8 +282,10 @@ export async function getExistingSerials(formCode: string): Promise<string[]> {
  * 6. Return created record
  */
 export async function createRecord(formData: RecordData): Promise<StorageResult> {
+  const startTime = performance.now();
   const formCode = formData.formCode as string;
   if (!formCode) {
+    logOperation({ timestamp: new Date().toISOString(), operation: 'create', serial: '?', formCode: '?', success: false, error: 'formCode is required', durationMs: Math.round(performance.now() - startTime) });
     return { success: false, error: 'formCode is required for record creation' };
   }
 
@@ -259,6 +293,7 @@ export async function createRecord(formData: RecordData): Promise<StorageResult>
   const validation = preWriteValidation(formCode, formData, 'create');
   if (!validation.valid || !validation.sanitizedData) {
     console.error('[recordStorage] Pre-write validation failed:', validation.errors);
+    logOperation({ timestamp: new Date().toISOString(), operation: 'create', serial: '?', formCode, success: false, error: `Validation: ${validation.errors.map(e => e.message).join('; ')}`, durationMs: Math.round(performance.now() - startTime) });
     return {
       success: false,
       error: `Validation failed: ${validation.errors.map(e => `${e.field}: ${e.message}`).join('; ')}`,
@@ -318,8 +353,11 @@ export async function createRecord(formData: RecordData): Promise<StorageResult>
   try {
     await appendRow(row);
     invalidateRowCache();
+    logOperation({ timestamp: new Date().toISOString(), operation: 'create', serial, formCode, success: true, durationMs: Math.round(performance.now() - startTime) });
     return { success: true, record: data };
   } catch (err) {
+    const errorMsg = err instanceof RecordStorageError ? err.message : `Unexpected error: ${(err as Error).message}`;
+    logOperation({ timestamp: new Date().toISOString(), operation: 'create', serial, formCode, success: false, error: errorMsg, durationMs: Math.round(performance.now() - startTime) });
     if (err instanceof RecordStorageError) {
       return { success: false, error: err.message };
     }
@@ -340,22 +378,28 @@ export async function updateRecord(
   changes: RecordData,
   modificationReason?: string
 ): Promise<StorageResult> {
+  const startTime = performance.now();
+
   // 1. Fetch current record
   const currentRecord = await getRecord(serial);
   if (!currentRecord) {
+    logOperation({ timestamp: new Date().toISOString(), operation: 'update', serial, formCode: '?', success: false, error: 'Record not found', durationMs: Math.round(performance.now() - startTime) });
     return { success: false, error: `Record ${serial} not found.`, conflict: false };
   }
 
-  // 2. Optimistic locking — check _lastModifiedAt
-  const currentModifiedAt = currentRecord._lastModifiedAt || currentRecord._createdAt;
-  const changesModifiedAt = changes._lastModifiedAt || null;
+  const formCode = String(currentRecord.formCode || '?');
 
-  // If the client had a previous version, check if it's stale
-  // (Skip if client didn't send _lastModifiedAt — first edit)
-  if (changesModifiedAt && currentModifiedAt && changesModifiedAt !== currentModifiedAt) {
+  // 2. Optimistic locking — use _editCount as version number
+  // _editCount is always present and monotonically increasing, making it a reliable version token
+  const currentEditCount = Number(currentRecord._editCount) || 0;
+  const clientEditCount = changes._editCount !== undefined ? Number(changes._editCount) : -1;
+
+  // If the client sent an editCount that doesn't match current, someone else edited first
+  if (clientEditCount >= 0 && clientEditCount !== currentEditCount) {
+    logOperation({ timestamp: new Date().toISOString(), operation: 'update', serial, formCode, success: false, error: `Optimistic lock conflict: client=${clientEditCount}, current=${currentEditCount}`, conflict: true, durationMs: Math.round(performance.now() - startTime) });
     return {
       success: false,
-      error: `Record ${serial} was modified by another user. Please reload and try again.`,
+      error: `Record ${serial} was modified by another user (version ${currentEditCount}, you had ${clientEditCount}). Please reload and try again.`,
       conflict: true,
     };
   }
@@ -373,7 +417,7 @@ export async function updateRecord(
     // Bump edit tracking
     _lastModifiedAt: new Date().toISOString(),
     _lastModifiedBy: 'akh.dev185@gmail.com',
-    _editCount: (currentRecord._editCount || 0) + 1,
+    _editCount: currentEditCount + 1,
     _modificationReason: modificationReason || null,
   };
 
@@ -398,11 +442,28 @@ export async function updateRecord(
       return { success: false, error: `Row for ${serial} not found in sheet.` };
     }
 
+    // 5b. Double-check: re-fetch record right before writing to catch race conditions
+    const recheckRecord = await getRecord(serial);
+    if (recheckRecord) {
+      const recheckEditCount = Number(recheckRecord._editCount) || 0;
+      if (recheckEditCount !== currentEditCount) {
+        logOperation({ timestamp: new Date().toISOString(), operation: 'update', serial, formCode, success: false, error: `Race condition: editCount changed ${currentEditCount}→${recheckEditCount} during edit`, conflict: true, durationMs: Math.round(performance.now() - startTime) });
+        return {
+          success: false,
+          error: `Record ${serial} was modified by another user during your edit (version changed from ${currentEditCount} to ${recheckEditCount}). Please reload and try again.`,
+          conflict: true,
+        };
+      }
+    }
+
     const row = serializeRecordToRow(validatedData);
     await updateRow(rowNumber, row);
     invalidateRowCache();
+    logOperation({ timestamp: new Date().toISOString(), operation: 'update', serial, formCode, success: true, durationMs: Math.round(performance.now() - startTime) });
     return { success: true, record: validatedData };
   } catch (err) {
+    const errorMsg = err instanceof RecordStorageError ? err.message : `Unexpected error: ${(err as Error).message}`;
+    logOperation({ timestamp: new Date().toISOString(), operation: 'update', serial, formCode, success: false, error: errorMsg, durationMs: Math.round(performance.now() - startTime) });
     if (err instanceof RecordStorageError) {
       return { success: false, error: err.message };
     }

@@ -479,6 +479,7 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({
   const [formData, setFormData] = useState<RecordData>(initialData || {});
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Pre-Creation Gate state
   const [gatePassed, setGatePassed] = useState(false);
@@ -501,6 +502,7 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({
     }
     setErrors({});
     setSubmitted(false);
+    setIsSubmitting(false);
     // Skip gate in edit mode — record already exists
     if (editMode) {
       setGatePassed(true);
@@ -562,6 +564,9 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({
   // Handle submit
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Prevent double submission
+    if (isSubmitting) return;
     
     // Build data for validation — dates stay as YYYY-MM-DD (ISO_DATE format expected by Zod)
     const dataToValidate = { ...formData };
@@ -580,6 +585,7 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({
     // Validate with Zod (dates in YYYY-MM-DD format as Zod expects ISO_DATE)
     const result = validateFormData(selectedCode, dataToValidate);
     if (result.success) {
+      setIsSubmitting(true);
       // Convert dates to DD/MM/YYYY for storage AFTER validation
       if (schema) {
         schema.fields.forEach(field => {
@@ -752,9 +758,10 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({
               <div className="flex gap-3 mt-6 pt-4 border-t border-slate-700">
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-colors"
+                  disabled={isSubmitting || readOnly}
+                  className={`px-6 py-2 rounded-lg font-medium transition-colors ${(isSubmitting || readOnly) ? 'bg-slate-600 cursor-not-allowed text-slate-400' : 'bg-indigo-600 hover:bg-indigo-500 text-white'}`}
                 >
-                  {editMode ? 'Save Changes' : 'Create Record'}
+                  {isSubmitting ? (editMode ? 'Saving...' : 'Creating...') : (editMode ? 'Save Changes' : 'Create Record')}
                 </button>
                 {onCancel && (
                   <button
