@@ -588,7 +588,7 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({
           }
         });
       }
-      onSubmit(result.data as RecordData);
+      onSubmit({ ...result.data, formCode: selectedCode } as RecordData);
     } else {
       setErrors(result.errors);
       setSubmitted(true);

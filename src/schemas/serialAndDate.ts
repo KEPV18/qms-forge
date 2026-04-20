@@ -15,7 +15,9 @@ export function isoToDisplay(date: string): string {
   if (!date) return '';
   // Already in DD/MM/YYYY format
   if (/^\d{2}\/\d{2}\/\d{4}$/.test(date)) return date;
-  const [year, month, day] = date.split('-');
+  // ISO timestamp (YYYY-MM-DDTHH:MM:SSZ) — extract date part only
+  const datePart = date.substring(0, 10);
+  const [year, month, day] = datePart.split('-');
   return `${day}/${month}/${year}`;
 }
 

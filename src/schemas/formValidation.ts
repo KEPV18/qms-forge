@@ -19,7 +19,9 @@ export const ISO_DATE = z.string()
 
 /** Optional date — allows empty string or valid ISO date */
 export const OPTIONAL_DATE = z.string()
-  .regex(/^(\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01]))?$/, 'Invalid date');
+  .regex(/^(\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01]))?$/, 'Invalid date')
+  .optional()
+  .default('');
 
 /** Serial number format: F/XX-NNN (e.g. F/12-001) */
 export const SERIAL_FORMAT = z.string()
