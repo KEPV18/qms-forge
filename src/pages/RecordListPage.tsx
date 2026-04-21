@@ -6,10 +6,11 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Filter, Search, AlertTriangle, Eye, ChevronRight, Loader2, RefreshCw } from 'lucide-react';
+import { FileText, Filter, Search, AlertTriangle, Eye, ChevronRight, Loader2, RefreshCw, Shield, CheckCircle } from 'lucide-react';
 import { FORM_SCHEMAS } from '../data/formSchemas';
 import { isoToDisplay } from '../schemas';
 import { useRecords } from '../hooks/useRecordStorage';
+import { evaluateRulesForRecord, getSeverityColor as getIntSeverityColor, type RuleSeverity, type RecordData } from '../services/ruleEngine';
 import { getEditRiskLevel, type QMSRecord } from '../data/mockRecords';
 
 // ============================================================================
@@ -222,8 +223,20 @@ const RecordListPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Edit Risk */}
-                <div className="shrink-0 text-right">
+                {/* Edit Risk + Integrity */}
+                <div className="shrink-0 text-right flex flex-col items-end gap-1">
+                  {(() => {
+                    const signals = evaluateRulesForRecord(record as unknown as RecordData, (records || []) as unknown as RecordData[]);
+                    const sev: RuleSeverity = signals.length === 0 ? 'clean' : signals.some(s => s.severity === 'critical') ? 'critical' : 'warning';
+                    return (
+                      <span className={`text-xs flex items-center gap-1 ${
+                        sev === 'clean' ? 'text-green-400' : sev === 'warning' ? 'text-amber-400' : 'text-red-400'
+                      }`}>
+                        {sev === 'clean' ? <CheckCircle className="w-3 h-3" /> : <Shield className="w-3 h-3" />}
+                        {sev !== 'clean' && `${signals.length}`}
+                      </span>
+                    );
+                  })()}
                   {risk !== 'none' && (
                     <span className={`text-xs flex items-center gap-1 ${RISK_COLORS[risk]}`}>
                       {(record._editCount as number) > 0 && (

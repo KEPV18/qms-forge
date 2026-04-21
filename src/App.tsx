@@ -29,6 +29,7 @@ const ProjectDetailPage = lazy(() => import("./pages/ProjectDetailPage"));
 const RecordCreationPage = lazy(() => import("./pages/RecordCreationPage"));
 const RecordListPage = lazy(() => import("./pages/RecordListPage"));
 const RecordViewPage = lazy(() => import("./pages/RecordViewPage"));
+const DataIntegrityPage = lazy(() => import("./pages/DataIntegrityPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -98,6 +99,7 @@ const App = () => {
                     <Route path="/create" element={<RequireAuth><PageBoundary><RecordCreationPage /></PageBoundary></RequireAuth>} />
                     <Route path="/records" element={<RequireAuth><PageBoundary><RecordListPage /></PageBoundary></RequireAuth>} />
                     <Route path="/records/:serial" element={<RequireAuth><PageBoundary><RecordViewPage /></PageBoundary></RequireAuth>} />
+                    <Route path="/integrity" element={<RequireAuth><PageBoundary><DataIntegrityPage /></PageBoundary></RequireAuth>} />
                     <Route path="/admin/accounts" element={<RequireRole roles={["admin"]}><PageBoundary><AdminAccounts /></PageBoundary></RequireRole>} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>

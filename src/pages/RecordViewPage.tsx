@@ -14,8 +14,9 @@ import {
 import { getFormSchema } from '../data/formSchemas';
 import { isoToDisplay } from '../schemas';
 import { DynamicFormRenderer, type RecordData } from '../components/forms/DynamicFormRenderer';
-import { useRecord, useUpdateRecord } from '../hooks/useRecordStorage';
+import { useRecord, useUpdateRecord, useRecords } from '../hooks/useRecordStorage';
 import { useAuditLog } from '../hooks/useAuditLog';
+import { evaluateRulesForRecord, getSeverityColor, type RuleSeverity } from '../services/ruleEngine';
 import { getEditRiskLevel } from '../data/mockRecords';
 
 // ============================================================================
@@ -59,6 +60,21 @@ const RecordViewPage: React.FC = () => {
   const { data: auditEntries, isLoading: auditLoading } = useAuditLog(
     mode === 'history' ? decodedSerial : null
   );
+
+  // Integrity signals (non-blocking rule evaluation)
+  const { data: allRecords } = useRecords();
+  const integritySignals = useMemo(() => {
+    if (!originalRecord || !allRecords) return [];
+    return evaluateRulesForRecord(
+      originalRecord as unknown as RecordData,
+      allRecords as unknown as RecordData[]
+    );
+  }, [originalRecord, allRecords]);
+  const integritySeverity: RuleSeverity = useMemo(() => {
+    if (integritySignals.length === 0) return 'clean';
+    if (integritySignals.some(s => s.severity === 'critical')) return 'critical';
+    return 'warning';
+  }, [integritySignals]);
 
   // ─── Derived state (MUST be before any early returns — Rules of Hooks) ─
   const riskLevel = originalRecord ? getEditRiskLevel(originalRecord as any) : 'none';
@@ -330,6 +346,41 @@ const RecordViewPage: React.FC = () => {
             <History className="w-4 h-4" />
             <span>View History ({originalRecord._editCount as number} edits)</span>
           </button>
+        )}
+
+        {/* Integrity signals */}
+        {integritySignals.length > 0 && mode === 'view' && (
+          <div className={`mt-3 px-3 py-2 border rounded text-xs ${
+            integritySeverity === 'critical'
+              ? 'bg-red-500/10 border-red-500/30 text-red-400'
+              : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+          }`}>
+            <div className="flex items-center gap-2 mb-1.5">
+              <Shield className="w-4 h-4" />
+              <span className="font-medium">
+                {integritySeverity === 'critical' ? 'Critical Issues' : 'Warnings'} ({integritySignals.length})
+              </span>
+            </div>
+            <div className="space-y-1 ml-6">
+              {integritySignals.map((signal, i) => (
+                <div key={i} className="flex items-start gap-1.5">
+                  <span className={signal.severity === 'critical' ? 'text-red-400' : 'text-amber-400'}>
+                    {signal.severity === 'critical' ? '✕' : '⚠'}
+                  </span>
+                  <div>
+                    <span className="text-slate-300">{signal.message}</span>
+                    {signal.details && <span className="text-slate-500 ml-1">— {signal.details}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {integritySignals.length === 0 && mode === 'view' && (
+          <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-green-500/5 border border-green-500/20 rounded text-xs text-green-400">
+            <CheckCircle className="w-4 h-4" />
+            <span>No integrity issues detected</span>
+          </div>
         )}
       </div>
 
