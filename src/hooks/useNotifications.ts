@@ -63,17 +63,19 @@ export function useNotifications() {
         targetUserIds: string[]; // who should receive it
     }) => {
         const { data: { user } } = await supabase.auth.getUser();
-        const rows = notif.targetUserIds.map(uid => ({
-            user_id: uid,
-            type: notif.type,
-            title: notif.title,
-            message: notif.message,
-            link: notif.link || null,
-            data: notif.data || null,
-            created_by: user?.id || null,
-        }));
-
-        await supabase.from('notifications').insert(rows);
+        // Use RPC instead of direct INSERT (RLS blocks client-side INSERT)
+        const { error } = await supabase.rpc('create_notifications_batch', {
+            p_user_ids: notif.targetUserIds,
+            p_title: notif.title,
+            p_message: notif.message,
+            p_type: notif.type,
+            p_link: notif.link || null,
+            p_data: notif.data || null,
+            p_created_by: user?.id || null,
+        });
+        if (error) {
+            console.error('[useNotifications] create_notifications_batch failed:', error.message);
+        }
     };
 
     const markAsRead = async (id: string) => {

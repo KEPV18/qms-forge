@@ -427,26 +427,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const authUserId = data.user.id;
 
-      // Create profile (is_active: false for admin approval)
-      const { error: pErr } = await supabase.from("profiles").insert({
-        id: crypto.randomUUID(),
-        user_id: authUserId,
-        email,
-        display_name: name,
-        is_active: false,
-        last_login: null
-      });
-
-      if (pErr) return { ok: false, message: `Profile creation failed: ${pErr.message}` };
-
-      // Create role
-      const { error: rErr } = await supabase.from("user_roles").insert({
-        id: crypto.randomUUID(),
-        user_id: authUserId,
-        role: "user"
-      });
-
-      if (rErr) return { ok: false, message: `Role assignment failed: ${rErr.message}` };
+      // Profile + user_roles are auto-created by the database trigger (handle_new_user)
+      // No client-side INSERT needed — RLS blocks non-admin writes to profiles/user_roles
 
       return { ok: true, message: "Registration successful. Pending admin approval." };
     } catch (err: unknown) {
