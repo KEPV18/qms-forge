@@ -16,7 +16,7 @@ import DynamicFormRenderer, { type RecordData } from '../components/forms/Dynami
 import { useRecord, useUpdateRecord, useRecords } from '../hooks/useRecordStorage';
 import { useAuditLog } from '../hooks/useAuditLog';
 import { evaluateRulesForRecord, getSeverityColor, type RuleSeverity } from '../services/ruleEngine';
-import { getEditRiskLevel } from '../data/mockRecords';
+import { getEditRiskLevel } from '../services/recordUtils';
 import { exportRecordToDocx } from '../services/docxExport';
 import { exportRecordToJson, exportRecordToCsv } from '../services/fileExport';
 import { toast } from 'sonner';
@@ -70,7 +70,7 @@ const RecordViewPage: React.FC = () => {
 
   const riskLevel = useMemo(() => {
     if (!originalRecord) return 'none';
-    return getEditRiskLevel(originalRecord as any);
+    return getEditRiskLevel(originalRecord);
   }, [originalRecord]);
 
   const integritySignals = useMemo(() => {

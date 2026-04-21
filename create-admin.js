@@ -1,16 +1,13 @@
 import 'dotenv/config'
 import { createClient } from '@supabase/supabase-js'
 
-const rawUrl = process.env.VITE_SUPABASE_URL || ''
+const rawUrl = process.env.SUPABASE_URL || ''
 const SUPABASE_URL = rawUrl.replace(/`/g, '').trim()
-const SERVICE_ROLE_KEY =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.SUPABASE_SERVICE_KEY ||
-  ''
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
   console.error('Missing required environment variables:')
-  if (!SUPABASE_URL) console.error(' - VITE_SUPABASE_URL')
+  if (!SUPABASE_URL) console.error(' - SUPABASE_URL')
   if (!SERVICE_ROLE_KEY) console.error(' - SUPABASE_SERVICE_ROLE_KEY')
   process.exit(1)
 }

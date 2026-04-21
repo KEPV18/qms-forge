@@ -15,7 +15,7 @@ import { FORM_SCHEMAS } from '../data/formSchemas';
 import { isoToDisplay } from '../schemas';
 import { useRecords } from '../hooks/useRecordStorage';
 import { evaluateRulesForRecord, getSeverityColor as getIntSeverityColor, type RuleSeverity, type RecordData } from '../services/ruleEngine';
-import { getEditRiskLevel, type QMSRecord } from '../data/mockRecords';
+import { getEditRiskLevel } from '../services/recordUtils';
 import { exportRecordsToDocx } from '../services/docxExport';
 import { exportRecordsToJson, exportRecordsToCsv } from '../services/fileExport';
 import { toast } from 'sonner';
@@ -301,7 +301,7 @@ const RecordListPage: React.FC = () => {
 
           <div className="space-y-1">
             {pagedRecords.map((record, idx) => {
-              const risk = getEditRiskLevel(record as QMSRecord);
+              const risk = getEditRiskLevel(record);
               const sev = integrityCache.get(record.serial as string) || 'clean';
               const isSelected = selectedSerials.has(record.serial as string);
               const status = (record.status as string) || '';

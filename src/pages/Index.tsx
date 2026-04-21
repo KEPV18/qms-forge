@@ -1,158 +1,191 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
-import { ModuleCard } from "@/components/dashboard/ModuleCard";
-import { StatusCard } from "@/components/dashboard/StatusCard";
-import { RecentActivity } from "@/components/dashboard/RecentActivity";
-import { AuditReadiness } from "@/components/dashboard/AuditReadiness";
-import { QuickActions } from "@/components/dashboard/QuickActions";
-import { PendingActions } from "@/components/dashboard/PendingActions";
-import { PipelineItem } from "@/components/dashboard/PipelineItem";
 import { SectionHeader } from "@/components/dashboard/SectionHeader";
-import { StatsRow } from "@/components/ui/StatsRow";
-import { DecisionBanner } from "@/components/ui/DecisionBanner";
 import { StateScreen } from "@/components/ui/StateScreen";
-import {
-  useQMSData, useModuleStats, useAuditSummary,
-  useReviewSummary, useMonthlyComparison, useRecentActivity,
-} from "@/hooks/useQMSData";
+import { useRecords } from "@/hooks/useRecordStorage";
+import { FORM_SCHEMAS } from "@/data/formSchemas";
 import { MODULE_CONFIG } from "@/config/modules";
 import {
-  FileText, AlertTriangle, Clock, CheckCircle,
-  TrendingUp, TrendingDown, BarChart3, Zap,
+  FileText, AlertTriangle, CheckCircle, Database,
+  Layers, TrendingUp, Clock, Shield, FilePlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
-/* ─── Dashboard page ──────────────────────────────────────────────── */
+/* ─── Dashboard page — Supabase-connected ────────────────────────── */
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { data: records, isLoading, error } = useQMSData();
-  const { data: moduleStats } = useModuleStats();
-  const { data: auditSummary } = useAuditSummary();
-  const { data: reviewSummary } = useReviewSummary();
-  const { data: monthlyComparison } = useMonthlyComparison();
-  const { recentActivity } = useRecentActivity();
+  const { data: records, isLoading, error } = useRecords();
 
-  const stats = useMemo(() => ({
-    evidence: moduleStats?.totalEvidence ?? 0,
-    approved: moduleStats?.approved ?? 0,
-    pending: moduleStats?.pendingReview ?? 0,
-    gaps: moduleStats?.gaps?.total ?? 0,
-    rejected: moduleStats?.rejected ?? 0,
-  }), [moduleStats]);
+  // Compute stats from real Supabase records
+  const stats = useMemo(() => {
+    const totalRecords = records?.length ?? 0;
+    const totalForms = FORM_SCHEMAS.length; // 35 forms from schema registry
+
+    // Records per section
+    const sectionCounts: Record<number, number> = {};
+    FORM_SCHEMAS.forEach(s => { sectionCounts[s.section] = 0; });
+    records?.forEach(r => {
+      const schema = FORM_SCHEMAS.find(s => s.code === r.formCode);
+      if (schema) sectionCounts[schema.section] = (sectionCounts[schema.section] || 0) + 1;
+    });
+
+    // Forms with zero records (gap detection)
+    const formCodes = new Set(records?.map(r => r.formCode) || []);
+    const unpopulatedForms = FORM_SCHEMAS.filter(s => !formCodes.has(s.code));
+    const gaps = unpopulatedForms.length;
+
+    // Project count from record data
+    const projects = new Set<string>();
+    records?.forEach(r => {
+      const fd = (r.formData as Record<string, unknown>) || {};
+      const name = fd.project_name || fd.client_name;
+      if (name && typeof name === 'string') projects.add(name);
+    });
+
+    // Recent records (last 5)
+    const recentRecords = (records || [])
+      .sort((a, b) => (b._createdAt as string || '').localeCompare(a._createdAt as string || ''))
+      .slice(0, 5);
+
+    return { totalRecords, totalForms, sectionCounts, gaps, projects: projects.size, recentRecords, unpopulatedForms };
+  }, [records]);
 
   if (isLoading) return <StateScreen state="loading" title="Loading dashboard…" />;
   if (error) return <StateScreen state="error" title="Failed to load data" message={error.message} action={{ label: "Retry", onClick: () => window.location.reload() }} />;
 
-  const totalReviewItems = stats.approved + stats.pending + stats.rejected;
-  const approvedPct = totalReviewItems > 0 ? Math.round((stats.approved / totalReviewItems) * 100) : 0;
-  const pendingPct = totalReviewItems > 0 ? Math.round((stats.pending / totalReviewItems) * 100) : 0;
-  const rejectedPct = totalReviewItems > 0 ? Math.round((stats.rejected / totalReviewItems) * 100) : 0;
-
   return (
     <AppShell breadcrumbs={[{ label: "Dashboard" }]}>
       <div className="space-y-6">
-
-        {/* Decision banner */}
-        {stats.rejected > 0 ? (
-          <DecisionBanner priority="critical" title={`${stats.rejected} Rejected Records`} description="Resolve rejected records to maintain compliance." action={{ label: "Fix Now", href: "/audit?tab=issues" }} />
-        ) : stats.pending > 0 ? (
-          <DecisionBanner priority="warning" title={`${stats.pending} Records Pending Review`} description="Approve or reject pending records to keep your audit trail current." action={{ label: "Review Now", href: "/audit?tab=pending" }} />
-        ) : stats.approved > 0 ? (
-          <DecisionBanner priority="success" title="All Clear" description="No outstanding reviews. All records are approved." />
-        ) : null}
-
-        {/* Stats */}
-        <StatsRow stats={[
-          { icon: FileText, value: stats.evidence, label: "Evidence", variant: "default" as const },
-          { icon: CheckCircle, value: stats.approved, label: "Approved", variant: "success" as const, onClick: () => navigate("/audit?tab=compliant") },
-          { icon: Clock, value: stats.pending, label: "Pending", variant: "warning" as const, onClick: () => navigate("/audit?tab=pending") },
-          { icon: AlertTriangle, value: stats.rejected, label: "Rejected", variant: "destructive" as const, onClick: () => navigate("/audit?tab=issues") },
-          { icon: BarChart3, value: stats.gaps, label: "Gaps", variant: "default" as const },
-        ]} />
-
-        {/* Pipeline */}
-        <div className="space-y-3">
-          <SectionHeader title="Review Pipeline" description="Approval status across all records" action={<Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => navigate("/audit")}>View Audit</Button>} />
-          <div className="bg-card border border-border rounded-sm overflow-hidden divide-y divide-border/50">
-            <PipelineItem label="Approved" count={stats.approved} pct={approvedPct} variant="success" onClick={() => navigate("/audit?tab=compliant")} />
-            <PipelineItem label="Pending Review" count={stats.pending} pct={pendingPct} variant="warning" onClick={() => navigate("/audit?tab=pending")} />
-            <PipelineItem label="Rejected" count={stats.rejected} pct={rejectedPct} variant="destructive" onClick={() => navigate("/audit?tab=issues")} />
-          </div>
+        {/* Stats overview */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <StatCard icon={Database} label="Total Records" value={stats.totalRecords} color="cyan" />
+          <StatCard icon={Layers} label="Active Forms" value={stats.totalForms} color="indigo" />
+          <StatCard icon={AlertTriangle} label="Form Gaps" value={stats.gaps} color={stats.gaps > 10 ? "amber" : "emerald"} />
+          <StatCard icon={FileText} label="Projects" value={stats.projects} color="violet" />
         </div>
 
-        {/* Modules */}
-        <div className="space-y-3">
-          <SectionHeader title="QMS Modules" description="Quality management modules" />
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {Object.values(MODULE_CONFIG).map(mod => {
-              const modStats = moduleStats?.[mod.id] ?? { formsCount: 0, recordsCount: 0, pendingCount: 0, issuesCount: 0 };
-              return (
-                <ModuleCard
-                  key={mod.id}
-                  title={mod.name}
-                  description={mod.description}
-                  icon={mod.icon}
-                  moduleClass={mod.moduleClass}
-                  isoClause={mod.isoClause}
-                  stats={modStats}
-                  onClick={() => navigate(`/module/${mod.id}`)}
-                />
-              );
-            })}
-          </div>
-        </div>
+        {/* Gaps alert */}
+        {stats.gaps > 0 && (
+          <Card className="border-amber-500/20 bg-amber-500/5">
+            <CardContent className="p-4 flex items-center gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-400" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-amber-200">{stats.gaps} forms have zero records</p>
+                <p className="text-xs text-amber-300/70">These forms need at least one record for audit compliance.</p>
+              </div>
+              <Button size="sm" variant="outline" className="border-amber-500/30 text-amber-300 hover:bg-amber-500/10" onClick={() => navigate('/create')}>
+                <FilePlus className="w-4 h-4 mr-1" /> Create
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
-        {/* Middle row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <QuickActions />
-          <AuditReadiness />
-        </div>
+        {/* Module sections with real record counts */}
+        <SectionHeader icon={Layers} label="QMS Modules" description={`${FORM_SCHEMAS.length} forms across 7 ISO 9001 sections`} />
 
-        {/* Bottom row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <RecentActivity recentActivity={recentActivity} />
-          <PendingActions />
-        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+          {Object.values(MODULE_CONFIG).map(mod => {
+            const count = stats.sectionCounts[mod.section] || 0;
+            const formsInSection = FORM_SCHEMAS.filter(s => s.section === mod.section);
+            const gapCount = formsInSection.filter(s => !records?.some(r => r.formCode === s.code)).length;
 
-        {/* Comparison */}
-        {monthlyComparison && (
-          <div className="space-y-3">
-            <SectionHeader title="Monthly Comparison" description="Current vs previous period" />
-            <div className="bg-card border border-border rounded-sm p-5 grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center">
-                <p className="text-2xl font-black text-success">{monthlyComparison.currentMonth?.approved ?? 0}</p>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">Approved</p>
-                {monthlyComparison.currentMonth?.approved !== undefined && monthlyComparison.previousMonth?.approved !== undefined && (
-                  <div className="flex items-center justify-center gap-1 mt-1">
-                    {monthlyComparison.currentMonth.approved >= monthlyComparison.previousMonth.approved
-                      ? <TrendingUp className="w-3 h-3 text-success" />
-                      : <TrendingDown className="w-3 h-3 text-destructive" />}
-                    <span className="text-[10px] font-mono text-muted-foreground">
-                      {monthlyComparison.currentMonth.approved >= monthlyComparison.previousMonth.approved ? "+" : ""}
-                      {monthlyComparison.previousMonth.approved > 0
-                        ? Math.round(((monthlyComparison.currentMonth.approved - monthlyComparison.previousMonth.approved) / monthlyComparison.previousMonth.approved) * 100)
-                        : 0}%
-                    </span>
+            return (
+              <Card
+                key={mod.id}
+                className={cn("cursor-pointer hover:border-primary/30 transition-all group", mod.moduleClass)}
+                onClick={() => navigate(`/records?section=${mod.section}`)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <mod.icon className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{mod.name}</p>
+                      <p className="text-xs text-muted-foreground">{mod.isoClause}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xl font-bold text-foreground">{count}</p>
+                      <p className="text-[9px] text-muted-foreground uppercase">records</p>
+                    </div>
                   </div>
-                )}
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-black text-warning">{monthlyComparison.currentMonth?.pending ?? 0}</p>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">Pending</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-black text-destructive">{monthlyComparison.currentMonth?.rejected ?? 0}</p>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">Rejected</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-black text-foreground">{monthlyComparison.currentMonth?.total ?? 0}</p>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">Total</p>
-              </div>
+                  {gapCount > 0 && (
+                    <div className="mt-2 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3 text-amber-400" />
+                      <span className="text-[10px] text-amber-300">{gapCount} of {formsInSection.length} forms empty</span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+
+        {/* Quick actions */}
+        <SectionHeader icon={TrendingUp} label="Quick Actions" />
+        <div className="flex flex-wrap gap-3">
+          <Button onClick={() => navigate('/create')} className="gap-2">
+            <FilePlus className="w-4 h-4" /> Create Record
+          </Button>
+          <Button variant="outline" onClick={() => navigate('/records')} className="gap-2">
+            <Database className="w-4 h-4" /> View All Records
+          </Button>
+          <Button variant="outline" onClick={() => navigate('/forms')} className="gap-2">
+            <Layers className="w-4 h-4" /> Forms Registry
+          </Button>
+          <Button variant="outline" onClick={() => navigate('/integrity')} className="gap-2">
+            <Shield className="w-4 h-4" /> Data Integrity
+          </Button>
+        </div>
+
+        {/* Recent records */}
+        {stats.recentRecords.length > 0 && (
+          <>
+            <SectionHeader icon={Clock} label="Recent Records" />
+            <div className="space-y-2">
+              {stats.recentRecords.map(r => (
+                <Card
+                  key={r.serial as string}
+                  className="cursor-pointer hover:border-primary/30 transition-colors"
+                  onClick={() => navigate(`/records/${encodeURIComponent(r.serial as string)}`)}
+                >
+                  <CardContent className="p-3 flex items-center gap-3">
+                    <FileText className="w-4 h-4 text-muted-foreground" />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm font-mono font-medium">{r.serial as string}</span>
+                      <span className="text-xs text-muted-foreground ml-2">{r.formName as string}</span>
+                    </div>
+                    <Badge variant="outline" className="text-[10px]">{r.formCode as string}</Badge>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
-          </div>
+          </>
         )}
       </div>
     </AppShell>
+  );
+}
+
+function StatCard({ icon: Icon, label, value, color }: { icon: React.ElementType; label: string; value: number; color: string }) {
+  const colorClasses: Record<string, string> = {
+    cyan: "border-cyan-500/20 bg-cyan-500/5 text-cyan-400",
+    indigo: "border-indigo-500/20 bg-indigo-500/5 text-indigo-400",
+    amber: "border-amber-500/20 bg-amber-500/5 text-amber-400",
+    emerald: "border-emerald-500/20 bg-emerald-500/5 text-emerald-400",
+    violet: "border-violet-500/20 bg-violet-500/5 text-violet-400",
+  };
+  return (
+    <Card className={cn("border", colorClasses[color] || colorClasses.cyan)}>
+      <CardContent className="p-4 flex items-center gap-3">
+        <Icon className="w-5 h-5" />
+        <div>
+          <p className="text-2xl font-bold">{value}</p>
+          <p className="text-xs text-muted-foreground">{label}</p>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

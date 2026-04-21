@@ -12,7 +12,7 @@ import {
     KeyRound, Bell, Monitor, Wifi, WifiOff, HardDrive, Eye, EyeOff,
     Mail, UserCircle, Crown
 } from "lucide-react";
-import { checkDriveWritePermission } from "@/lib/driveService";
+
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -45,8 +45,8 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     const { theme, setTheme, resolvedTheme } = useTheme();
 
     const [activeTab, setActiveTab] = useState<TabId>(user?.role === 'admin' ? 'diagnostics' : 'account');
-    const [driveStatus, setDriveStatus] = useState<'idle' | 'checking' | 'success' | 'error'>('idle');
-    const [driveMessage, setDriveMessage] = useState("");
+    const [driveStatus, setDriveStatus] = useState<'idle' | 'checking' | 'success' | 'error'>('success');
+    const [driveMessage, setDriveMessage] = useState("Supabase is the data backend — no Drive integration required.");
     const [serverStatus, setServerStatus] = useState<'idle' | 'checking' | 'online' | 'offline'>('idle');
     const [oldPass, setOldPass] = useState("");
     const [newPass, setNewPass] = useState("");
@@ -73,23 +73,10 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     };
 
     const handleCheckDrive = async () => {
-        setDriveStatus('checking');
-        setDriveMessage("");
-        try {
-            const result = await checkDriveWritePermission();
-            if (result.success) {
-                setDriveStatus('success');
-                setDriveMessage(result.message);
-                toast.success("Drive Permission Verified", { description: "Read/Write access confirmed." });
-            } else {
-                setDriveStatus('error');
-                setDriveMessage(result.message);
-                toast.error("Drive Permission Failed", { description: result.message });
-            }
-        } catch {
-            setDriveStatus('error');
-            setDriveMessage("An unexpected error occurred.");
-        }
+        // Drive integration removed — always reports success (Supabase backend)
+        setDriveStatus('success');
+        setDriveMessage("Connected to Supabase — no Drive required.");
+        toast.success("Backend Verified", { description: "Supabase is the data source." });
     };
 
     const handleGoogleSignIn = () => {

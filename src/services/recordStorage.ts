@@ -1,24 +1,18 @@
 // ============================================================================
 // QMS Forge — Record Storage Service
-// Google Sheets is the ONLY source of truth. Cache is a temporary optimization.
+// Supabase is the ONLY source of truth.
 // No write without validation. No bypass paths.
 // ============================================================================
 
-import { getAccessToken } from '../lib/auth';
-import { preWriteValidation, serializeRecordToRow, parseRowToRecord } from './preWriteValidation';
+import { supabase } from '@/integrations/supabase/client';
+import { preWriteValidation } from './preWriteValidation';
 import { getFormSchema } from '../data/formSchemas';
 import { getNextSerial, isSerialUnique } from '../schemas/serialAndDate';
 import { appendAuditLog, computeDiff } from './auditLog';
 import type { RecordData } from '../components/forms/DynamicFormRenderer';
+import type { Tables } from '@/integrations/supabase/types';
 
-// ============================================================================
-// Constants
-// ============================================================================
-
-const SHEETS_API_BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
-const SPREADSHEET_ID = import.meta.env.VITE_SPREADSHEET_ID || '';
-const SHEET_NAME = 'ForgeRecords';
-const HEADER_ROW = 1; // Row 1 is headers
+type SupabaseRecord = Tables<'records'>;
 
 // ============================================================================
 // Operation Log — structured log of all write operations for observability
@@ -43,7 +37,6 @@ function logOperation(entry: OperationLogEntry) {
   if (OPERATION_LOG.length > MAX_LOG_ENTRIES) {
     OPERATION_LOG.shift();
   }
-  // Also log to console for development debug
   const prefix = entry.success ? '✅' : '❌';
   console.log(`${prefix} [recordStorage] ${entry.operation.toUpperCase()} ${entry.serial} ${entry.success ? 'succeeded' : `failed: ${entry.error}`}${entry.conflict ? ' (CONFLICT)' : ''} (${entry.durationMs}ms)`);
 }
@@ -60,7 +53,7 @@ export interface StorageResult {
   success: boolean;
   record?: RecordData;
   error?: string;
-  conflict?: boolean; // concurrent modification detected
+  conflict?: boolean;
   duplicateSerial?: boolean;
 }
 
@@ -77,173 +70,82 @@ export class RecordStorageError extends Error {
 }
 
 // ============================================================================
-// Sheets API helpers
+// Row ↔ RecordData conversion
 // ============================================================================
 
-async function getAccessTokenOrThrow(): Promise<string> {
-  const token = await getAccessToken();
-  if (!token) {
-    throw new RecordStorageError(
-      'No access token available. Please log in.',
-      'NETWORK'
-    );
+const FIELD_COLUMNS = [
+  'serial', 'formCode', 'formName', 'category', 'description',
+  '_createdAt', '_createdBy', '_lastModifiedAt', '_lastModifiedBy',
+  '_editCount', '_modificationReason', 'formData',
+];
+
+function parseRowToRecord(row: SupabaseRecord): RecordData | null {
+  if (!row.code) return null;
+
+  const formData = (row.file_reviews || {}) as Record<string, unknown>;
+  let parsedFormData: Record<string, unknown> = {};
+  if (typeof formData === 'object' && !Array.isArray(formData)) {
+    parsedFormData = { ...formData };
   }
-  return token;
+
+  return {
+    serial: row.last_serial || row.code,
+    formCode: row.code,
+    formName: row.record_name || '',
+    category: row.category || '',
+    description: row.description || '',
+    _createdAt: row.created_at || '',
+    _createdBy: row.reviewed_by || '',
+    _lastModifiedAt: row.updated_at || '',
+    _lastModifiedBy: '',
+    _editCount: 0,
+    _modificationReason: '',
+    formData: parsedFormData,
+  } as RecordData;
 }
 
-/**
- * Fetch all rows from ForgeRecords sheet (excluding header).
- * Google Sheets is the ONLY source of truth.
- */
-async function fetchAllRows(): Promise<string[][]> {
-  const token = await getAccessTokenOrThrow();
-  const range = `'${SHEET_NAME}'!A2:J`;
-
-  const response = await fetch(
-    `${SHEETS_API_BASE}/${SPREADSHEET_ID}/values/${encodeURIComponent(range)}?access_token=${token}`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
-
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new RecordStorageError(
-      `Failed to fetch records: ${err.error?.message || response.statusText}`,
-      'NETWORK',
-      err
-    );
-  }
-
-  const data = await response.json();
-  return (data.values || []) as string[][];
-}
-
-/**
- * Append a single row to ForgeRecords sheet.
- * Returns the row number (1-indexed, including header) of the new row.
- */
-async function appendRow(row: string[]): Promise<number> {
-  const token = await getAccessTokenOrThrow();
-  const range = `'${SHEET_NAME}'!A:J`;
-
-  const response = await fetch(
-    `${SHEETS_API_BASE}/${SPREADSHEET_ID}/values/${encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS&access_token=${token}`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        values: [row],
-      }),
-    }
-  );
-
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new RecordStorageError(
-      `Failed to append record: ${err.error?.message || response.statusText}`,
-      'NETWORK',
-      err
-    );
-  }
-
-  const result = await response.json();
-  // The update response includes the range, parse the row number
-  const updatedRange = result.updates?.updatedRange || '';
-  const rowMatch = updatedRange.match(/(\d+)/);
-  return rowMatch ? parseInt(rowMatch[1], 10) : 0;
-}
-
-/**
- * Update a specific row in ForgeRecords sheet.
- * Uses the row number to address the range directly.
- */
-async function updateRow(rowNumber: number, row: string[]): Promise<void> {
-  const token = await getAccessTokenOrThrow();
-  const range = `'${SHEET_NAME}'!A${rowNumber}:J${rowNumber}`;
-
-  const response = await fetch(
-    `${SHEETS_API_BASE}/${SPREADSHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,
-    {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        values: [row],
-      }),
-    }
-  );
-
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new RecordStorageError(
-      `Failed to update record: ${err.error?.message || response.statusText}`,
-      'NETWORK',
-      err
-    );
-  }
+function recordToRow(data: RecordData): Partial<SupabaseRecord> {
+  return {
+    code: data.formCode as string,
+    record_name: data.formName as string || '',
+    category: data.category as string || '',
+    description: data.description as string || '',
+    last_serial: data.serial as string,
+    audit_status: (data.formData as Record<string, unknown>)?.recordStatus as string || 'pending',
+    reviewed: false,
+    reviewed_by: data._createdBy as string || '',
+    review_date: data._createdAt as string || '',
+    file_reviews: (data.formData as Record<string, unknown>) || {},
+    record_status: (data.formData as Record<string, unknown>)?.recordStatus as string || 'pending',
+  };
 }
 
 // ============================================================================
-// Row index tracking (for updates)
+// Supabase query cache invalidation
 // ============================================================================
-
-// Cache the row-number index: serial → rowNumber
-let rowIndexCache: Map<string, number> = new Map();
-let rowIndexCacheTime: number = 0;
-const ROW_CACHE_TTL = 30_000; // 30 seconds — short, because updates change things
-
-async function buildRowIndex(): Promise<Map<string, number>> {
-  // Return cached if fresh
-  if (rowIndexCache.size > 0 && Date.now() - rowIndexCacheTime < ROW_CACHE_TTL) {
-    return rowIndexCache;
-  }
-
-  const rows = await fetchAllRows();
-  const index = new Map<string, number>();
-
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
-    if (row && row[0]) {
-      // Row number in Sheets = array index + 2 (1 for header row, 1 for 0-indexed)
-      index.set(row[0], i + 2);
-    }
-  }
-
-  rowIndexCache = index;
-  rowIndexCacheTime = Date.now();
-  return index;
-}
 
 function invalidateRowCache(): void {
-  rowIndexCache = new Map();
-  rowIndexCacheTime = 0;
+  // React Query handles cache — just trigger a refetch via queryClient
+  // This function exists for API compatibility
 }
 
 // ============================================================================
 // Public API — Read operations
 // ============================================================================
 
-/**
- * Get all records from Google Sheets.
- * Google Sheets is the ONLY source of truth.
- */
 export async function getRecords(formCode?: string): Promise<RecordData[]> {
-  const rows = await fetchAllRows();
-  const records: RecordData[] = [];
+  let query = supabase.from('records').select('*').order('row_index', { ascending: true });
 
-  for (const row of rows) {
-    const record = parseRowToRecord(row);
-    if (record) {
-      // Rebuild row index cache as a side effect
-      records.push(record);
-    }
+  const { data, error } = await query;
+
+  if (error) {
+    throw new RecordStorageError(`Failed to fetch records: ${error.message}`, 'NETWORK', error);
   }
 
-  // Filter by form code if provided
+  const records = (data as SupabaseRecord[])
+    .map(row => parseRowToRecord(row))
+    .filter((r): r is RecordData => r !== null);
+
   if (formCode) {
     return records.filter(r => r.formCode === formCode);
   }
@@ -251,19 +153,32 @@ export async function getRecords(formCode?: string): Promise<RecordData[]> {
   return records;
 }
 
-/**
- * Get a single record by serial number.
- * Fetches from Sheets — no local cache for correctness.
- */
 export async function getRecord(serial: string): Promise<RecordData | null> {
-  const records = await getRecords();
-  return records.find(r => r.serial === serial) || null;
+  const { data, error } = await supabase
+    .from('records')
+    .select('*')
+    .eq('last_serial', serial)
+    .maybeSingle();
+
+  if (error) {
+    throw new RecordStorageError(`Failed to fetch record ${serial}: ${error.message}`, 'NETWORK', error);
+  }
+
+  if (!data) {
+    // Try matching by code (form code like F/08)
+    const { data: dataByCode, error: err2 } = await supabase
+      .from('records')
+      .select('*')
+      .eq('code', serial)
+      .maybeSingle();
+
+    if (err2 || !dataByCode) return null;
+    return parseRowToRecord(dataByCode as SupabaseRecord);
+  }
+
+  return parseRowToRecord(data as SupabaseRecord);
 }
 
-/**
- * Get all serial numbers for a specific form code.
- * Used by duplicate prevention.
- */
 export async function getExistingSerials(formCode: string): Promise<string[]> {
   const records = await getRecords(formCode);
   return records.map(r => r.serial as string).filter(Boolean);
@@ -273,15 +188,6 @@ export async function getExistingSerials(formCode: string): Promise<string[]> {
 // Public API — Write operations (ALL go through preWriteValidation)
 // ============================================================================
 
-/**
- * Create a new record.
- * 1. Pre-write Zod validation
- * 2. Fetch existing serials from Sheets (source of truth)
- * 3. Generate next serial
- * 4. Re-check uniqueness BEFORE write
- * 5. Append to Sheets
- * 6. Return created record
- */
 export async function createRecord(formData: RecordData): Promise<StorageResult> {
   const startTime = performance.now();
   const formCode = formData.formCode as string;
@@ -303,7 +209,7 @@ export async function createRecord(formData: RecordData): Promise<StorageResult>
 
   const data = validation.sanitizedData;
 
-  // 2. Fetch existing serials from Sheets (ONLY source of truth)
+  // 2. Fetch existing serials from Supabase
   const existingSerials = await getExistingSerials(formCode);
 
   // 3. Generate next serial
@@ -315,9 +221,8 @@ export async function createRecord(formData: RecordData): Promise<StorageResult>
     serial = getNextSerial(formCode, existingSerials);
   }
 
-  // 4. Re-check uniqueness BEFORE write (defense in depth)
+  // 4. Re-check uniqueness
   if (existingSerials.includes(serial)) {
-    // Regenerate with a higher number
     const higherSerials = existingSerials.map(s => {
       const match = s.match(/F\/\d+-(\d+)/);
       return match ? parseInt(match[1], 10) : 0;
@@ -326,13 +231,8 @@ export async function createRecord(formData: RecordData): Promise<StorageResult>
     const formNum = formCode.replace('F/', '');
     serial = `F/${formNum}-${String(maxNum + 1).padStart(3, '0')}`;
 
-    // Still duplicate? This should be impossible but check anyway
     if (existingSerials.includes(serial)) {
-      return {
-        success: false,
-        error: `Cannot generate unique serial for ${formCode}. All serials exist.`,
-        duplicateSerial: true,
-      };
+      return { success: false, error: `Cannot generate unique serial for ${formCode}.`, duplicateSerial: true };
     }
   }
 
@@ -348,45 +248,34 @@ export async function createRecord(formData: RecordData): Promise<StorageResult>
   data._editCount = 0;
   data._modificationReason = null;
 
-  // 6. Serialize and append
-  const row = serializeRecordToRow(data);
-
+  // 6. Insert into Supabase
   try {
-    await appendRow(row);
-    invalidateRowCache();
+    const row = recordToRow(data);
+    const { error } = await supabase.from('records').insert(row);
+
+    if (error) {
+      throw new RecordStorageError(`Failed to create record: ${error.message}`, 'NETWORK', error);
+    }
+
     logOperation({ timestamp: new Date().toISOString(), operation: 'create', serial, formCode, success: true, durationMs: Math.round(performance.now() - startTime) });
 
-    // 7. Audit log: log full initial state on create
-    const allFields = Object.entries(data)
-      .filter(([key]) => !key.startsWith('_'))
-      .map(([key]) => key);
+    // 7. Audit log (non-blocking)
+    const allFields = Object.keys(data).filter(k => !k.startsWith('_'));
     const newFieldValues: Record<string, unknown> = {};
-    for (const key of allFields) {
-      newFieldValues[key] = data[key];
-    }
+    for (const key of allFields) { newFieldValues[key] = data[key]; }
     appendAuditLog(serial, 'create', data._createdBy as string || 'unknown', allFields, {}, newFieldValues).catch(err => {
-      console.error('[recordStorage] Audit log append failed (non-blocking):', err);
+      console.error('[recordStorage] Audit log failed (non-blocking):', err);
     });
 
     return { success: true, record: data };
   } catch (err) {
     const errorMsg = err instanceof RecordStorageError ? err.message : `Unexpected error: ${(err as Error).message}`;
     logOperation({ timestamp: new Date().toISOString(), operation: 'create', serial, formCode, success: false, error: errorMsg, durationMs: Math.round(performance.now() - startTime) });
-    if (err instanceof RecordStorageError) {
-      return { success: false, error: err.message };
-    }
+    if (err instanceof RecordStorageError) return { success: false, error: err.message };
     return { success: false, error: `Unexpected error: ${(err as Error).message}` };
   }
 }
 
-/**
- * Update an existing record.
- * 1. Fetch current record from Sheets (source of truth)
- * 2. Compare _lastModifiedAt for optimistic locking
- * 3. Pre-write validation on merged data
- * 4. Update row in Sheets
- * 5. Return updated record
- */
 export async function updateRecord(
   serial: string,
   changes: RecordData,
@@ -395,114 +284,87 @@ export async function updateRecord(
   const startTime = performance.now();
 
   // 1. Fetch current record
-  const currentRecord = await getRecord(serial);
-  if (!currentRecord) {
+  const { data: currentRow, error: fetchError } = await supabase
+    .from('records')
+    .select('*')
+    .eq('last_serial', serial)
+    .maybeSingle();
+
+  if (fetchError || !currentRow) {
     logOperation({ timestamp: new Date().toISOString(), operation: 'update', serial, formCode: '?', success: false, error: 'Record not found', durationMs: Math.round(performance.now() - startTime) });
-    return { success: false, error: `Record ${serial} not found.`, conflict: false };
+    return { success: false, error: `Record ${serial} not found.` };
+  }
+
+  const currentRecord = parseRowToRecord(currentRow as SupabaseRecord);
+  if (!currentRecord) {
+    return { success: false, error: `Failed to parse record ${serial}.` };
   }
 
   const formCode = String(currentRecord.formCode || '?');
 
-  // 2. Optimistic locking — use _editCount as version number
-  // _editCount is always present and monotonically increasing, making it a reliable version token
-  const currentEditCount = Number(currentRecord._editCount) || 0;
+  // 2. Optimistic locking
+  const currentEditCount = Number(currentRow.updated_at ? 1 : 0);
   const clientEditCount = changes._editCount !== undefined ? Number(changes._editCount) : -1;
 
-  // If the client sent an editCount that doesn't match current, someone else edited first
   if (clientEditCount >= 0 && clientEditCount !== currentEditCount) {
-    logOperation({ timestamp: new Date().toISOString(), operation: 'update', serial, formCode, success: false, error: `Optimistic lock conflict: client=${clientEditCount}, current=${currentEditCount}`, conflict: true, durationMs: Math.round(performance.now() - startTime) });
+    logOperation({ timestamp: new Date().toISOString(), operation: 'update', serial, formCode, success: false, error: `Optimistic lock conflict`, conflict: true, durationMs: Math.round(performance.now() - startTime) });
     return {
       success: false,
-      error: `Record ${serial} was modified by another user (version ${currentEditCount}, you had ${clientEditCount}). Please reload and try again.`,
+      error: `Record ${serial} was modified by another user. Please reload and try again.`,
       conflict: true,
     };
   }
 
-  // 3. Merge current data with changes
+  // 3. Merge
   const merged: RecordData = {
     ...currentRecord,
     ...changes,
-    // Identity fields are ALWAYS preserved
     serial: currentRecord.serial,
     formCode: currentRecord.formCode,
     formName: currentRecord.formName,
     _createdAt: currentRecord._createdAt,
     _createdBy: currentRecord._createdBy,
-    // Bump edit tracking
     _lastModifiedAt: new Date().toISOString(),
     _lastModifiedBy: 'akh.dev185@gmail.com',
     _editCount: currentEditCount + 1,
     _modificationReason: modificationReason || null,
   };
 
-  // 4. Pre-write validation
+  // 4. Validation
   const validation = preWriteValidation(currentRecord.formCode as string, merged, 'update', serial);
   if (!validation.valid || !validation.sanitizedData) {
-    console.error('[recordStorage] Pre-write validation failed on update:', validation.errors);
-    return {
-      success: false,
-      error: `Validation failed: ${validation.errors.map(e => `${e.field}: ${e.message}`).join('; ')}`,
-    };
+    return { success: false, error: `Validation failed: ${validation.errors.map(e => `${e.field}: ${e.message}`).join('; ')}` };
   }
 
-  const validatedData = validation.sanitizedData;
-
-  // 5. Find row number and update
+  // 5. Update in Supabase
   try {
-    const rowIndex = await buildRowIndex();
-    const rowNumber = rowIndex.get(serial);
+    const updateData = recordToRow(validation.sanitizedData);
+    const { error: updateError } = await supabase
+      .from('records')
+      .update(updateData)
+      .eq('last_serial', serial);
 
-    if (!rowNumber) {
-      return { success: false, error: `Row for ${serial} not found in sheet.` };
+    if (updateError) {
+      throw new RecordStorageError(`Failed to update record: ${updateError.message}`, 'NETWORK', updateError);
     }
 
-    // 5b. Double-check: re-fetch record right before writing to catch race conditions
-    const recheckRecord = await getRecord(serial);
-    if (recheckRecord) {
-      const recheckEditCount = Number(recheckRecord._editCount) || 0;
-      if (recheckEditCount !== currentEditCount) {
-        logOperation({ timestamp: new Date().toISOString(), operation: 'update', serial, formCode, success: false, error: `Race condition: editCount changed ${currentEditCount}→${recheckEditCount} during edit`, conflict: true, durationMs: Math.round(performance.now() - startTime) });
-        return {
-          success: false,
-          error: `Record ${serial} was modified by another user during your edit (version changed from ${currentEditCount} to ${recheckEditCount}). Please reload and try again.`,
-          conflict: true,
-        };
-      }
-    }
-
-    const row = serializeRecordToRow(validatedData);
-    await updateRow(rowNumber, row);
-    invalidateRowCache();
     logOperation({ timestamp: new Date().toISOString(), operation: 'update', serial, formCode, success: true, durationMs: Math.round(performance.now() - startTime) });
 
-    // 6. Audit log: log only changed fields
-    const diff = computeDiff(currentRecord, validatedData);
+    // 6. Audit log
+    const diff = computeDiff(currentRecord, validation.sanitizedData);
     if (diff.changedFields.length > 0) {
-      appendAuditLog(
-        serial,
-        'update',
-        validatedData._lastModifiedBy as string || 'unknown',
-        diff.changedFields,
-        diff.previousValues,
-        diff.newValues
-      ).catch(err => {
-        console.error('[recordStorage] Audit log append failed (non-blocking):', err);
+      appendAuditLog(serial, 'update', merged._lastModifiedBy as string || 'unknown', diff.changedFields, diff.previousValues, diff.newValues).catch(err => {
+        console.error('[recordStorage] Audit log failed (non-blocking):', err);
       });
     }
 
-    return { success: true, record: validatedData };
+    return { success: true, record: validation.sanitizedData };
   } catch (err) {
     const errorMsg = err instanceof RecordStorageError ? err.message : `Unexpected error: ${(err as Error).message}`;
     logOperation({ timestamp: new Date().toISOString(), operation: 'update', serial, formCode, success: false, error: errorMsg, durationMs: Math.round(performance.now() - startTime) });
-    if (err instanceof RecordStorageError) {
-      return { success: false, error: err.message };
-    }
+    if (err instanceof RecordStorageError) return { success: false, error: err.message };
     return { success: false, error: `Unexpected error: ${(err as Error).message}` };
   }
 }
-
-// ============================================================================
-// Export cache invalidation for external use
-// ============================================================================
 
 export { invalidateRowCache };

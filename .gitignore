@@ -27,3 +27,11 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# Agent / tool artifacts
+.agents/
+.claude/
+.qwen/
+skills/
+skills-lock.json
+supabase/.temp/
