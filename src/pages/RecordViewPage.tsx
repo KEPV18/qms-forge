@@ -1,8 +1,6 @@
 // ============================================================================
-// QMS Forge — Record View Page
-// Read-only by default. Controlled editing with Edit Intent Check.
-// Identity fields (serial, _createdAt, formCode) are ALWAYS read-only.
-// NOW uses real Google Sheets data via useRecord() and useUpdateRecord().
+// QMS Forge — Record View Page (Phase 9 Refined)
+// Consistent design system classes, improved hierarchy, better interactions.
 // ============================================================================
 
 import React, { useState, useMemo } from 'react';
@@ -14,7 +12,7 @@ import {
 } from 'lucide-react';
 import { getFormSchema } from '../data/formSchemas';
 import { isoToDisplay } from '../schemas';
-import { DynamicFormRenderer, type RecordData } from '../components/forms/DynamicFormRenderer';
+import DynamicFormRenderer, { type RecordData } from '../components/forms/DynamicFormRenderer';
 import { useRecord, useUpdateRecord, useRecords } from '../hooks/useRecordStorage';
 import { useAuditLog } from '../hooks/useAuditLog';
 import { evaluateRulesForRecord, getSeverityColor, type RuleSeverity } from '../services/ruleEngine';
@@ -24,15 +22,10 @@ import { exportRecordToJson, exportRecordToCsv } from '../services/fileExport';
 import { toast } from 'sonner';
 
 // ============================================================================
-// Identity fields — READ-ONLY always, even in edit mode
+// Constants
 // ============================================================================
 
 const IDENTITY_FIELDS = new Set(['serial', '_createdAt', '_createdBy', 'formCode', 'formName']);
-
-// ============================================================================
-// Critical fields — require Edit Intent Check (modification reason)
-// ============================================================================
-
 const CRITICAL_FIELDS = new Set([
   'date', 'status', 'nc_type', 'closure_date',
   'project_name', 'employee_name', 'employee_id',
@@ -48,13 +41,11 @@ const RecordViewPage: React.FC = () => {
   const decodedSerial = serial ? decodeURIComponent(serial) : '';
   const navigate = useNavigate();
 
-  // ✅ Real data from Google Sheets
   const { data: originalRecord, isLoading, error, refetch } = useRecord(decodedSerial);
   const updateMutation = useUpdateRecord();
-
+  const { data: allRecords } = useRecords();
   const schema = originalRecord ? getFormSchema(originalRecord.formCode as string) : null;
 
-  // State
   const [mode, setMode] = useState<'view' | 'edit' | 'intent' | 'history'>('view');
   const [editData, setEditData] = useState<RecordData>({});
   const [modificationReason, setModificationReason] = useState('');
@@ -62,44 +53,44 @@ const RecordViewPage: React.FC = () => {
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
-  // Audit log
-  const { data: auditEntries, isLoading: auditLoading } = useAuditLog(
-    mode === 'history' ? decodedSerial : null
-  );
+  const { data: auditLog, isLoading: auditLoading } = useAuditLog(decodedSerial);
+  const auditEntries = auditLog || [];
+  const isSaving = updateMutation.isPending;
 
-  // Integrity signals (non-blocking rule evaluation)
-  const { data: allRecords } = useRecords();
-  const integritySignals = useMemo(() => {
-    if (!originalRecord || !allRecords) return [];
-    return evaluateRulesForRecord(
-      originalRecord as unknown as RecordData,
-      allRecords as unknown as RecordData[]
-    );
-  }, [originalRecord, allRecords]);
-  const integritySeverity: RuleSeverity = useMemo(() => {
-    if (integritySignals.length === 0) return 'clean';
-    if (integritySignals.some(s => s.severity === 'critical')) return 'critical';
-    return 'warning';
-  }, [integritySignals]);
-
-  // ─── Derived state (MUST be before any early returns — Rules of Hooks) ─
-  const riskLevel = originalRecord ? getEditRiskLevel(originalRecord as any) : 'none';
   const hasChangedFields = useMemo(() => {
-    if (mode !== 'edit' || !editData || !originalRecord) return false;
-    return Object.keys(editData).some(key => {
-      if (IDENTITY_FIELDS.has(key)) return false;
+    if (!originalRecord || !schema) return false;
+    return schema.fields.some(field => {
+      if (field.type === 'heading') return false;
+      const key = field.key as string;
       const oldVal = String((originalRecord as Record<string, unknown>)[key] ?? '');
       const newVal = String(editData[key] ?? '');
       return oldVal !== newVal;
     });
-  }, [editData, originalRecord, mode]);
+  }, [originalRecord, schema, editData]);
+
+  const riskLevel = useMemo(() => {
+    if (!originalRecord) return 'none';
+    return getEditRiskLevel(originalRecord as any);
+  }, [originalRecord]);
+
+  const integritySignals = useMemo(() => {
+    if (!originalRecord || !allRecords) return [];
+    return evaluateRulesForRecord(
+      originalRecord as unknown as RecordData,
+      allRecords as unknown as RecordData[],
+    );
+  }, [originalRecord, allRecords]);
+
+  const integritySeverity: RuleSeverity = integritySignals.length === 0
+    ? 'clean'
+    : integritySignals.some(s => s.severity === 'critical') ? 'critical' : 'warning';
 
   // ─── Loading state ─────────────────────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-400 mb-4" />
-        <p className="text-slate-400">Loading record {decodedSerial}...</p>
+      <div className="max-w-4xl mx-auto p-6 flex flex-col items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
+        <p className="text-muted-foreground">Loading record {decodedSerial}...</p>
       </div>
     );
   }
@@ -107,41 +98,34 @@ const RecordViewPage: React.FC = () => {
   // ─── Error state ───────────────────────────────────────────────────────
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <AlertTriangle className="w-12 h-12 text-red-400 mb-4" />
-        <h2 className="text-xl text-slate-300 mb-2">Failed to Load Record</h2>
-        <p className="text-slate-500 mb-4">{(error as Error).message}</p>
-        <button
-          onClick={() => refetch()}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg flex items-center gap-2"
-        >
+      <div className="max-w-4xl mx-auto p-6 flex flex-col items-center justify-center py-20 ds-fade-enter">
+        <AlertTriangle className="w-12 h-12 text-destructive mb-4" />
+        <h2 className="text-xl text-foreground mb-2">Failed to Load Record</h2>
+        <p className="text-muted-foreground mb-4">{(error as Error).message}</p>
+        <button onClick={() => refetch()} className="ds-press ds-focus-ring px-4 py-2 bg-primary text-primary-foreground rounded-sm flex items-center gap-2">
           <RefreshCw className="w-4 h-4" /> Retry
         </button>
       </div>
     );
   }
 
-  // ─── No record found ───────────────────────────────────────────────────
+  // ─── No record ─────────────────────────────────────────────────────────
   if (!originalRecord || !schema) {
     return (
-      <div className="text-center py-16">
-        <FileText className="w-12 h-12 text-slate-500 mx-auto mb-4" />
-        <h2 className="text-xl text-slate-300 mb-2">Record Not Found</h2>
-        <p className="text-slate-500 mb-4">No record with serial <code className="text-indigo-400">{decodedSerial}</code></p>
-        <button
-          onClick={() => navigate('/records')}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg flex items-center gap-2 mx-auto"
-        >
+      <div className="max-w-4xl mx-auto p-6 flex flex-col items-center justify-center py-20 ds-fade-enter">
+        <FileText className="w-12 h-12 text-muted-foreground/40 mb-4" />
+        <h2 className="text-xl text-foreground mb-2">Record Not Found</h2>
+        <p className="text-muted-foreground mb-4">No record with serial <code className="text-primary font-mono">{decodedSerial}</code></p>
+        <button onClick={() => navigate('/records')} className="ds-press ds-focus-ring px-4 py-2 bg-primary text-primary-foreground rounded-sm flex items-center gap-2">
           <ArrowLeft className="w-4 h-4" /> Back to Records
         </button>
       </div>
     );
   }
 
-  // ─── Edit flow ──────────────────────────────────────────────────────────
+  // ─── Handlers ───────────────────────────────────────────────────────────
 
   const handleStartEdit = () => {
-    // Copy current data (without system metadata)
     const data: RecordData = {};
     schema.fields.forEach(field => {
       if (field.type === 'heading') return;
@@ -155,23 +139,17 @@ const RecordViewPage: React.FC = () => {
   };
 
   const handleFormSubmit = (data: RecordData) => {
-    // Store the latest form data from DynamicFormRenderer
     setEditData(data);
-
-    // If critical fields changed, show intent check before saving
     const criticalChanged = Object.keys(data).some(key => {
       if (!CRITICAL_FIELDS.has(key)) return false;
       const oldVal = String((originalRecord as Record<string, unknown>)[key] ?? '');
       const newVal = String(data[key] ?? '');
       return oldVal !== newVal;
     });
-
     if (criticalChanged && !modificationReason.trim()) {
       setMode('intent');
       return;
     }
-
-    // Proceed with save (data already Zod-validated by DynamicFormRenderer)
     doSave(data);
   };
 
@@ -188,30 +166,16 @@ const RecordViewPage: React.FC = () => {
 
   const doSave = (data: RecordData) => {
     if (!schema) return;
-
-    // Include the _editCount from when the user started editing (optimistic locking)
-    const dataWithVersion = {
-      ...data,
-      _editCount: originalRecord._editCount,
-    };
-
-    // Submit to Google Sheets via mutation
     updateMutation.mutate(
-      {
-        serial: originalRecord.serial as string,
-        changes: dataWithVersion,
-        reason: modificationReason || undefined,
-      },
+      { serial: originalRecord.serial as string, changes: { ...data, _editCount: originalRecord._editCount }, reason: modificationReason || undefined },
       {
         onSuccess: (result) => {
           if (result.success) {
             setMode('view');
             setModificationReason('');
             setErrors({});
-            // Refetch to get latest data from Sheets
             refetch();
           } else {
-            // Show conflict/error
             if (result.conflict) {
               setErrors({ _conflict: result.error || 'Concurrent modification detected. Please reload.' });
             } else {
@@ -219,107 +183,66 @@ const RecordViewPage: React.FC = () => {
             }
           }
         },
-        onError: (err: Error) => {
-          setErrors({ _save: err.message });
-        },
+        onError: (err: Error) => { setErrors({ _save: err.message }); },
       }
     );
   };
 
-  // ─── Export handlers ──────────────────────────────────────────────────
   const handleExportDocx = async () => {
-    setIsExporting(true);
-    setExportMenuOpen(false);
-    try {
-      await exportRecordToDocx(originalRecord as Record<string, unknown>);
-      toast.success(`Exported ${originalRecord.serial} as .docx`);
-    } catch (err) {
-      toast.error('Export failed: ' + (err as Error).message);
-    } finally {
-      setIsExporting(false);
-    }
+    setIsExporting(true); setExportMenuOpen(false);
+    try { await exportRecordToDocx(originalRecord as Record<string, unknown>); toast.success(`Exported ${originalRecord.serial} as .docx`); }
+    catch (err) { toast.error('Export failed: ' + (err as Error).message); }
+    finally { setIsExporting(false); }
   };
 
   const handleExportJson = () => {
     setExportMenuOpen(false);
-    try {
-      exportRecordToJson(originalRecord as Record<string, unknown>);
-      toast.success(`Exported ${originalRecord.serial} as JSON`);
-    } catch (err) {
-      toast.error('Export failed: ' + (err as Error).message);
-    }
+    try { exportRecordToJson(originalRecord as Record<string, unknown>); toast.success(`Exported ${originalRecord.serial} as JSON`); }
+    catch (err) { toast.error('Export failed: ' + (err as Error).message); }
   };
 
   const handleExportCsv = () => {
     setExportMenuOpen(false);
-    try {
-      exportRecordToCsv(originalRecord as Record<string, unknown>);
-      toast.success(`Exported ${originalRecord.serial} as CSV`);
-    } catch (err) {
-      toast.error('Export failed: ' + (err as Error).message);
-    }
+    try { exportRecordToCsv(originalRecord as Record<string, unknown>); toast.success(`Exported ${originalRecord.serial} as CSV`); }
+    catch (err) { toast.error('Export failed: ' + (err as Error).message); }
   };
 
   // ─── Render ────────────────────────────────────────────────────────────
-  const isSaving = updateMutation.isPending;
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="max-w-4xl mx-auto p-6 page-transition">
       {/* Top bar */}
       <div className="flex items-center justify-between mb-6">
-        <button
-          onClick={() => navigate('/records')}
-          className="flex items-center gap-2 text-slate-400 hover:text-slate-200 transition"
-        >
-          <ArrowLeft className="w-4 h-4" /> Records
+        <button onClick={() => navigate('/records')} className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors ds-press rounded-sm px-2 py-1">
+          <ArrowLeft className="w-4 h-4" /> <span className="text-sm">Records</span>
         </button>
 
         <div className="flex items-center gap-2">
-          {/* Export dropdown — view mode only */}
+          {/* Export */}
           {mode === 'view' && (
             <div className="relative">
-              <button
-                onClick={() => setExportMenuOpen(!exportMenuOpen)}
-                disabled={isExporting}
-                className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg flex items-center gap-2 text-sm transition-colors"
-              >
-                {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                Export
+              <button onClick={() => setExportMenuOpen(!exportMenuOpen)} disabled={isExporting}
+                className="ds-press ds-focus-ring px-3 py-2 text-sm bg-secondary text-secondary-foreground rounded-sm flex items-center gap-2 hover:bg-accent transition-colors">
+                {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} Export
               </button>
               {exportMenuOpen && (
                 <>
-                  {/* Backdrop */}
                   <div className="fixed inset-0 z-40" onClick={() => setExportMenuOpen(false)} />
-                  <div className="absolute right-0 mt-2 w-52 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-50 overflow-hidden">
-                    <button
-                      onClick={handleExportDocx}
-                      className="w-full px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700 flex items-center gap-3 transition-colors"
-                    >
-                      <FileTextIcon className="w-4 h-4 text-blue-400" />
-                      <div className="text-left">
-                        <div className="font-medium">Word Document</div>
-                        <div className="text-xs text-slate-500">.docx — formatted report</div>
-                      </div>
+                  <div className="absolute right-0 mt-2 w-60 bg-popover border border-border rounded-sm shadow-xl z-50 overflow-hidden ds-fade-enter">
+                    <div className="px-3 py-2 text-xs text-muted-foreground border-b border-border bg-secondary/50">
+                      Export {originalRecord.serial as string}
+                    </div>
+                    <button onClick={handleExportDocx} className="w-full px-4 py-3 text-sm text-popover-foreground hover:bg-accent flex items-center gap-3 transition-colors">
+                      <FileTextIcon className="w-5 h-5 text-blue-400" />
+                      <div className="text-left"><div className="font-medium">Word Document</div><div className="text-xs text-muted-foreground">.docx — formatted report</div></div>
                     </button>
-                    <button
-                      onClick={handleExportJson}
-                      className="w-full px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700 flex items-center gap-3 transition-colors border-t border-slate-700"
-                    >
-                      <FileJson className="w-4 h-4 text-green-400" />
-                      <div className="text-left">
-                        <div className="font-medium">JSON</div>
-                        <div className="text-xs text-slate-500">.json — raw data</div>
-                      </div>
+                    <button onClick={handleExportJson} className="w-full px-4 py-3 text-sm text-popover-foreground hover:bg-accent flex items-center gap-3 transition-colors border-t border-border">
+                      <FileJson className="w-5 h-5 text-emerald-400" />
+                      <div className="text-left"><div className="font-medium">JSON</div><div className="text-xs text-muted-foreground">.json — raw data</div></div>
                     </button>
-                    <button
-                      onClick={handleExportCsv}
-                      className="w-full px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700 flex items-center gap-3 transition-colors border-t border-slate-700"
-                    >
-                      <FileSpreadsheet className="w-4 h-4 text-amber-400" />
-                      <div className="text-left">
-                        <div className="font-medium">CSV</div>
-                        <div className="text-xs text-slate-500">.csv — key-value pairs</div>
-                      </div>
+                    <button onClick={handleExportCsv} className="w-full px-4 py-3 text-sm text-popover-foreground hover:bg-accent flex items-center gap-3 transition-colors border-t border-border">
+                      <FileSpreadsheet className="w-5 h-5 text-amber-400" />
+                      <div className="text-left"><div className="font-medium">CSV</div><div className="text-xs text-muted-foreground">.csv — key-value pairs</div></div>
                     </button>
                   </div>
                 </>
@@ -328,23 +251,19 @@ const RecordViewPage: React.FC = () => {
           )}
 
           {mode === 'view' && (
-            <button
-              onClick={handleStartEdit}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg flex items-center gap-2 text-sm font-medium"
-            >
+            <button onClick={handleStartEdit}
+              className="ds-press ds-focus-ring px-4 py-2 bg-primary text-primary-foreground rounded-sm flex items-center gap-2 text-sm font-medium hover:bg-primary/90 transition-colors">
               <Edit3 className="w-4 h-4" /> Edit
             </button>
           )}
           {mode === 'edit' && (
             <>
-              <button
-                onClick={() => { setMode('view'); setErrors({}); }}
-                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg flex items-center gap-2 text-sm"
-              >
+              <button onClick={() => { setMode('view'); setErrors({}); }}
+                className="ds-press px-4 py-2 bg-secondary text-secondary-foreground rounded-sm flex items-center gap-2 text-sm hover:bg-accent transition-colors">
                 <X className="w-4 h-4" /> Cancel
               </button>
               {hasChangedFields && (
-                <span className="px-2 py-1 text-xs bg-amber-500/10 text-amber-400 rounded">
+                <span className="px-2 py-1 text-xs bg-warning/10 text-warning border border-warning/20 rounded-sm font-medium">
                   Unsaved changes
                 </span>
               )}
@@ -353,132 +272,139 @@ const RecordViewPage: React.FC = () => {
         </div>
       </div>
 
-      {/* System metadata — always read-only */}
-      <div className="bg-slate-900/50 border border-slate-700/50 rounded-lg p-4 mb-6">
-        <div className="flex items-center gap-2 mb-3">
-          <Lock className="w-4 h-4 text-slate-500" />
-          <h3 className="text-sm font-medium text-slate-400">System Metadata</h3>
+      {/* ─── Metadata Card ─────────────────────────────────────────────── */}
+      <div className="ds-card p-5 mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Lock className="w-4 h-4 text-muted-foreground" />
+          <h3 className="text-sm font-semibold text-foreground">System Metadata</h3>
+          {integritySeverity !== 'clean' && mode === 'view' && (
+            <span className={`ml-auto px-2 py-0.5 text-xs font-medium rounded-full border ${
+              integritySeverity === 'critical'
+                ? 'bg-destructive/10 text-destructive border-destructive/20'
+                : 'bg-warning/10 text-warning border-warning/20'
+            }`}>
+              {integritySeverity === 'critical' ? `${integritySignals.length} issues` : `${integritySignals.length} warnings`}
+            </span>
+          )}
+          {integritySeverity === 'clean' && mode === 'view' && (
+            <span className="ml-auto px-2 py-0.5 text-xs font-medium rounded-full bg-success/10 text-success border border-success/20">
+              Clean
+            </span>
+          )}
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+
+        {/* Metadata grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
           <div>
-            <span className="text-slate-500">Serial</span>
-            <p className="font-mono text-indigo-400 font-semibold">{originalRecord.serial as string}</p>
+            <span className="text-xs text-muted-foreground uppercase tracking-wider">Serial</span>
+            <p className="font-mono text-primary font-semibold mt-0.5">{originalRecord.serial as string}</p>
           </div>
           <div>
-            <span className="text-slate-500">Form</span>
-            <p className="text-slate-300">{originalRecord.formCode as string}</p>
+            <span className="text-xs text-muted-foreground uppercase tracking-wider">Form</span>
+            <p className="text-foreground mt-0.5">{originalRecord.formCode as string}</p>
           </div>
           <div>
-            <span className="text-slate-500">Created</span>
-            <p className="text-slate-300">{isoToDisplay(originalRecord._createdAt as string)}</p>
+            <span className="text-xs text-muted-foreground uppercase tracking-wider">Created</span>
+            <p className="text-foreground mt-0.5">{isoToDisplay(originalRecord._createdAt as string)}</p>
           </div>
           <div>
-            <span className="text-slate-500">By</span>
-            <p className="text-slate-300 truncate">{originalRecord._createdBy as string}</p>
+            <span className="text-xs text-muted-foreground uppercase tracking-wider">By</span>
+            <p className="text-foreground truncate mt-0.5">{originalRecord._createdBy as string}</p>
           </div>
           {(originalRecord._lastModifiedAt || originalRecord._editCount > 0) && (
             <>
               <div>
-                <span className="text-slate-500">Last Modified</span>
-                <p className="text-slate-300">
-                  {originalRecord._lastModifiedAt
-                    ? isoToDisplay(originalRecord._lastModifiedAt as string)
-                    : '—'}
-                </p>
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">Last Modified</span>
+                <p className="text-foreground mt-0.5">{originalRecord._lastModifiedAt ? isoToDisplay(originalRecord._lastModifiedAt as string) : '—'}</p>
               </div>
               <div>
-                <span className="text-slate-500">By</span>
-                <p className="text-slate-300 truncate">
-                  {(originalRecord._lastModifiedBy as string) || '—'}
-                </p>
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">Modified By</span>
+                <p className="text-foreground truncate mt-0.5">{(originalRecord._lastModifiedBy as string) || '—'}</p>
               </div>
               <div>
-                <span className="text-slate-500 flex items-center gap-1">
+                <span className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-1">
                   Edits
                   {riskLevel !== 'none' && <AlertTriangle className="w-3 h-3" />}
                 </span>
-                <p className={`font-semibold ${
-                  riskLevel === 'high' ? 'text-red-400' :
-                  riskLevel === 'medium' ? 'text-amber-400' :
-                  'text-slate-300'
+                <p className={`font-semibold mt-0.5 ${
+                  riskLevel === 'high' ? 'text-destructive' : riskLevel === 'medium' ? 'text-warning' : 'text-foreground'
                 }`}>
                   {originalRecord._editCount as number}
                 </p>
               </div>
               {originalRecord._modificationReason && (
-                <div className="col-span-2">
-                  <span className="text-slate-500">Last Reason</span>
-                  <p className="text-slate-300 text-xs truncate">{originalRecord._modificationReason as string}</p>
+                <div className="col-span-2 md:col-span-1">
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Last Reason</span>
+                  <p className="text-foreground text-xs truncate mt-0.5">{originalRecord._modificationReason as string}</p>
                 </div>
               )}
             </>
           )}
         </div>
 
-        {/* Risk warning */}
+        {/* Risk warnings */}
         {riskLevel === 'high' && (
-          <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded text-xs text-red-400">
+          <div className="mt-4 flex items-center gap-2 px-3 py-2 bg-destructive/10 border border-destructive/20 rounded-sm text-xs text-destructive">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>Frequently modified ({originalRecord._editCount as number} edits). Verify data integrity.</span>
           </div>
         )}
         {riskLevel === 'medium' && (
-          <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/30 rounded text-xs text-amber-400">
+          <div className="mt-4 flex items-center gap-2 px-3 py-2 bg-warning/10 border border-warning/20 rounded-sm text-xs text-warning">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>This record has been edited {originalRecord._editCount as number} time(s).</span>
           </div>
         )}
 
-        {/* View History button */}
-        {mode !== 'history' && (
-          <button
-            onClick={() => { setMode('history'); setErrors({}); }}
-            className="mt-3 flex items-center gap-2 px-3 py-2 bg-slate-700/50 border border-slate-600/50 rounded text-xs text-slate-300 hover:bg-slate-700 hover:text-slate-100 transition-colors"
-          >
-            <History className="w-4 h-4" />
-            <span>View History ({originalRecord._editCount as number} edits)</span>
-          </button>
-        )}
-
         {/* Integrity signals */}
         {integritySignals.length > 0 && mode === 'view' && (
-          <div className={`mt-3 px-3 py-2 border rounded text-xs ${
+          <div className={`mt-3 px-3 py-2 border rounded-sm text-sm ${
             integritySeverity === 'critical'
-              ? 'bg-red-500/10 border-red-500/30 text-red-400'
-              : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+              ? 'bg-destructive/10 border-destructive/20 text-destructive'
+              : 'bg-warning/10 border-warning/20 text-warning'
           }`}>
-            <div className="flex items-center gap-2 mb-1.5">
+            <div className="flex items-center gap-2 mb-1.5 font-medium">
               <Shield className="w-4 h-4" />
-              <span className="font-medium">
-                {integritySeverity === 'critical' ? 'Critical Issues' : 'Warnings'} ({integritySignals.length})
-              </span>
+              {integritySeverity === 'critical' ? 'Critical Issues' : 'Warnings'} ({integritySignals.length})
             </div>
             <div className="space-y-1 ml-6">
               {integritySignals.map((signal, i) => (
                 <div key={i} className="flex items-start gap-1.5">
-                  <span className={signal.severity === 'critical' ? 'text-red-400' : 'text-amber-400'}>
+                  <span className={signal.severity === 'critical' ? 'text-destructive' : 'text-warning'}>
                     {signal.severity === 'critical' ? '✕' : '⚠'}
                   </span>
                   <div>
-                    <span className="text-slate-300">{signal.message}</span>
-                    {signal.details && <span className="text-slate-500 ml-1">— {signal.details}</span>}
+                    <span className="text-foreground">{signal.message}</span>
+                    {signal.details && <span className="text-muted-foreground ml-1">— {signal.details}</span>}
                   </div>
                 </div>
               ))}
             </div>
           </div>
         )}
-        {integritySignals.length === 0 && mode === 'view' && (
-          <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-green-500/5 border border-green-500/20 rounded text-xs text-green-400">
+        {integritySignals.length === 0 && mode === 'view' && riskLevel === 'none' && (
+          <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-success/10 border border-success/20 rounded-sm text-xs text-success">
             <CheckCircle className="w-4 h-4" />
             <span>No integrity issues detected</span>
           </div>
         )}
+
+        {/* History button */}
+        {mode !== 'history' && (
+          <button
+            onClick={() => { setMode('history'); setErrors({}); }}
+            className="mt-3 ds-press ds-focus-ring flex items-center gap-2 px-3 py-2 bg-secondary border border-border rounded-sm text-xs text-secondary-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+          >
+            <History className="w-4 h-4" />
+            View History ({originalRecord._editCount as number} edits)
+          </button>
+        )}
       </div>
 
-      {/* Record data — DynamicFormRenderer handles both view and edit */}
+      {/* ─── Content ──────────────────────────────────────────────────── */}
+
       {mode === 'view' ? (
-        <div className="bg-slate-900/50 border border-slate-700/50 rounded-lg p-6">
+        <div className="ds-card p-6 page-transition">
           <DynamicFormRenderer
             formCode={originalRecord.formCode as string}
             initialData={originalRecord as unknown as RecordData}
@@ -487,91 +413,71 @@ const RecordViewPage: React.FC = () => {
           />
         </div>
       ) : mode === 'history' ? (
-        /* ─── Audit History View ──────────────────────────────────────── */
-        <div className="bg-slate-900/50 border border-slate-700/50 rounded-lg p-6">
+        <div className="ds-card p-6 page-transition">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <History className="w-5 h-5 text-indigo-400" />
-              <h3 className="text-lg font-semibold text-slate-100">Change History</h3>
-              <span className="text-xs text-slate-500 ml-2">{decodedSerial}</span>
+              <History className="w-5 h-5 text-primary" />
+              <h3 className="text-lg font-semibold text-foreground">Change History</h3>
+              <span className="text-xs text-muted-foreground ml-2 font-mono">{decodedSerial}</span>
             </div>
-            <button
-              onClick={() => setMode('view')}
-              className="px-3 py-1 text-sm bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg"
-            >
+            <button onClick={() => setMode('view')} className="ds-press ds-focus-ring px-3 py-1.5 text-sm bg-secondary border border-border rounded-sm text-secondary-foreground hover:bg-accent transition-colors">
               Back to Record
             </button>
           </div>
 
           {auditLoading ? (
-            <div className="flex items-center gap-2 py-8 justify-center text-slate-400">
+            <div className="flex items-center gap-2 py-8 justify-center text-muted-foreground">
               <Loader2 className="w-5 h-5 animate-spin" />
               <span>Loading history...</span>
             </div>
           ) : !auditEntries || auditEntries.length === 0 ? (
-            <div className="text-center py-8 text-slate-500">
-              <FileText className="w-8 h-8 mx-auto mb-2 opacity-30" />
-              <p>No history entries found for this record.</p>
-              <p className="text-xs mt-1">Audit logging was added in v0.7-alpha. Older edits may not appear.</p>
+            <div className="text-center py-8">
+              <FileText className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+              <p className="text-muted-foreground">No history entries found for this record.</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">Audit logging was added in v0.7-alpha. Older edits may not appear.</p>
             </div>
           ) : (
             <div className="space-y-3">
               {auditEntries.map((entry, idx) => (
-                <div
-                  key={entry.id}
-                  className={`border rounded-lg p-4 ${
-                    entry.action === 'create'
-                      ? 'bg-green-500/5 border-green-500/20'
-                      : 'bg-indigo-500/5 border-indigo-500/20'
-                  }`}
-                >
-                  {/* Header */}
+                <div key={entry.id} className={`border rounded-sm p-4 ${
+                  entry.action === 'create'
+                    ? 'bg-success/5 border-success/20'
+                    : 'bg-primary/5 border-primary/20'
+                }`}>
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      {entry.action === 'create' ? (
-                        <CheckCircle className="w-4 h-4 text-green-400" />
-                      ) : (
-                        <Edit3 className="w-4 h-4 text-indigo-400" />
-                      )}
+                      {entry.action === 'create'
+                        ? <CheckCircle className="w-4 h-4 text-success" />
+                        : <Edit3 className="w-4 h-4 text-primary" />
+                      }
                       <span className={`text-sm font-medium ${
-                        entry.action === 'create' ? 'text-green-400' : 'text-indigo-400'
+                        entry.action === 'create' ? 'text-success' : 'text-primary'
                       }`}>
                         {entry.action === 'create' ? 'Created' : 'Updated'}
                       </span>
-                      <span className="text-xs text-slate-500">#{idx + 1}</span>
+                      <span className="text-xs text-muted-foreground">#{idx + 1}</span>
                     </div>
-                    <div className="flex items-center gap-3 text-xs text-slate-500">
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {entry.timestamp ? isoToDisplay(entry.timestamp.substring(0, 10)) + ' ' + entry.timestamp.substring(11, 19) : '—'}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <User className="w-3 h-3" />
-                        {entry.user || '—'}
-                      </span>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{entry.timestamp ? isoToDisplay(entry.timestamp.substring(0, 10)) + ' ' + entry.timestamp.substring(11, 19) : '—'}</span>
+                      <span className="flex items-center gap-1"><User className="w-3 h-3" />{entry.user || '—'}</span>
                     </div>
                   </div>
 
-                  {/* Changed fields */}
                   {entry.action === 'create' ? (
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-muted-foreground">
                       Initial record created with {entry.changedFields.length} field{entry.changedFields.length !== 1 ? 's' : ''}
                     </p>
                   ) : (
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       {entry.changedFields.map(field => (
                         <div key={field} className="flex items-start gap-2 text-xs">
-                          <span className="px-1.5 py-0.5 bg-indigo-500/20 text-indigo-300 rounded font-mono shrink-0">
+                          <span className="px-1.5 py-0.5 bg-primary/15 text-primary rounded-sm font-mono shrink-0 text-[11px]">
                             {field}
                           </span>
                           <div className="flex items-center gap-1 min-w-0">
-                            <span className="text-red-400/70 line-through truncate">
-                              {JSON.stringify(entry.previousValues[field] ?? '')}
-                            </span>
-                            <span className="text-slate-600">→</span>
-                            <span className="text-green-400 truncate">
-                              {JSON.stringify(entry.newValues[field] ?? '')}
-                            </span>
+                            <span className="text-destructive/70 line-through truncate">{JSON.stringify(entry.previousValues[field] ?? '')}</span>
+                            <span className="text-muted-foreground/40">→</span>
+                            <span className="text-success truncate">{JSON.stringify(entry.newValues[field] ?? '')}</span>
                           </div>
                         </div>
                       ))}
@@ -583,44 +489,44 @@ const RecordViewPage: React.FC = () => {
           )}
         </div>
       ) : mode === 'intent' ? (
-        /* Edit Intent Check modal */
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div className="bg-slate-900 rounded-xl border border-amber-500/30 p-6 max-w-lg w-full mx-4">
+        /* ─── Edit Intent Check ─────────────────────────────────────── */
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-card border border-warning/30 rounded-lg p-6 max-w-lg w-full mx-4 shadow-xl ds-fade-enter">
             <div className="flex items-center gap-3 mb-4">
-              <Shield className="w-6 h-6 text-amber-400" />
-              <h3 className="text-lg font-semibold text-slate-100">Edit Intent Check</h3>
+              <div className="w-10 h-10 rounded-full bg-warning/10 border border-warning/20 flex items-center justify-center">
+                <Shield className="w-5 h-5 text-warning" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">Edit Intent Check</h3>
+                <p className="text-xs text-muted-foreground">Critical field modification</p>
+              </div>
             </div>
-            <p className="text-sm text-slate-400 mb-4">
-              You are modifying critical fields on <span className="font-mono text-indigo-400">{originalRecord.serial as string}</span>.
+            <p className="text-sm text-muted-foreground mb-4">
+              You are modifying critical fields on <code className="text-primary font-mono text-xs bg-primary/10 px-1.5 py-0.5 rounded">{originalRecord.serial as string}</code>.
               Please provide a reason for this change.
             </p>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-slate-300 mb-1">
-                Reason for modification <span className="text-red-400">*</span>
+              <label className="block text-sm font-medium text-foreground mb-1.5">
+                Reason for modification <span className="text-destructive">*</span>
               </label>
               <textarea
                 value={modificationReason}
                 onChange={e => setModificationReason(e.target.value)}
                 placeholder="e.g. Correcting project name to match official records"
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 placeholder-slate-500 focus:border-amber-500 focus:outline-none resize-none"
+                className="input-modern w-full px-3 py-2 text-sm resize-none"
                 rows={3}
               />
               {modificationReason.trim().length > 0 && modificationReason.trim().length < 5 && (
-                <p className="text-xs text-red-400 mt-1">Minimum 5 characters required</p>
+                <p className="text-xs text-destructive mt-1">Minimum 5 characters required</p>
               )}
             </div>
             <div className="flex justify-end gap-3">
-              <button
-                onClick={handleIntentCancel}
-                className="px-4 py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 text-sm"
-              >
+              <button onClick={handleIntentCancel} className="ds-press px-4 py-2 bg-secondary text-secondary-foreground rounded-sm text-sm hover:bg-accent transition-colors">
                 Cancel
               </button>
-              <button
-                onClick={handleIntentProceed}
+              <button onClick={handleIntentProceed}
                 disabled={modificationReason.trim().length < 5 || isSaving}
-                className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-500 disabled:opacity-50 text-sm flex items-center gap-2"
-              >
+                className="ds-press ds-focus-ring px-4 py-2 bg-warning text-warning-foreground rounded-sm text-sm flex items-center gap-2 hover:bg-warning/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                 {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                 Save with Reason
               </button>
@@ -628,17 +534,17 @@ const RecordViewPage: React.FC = () => {
           </div>
         </div>
       ) : (
-        /* Edit form */
+        /* ─── Edit form ────────────────────────────────────────────── */
         <>
           {errors._conflict && (
-            <div className="mb-4 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
-              <strong>Conflict:</strong> {errors._conflict}
-              <button onClick={() => { setErrors({}); refetch(); }} className="ml-3 underline text-red-300">Reload record</button>
+            <div className="mb-4 p-4 ds-critical-card rounded-sm">
+              <strong className="text-destructive">Conflict:</strong> <span className="text-destructive/80">{errors._conflict}</span>
+              <button onClick={() => { setErrors({}); refetch(); }} className="ml-3 underline text-destructive/60 hover:text-destructive">Reload record</button>
             </div>
           )}
           {errors._save && (
-            <div className="mb-4 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
-              <strong>Error:</strong> {errors._save}
+            <div className="mb-4 p-4 ds-critical-card rounded-sm">
+              <strong className="text-destructive">Error:</strong> <span className="text-destructive/80">{errors._save}</span>
             </div>
           )}
           <DynamicFormRenderer

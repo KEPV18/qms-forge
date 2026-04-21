@@ -1,18 +1,19 @@
 // ============================================================================
-// QMS Forge — Record Creation Page
-// Pre-Creation Gate → Zod Validation → Google Sheets write
-// NOW uses real Google Sheets persistence via useCreateRecord().
+// QMS Forge — Record Creation Page (Phase 9 Refined)
+// Consistent design system classes, improved hierarchy, better interactions.
 // ============================================================================
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  FileText, Search, CheckCircle, XCircle, ArrowLeft, Loader2,
+} from 'lucide-react';
 import { FORM_SCHEMAS, getFormSchema, getFormSections } from '../data/formSchemas';
-import { DynamicFormRenderer, RecordData } from '../components/forms/DynamicFormRenderer';
-import { getNextSerial } from '../schemas';
+import DynamicFormRenderer, { type RecordData } from '../components/forms/DynamicFormRenderer';
 import { useCreateRecord } from '../hooks/useRecordStorage';
 
 // ============================================================================
-// Record Creation Page — with Pre-Creation Gate + Zod Validation
+// Record Creation Page
 // ============================================================================
 
 const RecordCreationPage: React.FC = () => {
@@ -33,7 +34,6 @@ const RecordCreationPage: React.FC = () => {
     f.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  // When a form is selected, go to gate step
   const handleFormSelect = (code: string) => {
     setSelectedCode(code);
     setGateStep('gate');
@@ -45,10 +45,8 @@ const RecordCreationPage: React.FC = () => {
 
   const handleSubmit = (data: RecordData) => {
     if (!schema) return;
-
     setCreateError(null);
 
-    // Submit to Google Sheets via mutation
     createMutation.mutate(data, {
       onSuccess: (result) => {
         if (result.success && result.record) {
@@ -64,45 +62,42 @@ const RecordCreationPage: React.FC = () => {
     });
   };
 
-  // Success screen
+  // ─── Success ──────────────────────────────────────────────────────────
   if (created) {
     return (
-      <div className="max-w-2xl mx-auto">
-        <div className="bg-slate-900 rounded-xl border border-green-500/30 p-8 text-center">
-          <div className="text-5xl mb-4">✅</div>
-          <h2 className="text-2xl font-bold text-slate-100 mb-2">Record Created</h2>
-          <div className="mb-4">
-            <span className="px-3 py-1 text-sm bg-green-500/20 text-green-400 rounded font-mono">
+      <div className="max-w-2xl mx-auto p-6 page-transition">
+        <div className="ds-card p-8 text-center border-success/30">
+          <div className="w-16 h-16 rounded-full bg-success/10 border border-success/20 flex items-center justify-center mx-auto mb-4">
+            <CheckCircle className="w-8 h-8 text-success" />
+          </div>
+          <h2 className="text-2xl font-bold text-foreground mb-2">Record Created</h2>
+          <div className="mb-6">
+            <span className="px-3 py-1.5 text-sm bg-success/10 text-success border border-success/20 rounded-sm font-mono font-semibold">
               {created.serial}
             </span>
           </div>
-          <div className="bg-slate-800 rounded-lg p-4 text-left mb-6 max-h-64 overflow-y-auto">
-            <p className="text-xs text-slate-500 mb-2">Record Data:</p>
-            <pre className="text-xs text-slate-300 whitespace-pre-wrap">
+          <div className="bg-secondary/50 border border-border rounded-sm p-4 text-left mb-6 max-h-64 overflow-y-auto">
+            <p className="text-xs text-muted-foreground mb-2">Record Data:</p>
+            <pre className="text-xs text-foreground whitespace-pre-wrap font-mono">
               {JSON.stringify(created.data, null, 2)}
             </pre>
           </div>
           <div className="flex gap-3 justify-center">
             <button
-              onClick={() => {
-                setCreated(null);
-                setSelectedCode('');
-                setGateStep('select');
-                setCreateError(null);
-              }}
-              className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition"
+              onClick={() => { setCreated(null); setSelectedCode(''); setGateStep('select'); setCreateError(null); }}
+              className="ds-press ds-focus-ring px-6 py-2 bg-primary text-primary-foreground rounded-sm font-medium"
             >
               Create Another
             </button>
             <button
               onClick={() => navigate(`/records/${encodeURIComponent(created.serial)}`)}
-              className="px-6 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg font-medium transition"
+              className="ds-press px-6 py-2 bg-secondary text-secondary-foreground rounded-sm font-medium hover:bg-accent transition-colors"
             >
               View Record
             </button>
             <button
               onClick={() => navigate('/records')}
-              className="px-6 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg font-medium transition"
+              className="ds-press px-6 py-2 bg-secondary text-secondary-foreground rounded-sm font-medium hover:bg-accent transition-colors"
             >
               All Records
             </button>
@@ -112,60 +107,61 @@ const RecordCreationPage: React.FC = () => {
     );
   }
 
-  // Gate step — handled inside DynamicFormRenderer
+  // ─── Main ──────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-6xl mx-auto p-6">
+    <div className="max-w-6xl mx-auto p-6 page-transition">
+      {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-slate-100">Create Record</h1>
-        <button
-          onClick={() => navigate('/records')}
-          className="px-4 py-2 text-sm bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg"
-        >
+        <h1 className="text-2xl font-bold text-foreground">Create Record</h1>
+        <button onClick={() => navigate('/records')} className="ds-press px-4 py-2 text-sm bg-secondary text-secondary-foreground rounded-sm hover:bg-accent transition-colors">
           Cancel
         </button>
       </div>
 
-      {/* Error display */}
+      {/* Error */}
       {createError && (
-        <div className="mb-4 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
+        <div className="mb-4 p-4 ds-critical-card rounded-sm text-sm text-destructive">
           <strong>Error:</strong> {createError}
         </div>
       )}
 
       <div className="flex gap-6">
-        {/* Form selector sidebar */}
+        {/* Sidebar — Form selector */}
         <div className="w-72 shrink-0">
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search forms..."
-            className="w-full px-3 py-2 mb-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:border-indigo-500 focus:outline-none text-sm"
-          />
+          <div className="relative mb-3">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search forms..."
+              className="input-modern w-full pl-10 pr-4 py-2 text-sm"
+            />
+          </div>
 
-          <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
             {sections.map(section => {
               const sectionForms = filteredForms.filter(f => f.section === section.number);
               if (sectionForms.length === 0) return null;
 
               return (
                 <div key={section.number}>
-                  <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                  <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
                     {section.name}
                   </h3>
-                  <div className="space-y-1">
+                  <div className="space-y-0.5">
                     {sectionForms.map(form => (
                       <button
                         key={form.code}
                         onClick={() => handleFormSelect(form.code)}
-                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition ${
+                        className={`w-full text-left px-3 py-2 rounded-sm text-sm transition-colors ds-press ${
                           selectedCode === form.code
-                            ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
-                            : 'hover:bg-slate-800 text-slate-400'
+                            ? 'bg-primary/10 text-primary border border-primary/30'
+                            : 'text-foreground hover:bg-accent border border-transparent'
                         }`}
                       >
                         <span className="font-mono font-semibold">{form.code}</span>
-                        <span className="ml-2 text-slate-500">{form.name}</span>
+                        <span className="ml-2 text-muted-foreground">{form.name}</span>
                       </button>
                     ))}
                   </div>
@@ -178,10 +174,10 @@ const RecordCreationPage: React.FC = () => {
         {/* Form area */}
         <div className="flex-1 min-w-0">
           {!selectedCode || !schema ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="text-4xl mb-4">📋</div>
-              <h2 className="text-xl text-slate-300 mb-2">Select a Form</h2>
-              <p className="text-slate-500">
+            <div className="flex flex-col items-center justify-center py-20 ds-fade-enter">
+              <FileText className="w-12 h-12 text-muted-foreground/30 mb-4" />
+              <h2 className="text-xl text-foreground mb-2">Select a Form</h2>
+              <p className="text-sm text-muted-foreground">
                 Choose a QMS form from the sidebar to create a new record.
               </p>
             </div>

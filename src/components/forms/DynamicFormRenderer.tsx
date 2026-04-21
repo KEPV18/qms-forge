@@ -1,3 +1,8 @@
+// ============================================================================
+// QMS Forge — Dynamic Form Renderer (Phase 9 Refined)
+// Consistent design system classes, improved hierarchy, better interactions.
+// ============================================================================
+
 import React, { useState, useCallback, useMemo } from 'react';
 import {
   FormSchema,
@@ -16,6 +21,7 @@ import {
   todayISO,
   type PreCreationGateData,
 } from '../../schemas';
+import { Shield, Loader2, Plus, X, AlertTriangle, FileText } from 'lucide-react';
 
 // ============================================================================
 // Types
@@ -35,7 +41,7 @@ interface DynamicFormRendererProps {
   onSubmit: (data: RecordData) => void;
   onCancel?: () => void;
   readOnly?: boolean;
-  editMode?: boolean;  // true = "Save Changes" instead of "Create Record"
+  editMode?: boolean;
 }
 
 // ============================================================================
@@ -65,74 +71,78 @@ const PreCreationGate: React.FC<{
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-      <div className="bg-slate-900 rounded-xl border border-indigo-500/30 p-6 max-w-lg w-full mx-4">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-card border border-warning/30 rounded-lg p-6 max-w-lg w-full mx-4 shadow-xl ds-fade-enter">
         <div className="flex items-center gap-3 mb-4">
-          <span className="text-2xl">🛡️</span>
-          <h3 className="text-lg font-semibold text-slate-100">Pre-Creation Gate</h3>
-        </div>
-        
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 mb-4">
-          <p className="text-sm text-amber-300">{warning}</p>
+          <div className="w-10 h-10 rounded-full bg-warning/10 border border-warning/20 flex items-center justify-center">
+            <Shield className="w-5 h-5 text-warning" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-foreground">Pre-Creation Gate</h3>
+            <p className="text-xs text-muted-foreground">Required check before record creation</p>
+          </div>
         </div>
 
-        <p className="text-sm text-slate-400 mb-4">
+        <div className="bg-warning/10 border border-warning/20 rounded-sm p-3 mb-4">
+          <p className="text-sm text-warning">{warning}</p>
+        </div>
+
+        <p className="text-sm text-muted-foreground mb-4">
           Every record must be justified. Answer these 3 questions before proceeding.
         </p>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">
-              1. Why is this record needed? <span className="text-red-400">*</span>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              1. Why is this record needed? <span className="text-destructive">*</span>
             </label>
             <textarea
               value={needReason}
               onChange={e => setNeedReason(e.target.value)}
-              placeholder="e.g. New project starting, monthly plan required for April..."
+              placeholder="e.g. New project started — requires training records"
+              className="input-modern w-full px-3 py-2 text-sm resize-none"
               rows={2}
-              className="w-full px-3 py-2 rounded-lg border border-slate-600 bg-slate-800 text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
-            {errors.needReason && <p className="text-red-400 text-xs mt-1">{errors.needReason}</p>}
+            {errors.needReason && <p className="text-destructive text-xs mt-1">{errors.needReason}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">
-              2. What business event triggers this record? <span className="text-red-400">*</span>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              2. What business event triggered this? <span className="text-destructive">*</span>
             </label>
-            <input
-              type="text"
+            <textarea
               value={businessEvent}
               onChange={e => setBusinessEvent(e.target.value)}
-              placeholder="e.g. Project kickoff, Monthly review, New employee hired..."
-              className="w-full px-3 py-2 rounded-lg border border-slate-600 bg-slate-800 text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder="e.g. Monthly management review cycle"
+              className="input-modern w-full px-3 py-2 text-sm resize-none"
+              rows={2}
             />
-            {errors.businessEvent && <p className="text-red-400 text-xs mt-1">{errors.businessEvent}</p>}
-            {errors.frequencyCheck && <p className="text-red-400 text-xs mt-1">{errors.frequencyCheck}</p>}
+            {errors.businessEvent && <p className="text-destructive text-xs mt-1">{errors.businessEvent}</p>}
           </div>
 
-          <div className="flex items-start gap-2">
-            <input
-              type="checkbox"
-              checked={confirmed}
-              onChange={e => setConfirmed(e.target.checked)}
-              className="mt-1 w-4 h-4 rounded border-slate-600 bg-slate-800 text-indigo-500 focus:ring-indigo-500"
-            />
-            <label className="text-sm text-slate-300">
+          <div>
+            <label className="flex items-center gap-2 text-sm text-foreground">
+              <input
+                type="checkbox"
+                checked={confirmed}
+                onChange={e => setConfirmed(e.target.checked)}
+                className="rounded border-border accent-primary"
+              />
               3. I confirm this record is needed per its frequency schedule
             </label>
           </div>
         </div>
 
-        <div className="flex gap-3 mt-6 pt-4 border-t border-slate-700">
+        <div className="flex gap-3 mt-6 pt-4 border-t border-border">
           <button
             onClick={handlePass}
-            className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-colors"
+            className="ds-press ds-focus-ring px-6 py-2 bg-primary text-primary-foreground rounded-sm font-medium"
           >
             Proceed to Form
           </button>
           <button
             onClick={onBack}
-            className="px-6 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg font-medium transition-colors"
+            className="ds-press px-6 py-2 bg-secondary text-secondary-foreground rounded-sm font-medium hover:bg-accent transition-colors"
           >
             Cancel
           </button>
@@ -143,8 +153,13 @@ const PreCreationGate: React.FC<{
 };
 
 // ============================================================================
-// Field Components
+// Field Components — Unified with design system
 // ============================================================================
+
+const FIELD_BASE = 'w-full px-3 py-2 rounded-sm text-sm';
+const FIELD_NORMAL = `${FIELD_BASE} input-modern`;
+const FIELD_ERROR = 'border-destructive';
+const FIELD_READONLY = 'opacity-60 cursor-not-allowed';
 
 const TextField: React.FC<{
   field: FieldSchema;
@@ -154,9 +169,9 @@ const TextField: React.FC<{
   readOnly?: boolean;
 }> = ({ field, value, onChange, error, readOnly }) => (
   <div className={`form-field ${field.width === 'full' ? 'col-span-2' : field.width === 'third' ? '' : 'col-span-1'}`}>
-    <label className="block text-sm font-medium text-slate-300 mb-1">
+    <label className="block text-sm font-medium text-foreground mb-1">
       {field.label}
-      {field.required && <span className="text-red-400 ml-1">*</span>}
+      {field.required && <span className="text-destructive ml-1">*</span>}
     </label>
     <input
       type="text"
@@ -164,14 +179,12 @@ const TextField: React.FC<{
       onChange={e => onChange(e.target.value)}
       placeholder={field.placeholder}
       disabled={readOnly || field.defaultValue === 'auto'}
-      className={`w-full px-3 py-2 rounded-lg border ${
-        error ? 'border-red-500' : 'border-slate-600'
-      } bg-slate-800 text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed`}
+      className={`${FIELD_NORMAL} ${error ? FIELD_ERROR : ''} ${readOnly || field.defaultValue === 'auto' ? FIELD_READONLY : ''}`}
     />
     {field.defaultValue === 'auto' && !readOnly && (
-      <p className="text-xs text-slate-500 mt-1">Auto-generated</p>
+      <p className="text-xs text-muted-foreground mt-1">Auto-generated</p>
     )}
-    {error && <p className="text-red-400 text-xs mt-1">{error}</p>}
+    {error && <p className="text-destructive text-xs mt-1">{error}</p>}
   </div>
 );
 
@@ -183,9 +196,9 @@ const NumberField: React.FC<{
   readOnly?: boolean;
 }> = ({ field, value, onChange, error, readOnly }) => (
   <div className={`form-field ${field.width === 'full' ? 'col-span-2' : field.width === 'third' ? '' : 'col-span-1'}`}>
-    <label className="block text-sm font-medium text-slate-300 mb-1">
+    <label className="block text-sm font-medium text-foreground mb-1">
       {field.label}
-      {field.required && <span className="text-red-400 ml-1">*</span>}
+      {field.required && <span className="text-destructive ml-1">*</span>}
     </label>
     <input
       type="number"
@@ -194,11 +207,9 @@ const NumberField: React.FC<{
       min={field.validation?.min}
       max={field.validation?.max}
       disabled={readOnly}
-      className={`w-full px-3 py-2 rounded-lg border ${
-        error ? 'border-red-500' : 'border-slate-600'
-      } bg-slate-800 text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50`}
+      className={`${FIELD_NORMAL} ${error ? FIELD_ERROR : ''} ${readOnly ? FIELD_READONLY : ''}`}
     />
-    {error && <p className="text-red-400 text-xs mt-1">{error}</p>}
+    {error && <p className="text-destructive text-xs mt-1">{error}</p>}
   </div>
 );
 
@@ -210,21 +221,18 @@ const DateField: React.FC<{
   readOnly?: boolean;
 }> = ({ field, value, onChange, error, readOnly }) => (
   <div className={`form-field ${field.width === 'full' ? 'col-span-2' : field.width === 'third' ? '' : 'col-span-1'}`}>
-    <label className="block text-sm font-medium text-slate-300 mb-1">
+    <label className="block text-sm font-medium text-foreground mb-1">
       {field.label}
-      {field.required && <span className="text-red-400 ml-1">*</span>}
+      {field.required && <span className="text-destructive ml-1">*</span>}
     </label>
     <input
       type="date"
       value={value}
       onChange={e => onChange(e.target.value)}
       disabled={readOnly}
-      className={`w-full px-3 py-2 rounded-lg border ${
-        error ? 'border-red-500' : 'border-slate-600'
-      } bg-slate-800 text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50`}
+      className={`${FIELD_NORMAL} ${error ? FIELD_ERROR : ''} ${readOnly ? FIELD_READONLY : ''}`}
     />
-    <p className="text-xs text-slate-500 mt-0.5">Format: DD/MM/YYYY (stored automatically)</p>
-    {error && <p className="text-red-400 text-xs mt-1">{error}</p>}
+    {error && <p className="text-destructive text-xs mt-1">{error}</p>}
   </div>
 );
 
@@ -236,24 +244,22 @@ const SelectField: React.FC<{
   readOnly?: boolean;
 }> = ({ field, value, onChange, error, readOnly }) => (
   <div className={`form-field ${field.width === 'full' ? 'col-span-2' : field.width === 'third' ? '' : 'col-span-1'}`}>
-    <label className="block text-sm font-medium text-slate-300 mb-1">
+    <label className="block text-sm font-medium text-foreground mb-1">
       {field.label}
-      {field.required && <span className="text-red-400 ml-1">*</span>}
+      {field.required && <span className="text-destructive ml-1">*</span>}
     </label>
     <select
       value={value}
       onChange={e => onChange(e.target.value)}
       disabled={readOnly}
-      className={`w-full px-3 py-2 rounded-lg border ${
-        error ? 'border-red-500' : 'border-slate-600'
-      } bg-slate-800 text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50`}
+      className={`${FIELD_NORMAL} ${error ? FIELD_ERROR : ''} ${readOnly ? FIELD_READONLY : ''}`}
     >
       <option value="">— Select —</option>
       {field.options?.map(opt => (
         <option key={opt} value={opt}>{opt}</option>
       ))}
     </select>
-    {error && <p className="text-red-400 text-xs mt-1">{error}</p>}
+    {error && <p className="text-destructive text-xs mt-1">{error}</p>}
   </div>
 );
 
@@ -265,9 +271,9 @@ const TextareaField: React.FC<{
   readOnly?: boolean;
 }> = ({ field, value, onChange, error, readOnly }) => (
   <div className="form-field col-span-2">
-    <label className="block text-sm font-medium text-slate-300 mb-1">
+    <label className="block text-sm font-medium text-foreground mb-1">
       {field.label}
-      {field.required && <span className="text-red-400 ml-1">*</span>}
+      {field.required && <span className="text-destructive ml-1">*</span>}
     </label>
     <textarea
       value={value}
@@ -275,11 +281,9 @@ const TextareaField: React.FC<{
       placeholder={field.placeholder}
       disabled={readOnly}
       rows={3}
-      className={`w-full px-3 py-2 rounded-lg border ${
-        error ? 'border-red-500' : 'border-slate-600'
-      } bg-slate-800 text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50`}
+      className={`${FIELD_NORMAL} resize-none ${error ? FIELD_ERROR : ''} ${readOnly ? FIELD_READONLY : ''}`}
     />
-    {error && <p className="text-red-400 text-xs mt-1">{error}</p>}
+    {error && <p className="text-destructive text-xs mt-1">{error}</p>}
   </div>
 );
 
@@ -289,14 +293,14 @@ const CheckboxField: React.FC<{
   onChange: (val: boolean) => void;
   readOnly?: boolean;
 }> = ({ field, value, onChange, readOnly }) => (
-  <div className={`form-field ${field.width === 'full' ? 'col-span-2' : 'col-span-1'}`}>
-    <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+  <div className="form-field col-span-2">
+    <label className="flex items-center gap-2 text-sm text-foreground">
       <input
         type="checkbox"
-        checked={value}
+        checked={!!value}
         onChange={e => onChange(e.target.checked)}
         disabled={readOnly}
-        className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-indigo-500 focus:ring-indigo-500"
+        className="rounded border-border accent-primary"
       />
       {field.label}
     </label>
@@ -304,13 +308,13 @@ const CheckboxField: React.FC<{
 );
 
 const HeadingField: React.FC<{ field: FieldSchema }> = ({ field }) => (
-  <div className="col-span-2 mt-4 pt-2 border-t border-slate-700">
-    <h3 className="text-sm font-semibold text-indigo-400 uppercase tracking-wider">{field.label}</h3>
+  <div className="col-span-2 mt-4 pt-2 border-t border-border">
+    <h3 className="text-sm font-semibold text-primary uppercase tracking-wider">{field.label}</h3>
   </div>
 );
 
 // ============================================================================
-// Table Field Component
+// Table Field Component — Unified with design system
 // ============================================================================
 
 const TableField: React.FC<{
@@ -346,19 +350,19 @@ const TableField: React.FC<{
 
   return (
     <div className="col-span-2">
-      <label className="block text-sm font-medium text-slate-300 mb-2">
+      <label className="block text-sm font-medium text-foreground mb-2">
         {field.label}
-        {field.required && <span className="text-red-400 ml-1">*</span>}
+        {field.required && <span className="text-destructive ml-1">*</span>}
       </label>
-      <div className="overflow-x-auto rounded-lg border border-slate-600">
+      <div className="overflow-x-auto rounded-sm border border-border">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-slate-700">
-              <th className="px-3 py-2 text-left text-slate-300 font-medium w-8">#</th>
+            <tr className="bg-secondary">
+              <th className="px-3 py-2 text-left text-secondary-foreground font-medium w-8">#</th>
               {columns.map(col => (
-                <th key={col.key} className="px-3 py-2 text-left text-slate-300 font-medium">
+                <th key={col.key} className="px-3 py-2 text-left text-secondary-foreground font-medium">
                   {col.label}
-                  {col.required && <span className="text-red-400 ml-1">*</span>}
+                  {col.required && <span className="text-destructive ml-1">*</span>}
                 </th>
               ))}
               {!readOnly && <th className="px-2 py-2 w-10"></th>}
@@ -367,14 +371,14 @@ const TableField: React.FC<{
           <tbody>
             {rows.length === 0 && (
               <tr>
-                <td colSpan={columns.length + (readOnly ? 1 : 2)} className="px-3 py-4 text-center text-slate-500">
+                <td colSpan={columns.length + (readOnly ? 1 : 2)} className="px-3 py-4 text-center text-muted-foreground">
                   No rows added yet — click "+ Add Row" below
                 </td>
               </tr>
             )}
             {rows.map((row, ri) => (
-              <tr key={ri} className={ri % 2 === 0 ? 'bg-slate-800' : 'bg-slate-800/50'}>
-                <td className="px-3 py-1 text-slate-500 text-xs">{ri + 1}</td>
+              <tr key={ri} className={ri % 2 === 0 ? 'bg-card' : 'bg-secondary/30'}>
+                <td className="px-3 py-1 text-muted-foreground text-xs">{ri + 1}</td>
                 {columns.map(col => (
                   <td key={col.key} className="px-2 py-1">
                     {col.type === 'select' ? (
@@ -382,7 +386,7 @@ const TableField: React.FC<{
                         value={row[col.key] as string || ''}
                         onChange={e => updateCell(ri, col.key, e.target.value)}
                         disabled={readOnly}
-                        className="w-full px-2 py-1 rounded border border-slate-600 bg-slate-800 text-slate-100 text-sm"
+                        className="w-full px-2 py-1 rounded-sm border border-border bg-card text-foreground text-sm input-modern"
                       >
                         <option value="">—</option>
                         {col.options?.map(opt => (
@@ -395,7 +399,7 @@ const TableField: React.FC<{
                         value={row[col.key] as number || ''}
                         onChange={e => updateCell(ri, col.key, Number(e.target.value))}
                         disabled={readOnly}
-                        className="w-full px-2 py-1 rounded border border-slate-600 bg-slate-800 text-slate-100 text-sm"
+                        className="w-full px-2 py-1 rounded-sm border border-border bg-card text-foreground text-sm input-modern"
                       />
                     ) : (
                       <input
@@ -403,7 +407,7 @@ const TableField: React.FC<{
                         value={row[col.key] as string || ''}
                         onChange={e => updateCell(ri, col.key, e.target.value)}
                         disabled={readOnly}
-                        className="w-full px-2 py-1 rounded border border-slate-600 bg-slate-800 text-slate-100 text-sm"
+                        className="w-full px-2 py-1 rounded-sm border border-border bg-card text-foreground text-sm input-modern"
                       />
                     )}
                   </td>
@@ -412,10 +416,10 @@ const TableField: React.FC<{
                   <td className="px-2 py-1">
                     <button
                       onClick={() => removeRow(ri)}
-                      className="text-red-400 hover:text-red-300 text-sm"
+                      className="text-destructive hover:text-destructive/80 text-sm ds-press"
                       title="Remove row"
                     >
-                      ✕
+                      <X className="w-4 h-4" />
                     </button>
                   </td>
                 )}
@@ -424,13 +428,13 @@ const TableField: React.FC<{
           </tbody>
         </table>
       </div>
-      {tableError && <p className="text-red-400 text-xs mt-1">{tableError}</p>}
+      {tableError && <p className="text-destructive text-xs mt-1">{tableError}</p>}
       {!readOnly && (
         <button
           onClick={addRow}
-          className="mt-2 px-3 py-1 text-sm rounded-lg border border-dashed border-slate-600 text-slate-400 hover:text-indigo-400 hover:border-indigo-500 transition-colors"
+          className="mt-2 ds-press px-3 py-1.5 text-sm rounded-sm border border-dashed border-border text-muted-foreground hover:text-primary hover:border-primary transition-colors flex items-center gap-1"
         >
-          + Add Row
+          <Plus className="w-4 h-4" /> Add Row
         </button>
       )}
     </div>
@@ -438,7 +442,7 @@ const TableField: React.FC<{
 };
 
 // ============================================================================
-// Validation Error Banner
+// Validation Error Banner — Unified with design system
 // ============================================================================
 
 const ValidationBanner: React.FC<{ errors: Record<string, string>; onDismiss: () => void }> = ({ errors, onDismiss }) => {
@@ -446,16 +450,19 @@ const ValidationBanner: React.FC<{ errors: Record<string, string>; onDismiss: ()
   if (count === 0) return null;
 
   return (
-    <div className="mb-4 bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+    <div className="mb-4 ds-critical-card rounded-sm p-4">
       <div className="flex items-center justify-between mb-2">
-        <h4 className="text-red-400 font-semibold text-sm">
-          ⚠️ {count} validation error{count > 1 ? 's' : ''}
-        </h4>
-        <button onClick={onDismiss} className="text-red-400 hover:text-red-300 text-sm">✕</button>
+        <div className="flex items-center gap-2 text-destructive font-medium text-sm">
+          <AlertTriangle className="w-4 h-4" />
+          {count} validation error{count !== 1 ? 's' : ''}
+        </div>
+        <button onClick={onDismiss} className="text-muted-foreground hover:text-foreground text-xs ds-press">
+          Dismiss
+        </button>
       </div>
-      <ul className="text-xs text-red-300 space-y-1">
+      <ul className="space-y-1 text-xs text-destructive/80">
         {Object.entries(errors).map(([key, msg]) => (
-          <li key={key}><span className="font-mono text-red-400">{key}</span>: {msg}</li>
+          <li key={key}><span className="font-mono text-foreground/70">{key}:</span> {msg}</li>
         ))}
       </ul>
     </div>
@@ -463,10 +470,10 @@ const ValidationBanner: React.FC<{ errors: Record<string, string>; onDismiss: ()
 };
 
 // ============================================================================
-// Main Dynamic Form Renderer — now with Pre-Creation Gate + Zod validation
+// Main DynamicFormRenderer
 // ============================================================================
 
-export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({
+const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({
   formCode,
   initialData,
   onSubmit,
@@ -474,36 +481,30 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({
   readOnly = false,
   editMode = false,
 }) => {
-  const selectedCode = formCode || '';
-  const schema = selectedCode ? getFormSchema(selectedCode) : null;
+  const [selectedCode, setSelectedCode] = useState(formCode || '');
   const [formData, setFormData] = useState<RecordData>(initialData || {});
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Pre-Creation Gate state
-  const [gatePassed, setGatePassed] = useState(false);
-  const [showGate, setShowGate] = useState(false);
+  const [gatePassed, setGatePassed] = useState(editMode);
   const [gateAnswers, setGateAnswers] = useState<PreCreationGateData | null>(null);
+  const [showGate, setShowGate] = useState(false);
 
-  // Reset form when code changes — pre-fill defaults
+  const schema = selectedCode ? getFormSchema(selectedCode) : null;
+
+  // Reset state when formCode changes
   React.useEffect(() => {
-    if (selectedCode && schema) {
-      const defaults: RecordData = { serial: 'auto' };
-      // Pre-fill required date fields with today
-      schema.fields.forEach(field => {
-        if (field.type === 'date' && field.required) {
-          defaults[field.key] = todayISO();
-        }
-      });
-      setFormData(initialData ? { ...defaults, ...initialData } : defaults);
+    if (formCode && formCode !== selectedCode) {
+      setSelectedCode(formCode);
+    }
+    if (initialData) {
+      setFormData(initialData);
     } else {
-      setFormData(initialData || {});
+      setFormData({});
     }
     setErrors({});
     setSubmitted(false);
     setIsSubmitting(false);
-    // Skip gate in edit mode — record already exists
     if (editMode) {
       setGatePassed(true);
     } else {
@@ -512,21 +513,18 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({
     setGateAnswers(null);
   }, [formCode, editMode]);
 
-  // Handle form selection — show gate first
   const handleFormSelect = (code: string) => {
     if (!gatePassed && code !== selectedCode) {
       setShowGate(true);
     }
   };
 
-  // When gate passes, allow form to render
   const handleGatePass = (answers: PreCreationGateData) => {
     setGatePassed(true);
     setGateAnswers(answers);
     setShowGate(false);
   };
 
-  // Handle field change
   const handleFieldChange = useCallback((key: string, value: string | number | boolean | RecordData[]) => {
     setFormData(prev => ({ ...prev, [key]: value }));
     if (submitted) {
@@ -538,55 +536,39 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({
     }
   }, [submitted]);
 
-  // Validate using Zod
   const validate = useCallback((): boolean => {
-    if (!schema) return false;
-    if (!selectedCode) return false;
-
-    // Validate with dates in ISO format (YYYY-MM-DD as Zod expects ISO_DATE)
+    if (!schema || !selectedCode) return false;
     const dataToValidate = { ...formData };
-    // Auto-fill serial — replace placeholder with actual next serial
     if (!dataToValidate.serial || dataToValidate.serial === 'auto') {
       dataToValidate.serial = getNextSerial(selectedCode);
     }
-
     const result = validateFormData(selectedCode, dataToValidate);
     if (result.success) {
       setErrors({});
       return true;
     }
-    
     setErrors(result.errors);
     setSubmitted(true);
     return false;
   }, [schema, selectedCode, formData]);
 
-  // Handle submit
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Prevent double submission
     if (isSubmitting) return;
-    
-    // Build data for validation — dates stay as YYYY-MM-DD (ISO_DATE format expected by Zod)
-    const dataToValidate = { ...formData };
 
-    // Auto-generate serial
+    const dataToValidate = { ...formData };
     if (!dataToValidate.serial || dataToValidate.serial === 'auto') {
       dataToValidate.serial = getNextSerial(selectedCode);
     }
 
-    // Add creation metadata
     dataToValidate._createdAt = new Date().toISOString();
-    dataToValidate._createdBy = 'Ahmed Khaled'; // Will come from auth later
+    dataToValidate._createdBy = 'Ahmed Khaled';
     dataToValidate._creationReason = gateAnswers?.needReason || '';
     dataToValidate._businessEvent = gateAnswers?.businessEvent || '';
 
-    // Validate with Zod (dates in YYYY-MM-DD format as Zod expects ISO_DATE)
     const result = validateFormData(selectedCode, dataToValidate);
     if (result.success) {
       setIsSubmitting(true);
-      // Convert dates to DD/MM/YYYY for storage AFTER validation
       if (schema) {
         schema.fields.forEach(field => {
           if (field.type === 'date' && result.data[field.key]) {
@@ -701,12 +683,14 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({
           onPass={handleGatePass}
           onBack={() => setShowGate(false)}
         />
-        <div className="bg-slate-900 rounded-xl border border-slate-700 p-6">
+        <div className="ds-card p-6">
           <div className="text-center py-12">
-            <div className="text-4xl mb-4">🔒</div>
-            <h3 className="text-lg text-slate-300 mb-2">Complete the Pre-Creation Gate</h3>
-            <p className="text-sm text-slate-500">
-              Answer 3 questions before filling the <span className="text-indigo-400">{selectedCode}</span> form.
+            <div className="w-16 h-16 rounded-full bg-warning/10 border border-warning/20 flex items-center justify-center mx-auto mb-4">
+              <Shield className="w-8 h-8 text-warning" />
+            </div>
+            <h3 className="text-lg text-foreground mb-2">Complete the Pre-Creation Gate</h3>
+            <p className="text-sm text-muted-foreground">
+              Answer 3 questions before filling the <span className="text-primary font-mono font-semibold">{selectedCode}</span> form.
             </p>
           </div>
         </div>
@@ -715,59 +699,68 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({
   }
 
   return (
-    <div className="bg-slate-900 rounded-xl border border-slate-700 p-6">
+    <div className="ds-card p-6">
       {schema ? (
         <>
+          {/* Form header */}
           <div className="mb-6">
             <div className="flex items-center gap-3 mb-2">
-              <span className="px-2 py-1 text-xs font-bold bg-indigo-500/20 text-indigo-400 rounded">
+              <span className="px-2 py-1 text-xs font-bold bg-primary/15 text-primary rounded-sm font-mono">
                 {schema.code}
               </span>
-              <h2 className="text-xl font-semibold text-slate-100">{schema.name}</h2>
+              <h2 className="text-xl font-semibold text-foreground">{schema.name}</h2>
             </div>
-            <p className="text-sm text-slate-400">{schema.description}</p>
-            <div className="flex gap-4 mt-2 text-xs text-slate-500">
+            <p className="text-sm text-muted-foreground">{schema.description}</p>
+            <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
               <span>Section: {schema.sectionName}</span>
               <span>·</span>
               <span>Frequency: {schema.frequency}</span>
               <span>·</span>
               <span className={
-                schema.importance === 'Critical' ? 'text-red-400' :
-                schema.importance === 'High' ? 'text-amber-400' : 'text-slate-500'
+                schema.importance === 'Critical' ? 'text-destructive font-medium' :
+                schema.importance === 'High' ? 'text-warning font-medium' : ''
               }>
                 {schema.importance}
               </span>
             </div>
             {gateAnswers && (
-              <div className="mt-2 text-xs bg-green-500/10 border border-green-500/20 rounded px-3 py-1 text-green-400">
+              <div className="mt-2 text-xs bg-success/10 border border-success/20 rounded-sm px-3 py-1.5 text-success">
                 ✓ Gate passed — Reason: {gateAnswers.needReason.slice(0, 60)}...
               </div>
             )}
           </div>
 
+          {/* Validation errors */}
           {submitted && Object.keys(errors).length > 0 && (
             <ValidationBanner errors={errors} onDismiss={() => setErrors({})} />
           )}
 
+          {/* Form fields */}
           <form onSubmit={handleSubmit}>
             <div className="grid grid-cols-2 gap-4">
               {schema.fields.map(renderField)}
             </div>
 
+            {/* Submit / Cancel */}
             {!readOnly && (
-              <div className="flex gap-3 mt-6 pt-4 border-t border-slate-700">
+              <div className="flex gap-3 mt-6 pt-4 border-t border-border">
                 <button
                   type="submit"
                   disabled={isSubmitting || readOnly}
-                  className={`px-6 py-2 rounded-lg font-medium transition-colors ${(isSubmitting || readOnly) ? 'bg-slate-600 cursor-not-allowed text-slate-400' : 'bg-indigo-600 hover:bg-indigo-500 text-white'}`}
+                  className={`ds-press ds-focus-ring px-6 py-2 rounded-sm font-medium flex items-center gap-2 ${
+                    (isSubmitting || readOnly)
+                      ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                      : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                  } transition-colors`}
                 >
+                  {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
                   {isSubmitting ? (editMode ? 'Saving...' : 'Creating...') : (editMode ? 'Save Changes' : 'Create Record')}
                 </button>
                 {onCancel && (
                   <button
                     type="button"
                     onClick={onCancel}
-                    className="px-6 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg font-medium transition-colors"
+                    className="ds-press px-6 py-2 bg-secondary text-secondary-foreground rounded-sm font-medium hover:bg-accent transition-colors"
                   >
                     Cancel
                   </button>
@@ -778,9 +771,11 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({
         </>
       ) : (
         <div className="text-center py-12">
-          <div className="text-4xl mb-4">📋</div>
-          <h3 className="text-lg text-slate-300 mb-2">Select a Form</h3>
-          <p className="text-sm text-slate-500">Choose a form from the sidebar. You'll answer 3 gate questions before filling the form.</p>
+          <div className="w-16 h-16 rounded-full bg-secondary border border-border flex items-center justify-center mx-auto mb-4">
+            <FileText className="w-8 h-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg text-foreground mb-2">Select a Form</h3>
+          <p className="text-sm text-muted-foreground">Choose a form from the sidebar. You'll answer 3 gate questions before filling the form.</p>
         </div>
       )}
     </div>
