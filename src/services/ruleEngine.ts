@@ -210,23 +210,23 @@ const RULES: IntegrityRule[] = [
     mode: 'warn',
     check: (record) => {
       const dateFields = ['date', 'start_date', 'end_date', 'closure_date', 'review_date'];
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      // Use date-only comparison to avoid timezone issues (Cairo UTC+2)
+      const todayISO = new Date().toISOString().substring(0, 10); // YYYY-MM-DD in UTC
 
       for (const field of dateFields) {
         const value = record[field] as string;
         if (!value) continue;
 
-        // Try to parse the date (handles both YYYY-MM-DD and DD/MM/YYYY)
-        let parsed: Date | null = null;
+        // Normalize to YYYY-MM-DD for comparison
+        let dateISO = '';
         if (value.includes('/')) {
           const parts = value.split('/');
-          if (parts.length === 3) parsed = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+          if (parts.length === 3) dateISO = `${parts[2]}-${parts[1]}-${parts[0]}`; // DD/MM/YYYY → YYYY-MM-DD
         } else {
-          parsed = new Date(value);
+          dateISO = value.substring(0, 10); // Already YYYY-MM-DD (or ISO timestamp)
         }
 
-        if (parsed && !isNaN(parsed.getTime()) && parsed > today) {
+        if (dateISO && dateISO.length === 10 && dateISO > todayISO) {
           return {
             ruleId: 'DQ-FUTURE-DATE',
             severity: 'warning',
