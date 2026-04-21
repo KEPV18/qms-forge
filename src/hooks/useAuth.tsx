@@ -225,9 +225,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const [profileRes, roleRes] = await withRetry(() => Promise.all([
-        withTimeout<ProfileRow | null>(supabase!.from("profiles").select("*").eq("user_id", authUserId).maybeSingle(), 8000),
-        withTimeout<ProfileRow | null>(supabase!.from("user_roles").select("role").eq("user_id", authUserId).maybeSingle(), 8000),
-      ]), 1, 1000, false);
+        withTimeout<ProfileRow | null>(supabase!.from("profiles").select("*").eq("user_id", authUserId).maybeSingle(), 15000),
+        withTimeout<ProfileRow | null>(supabase!.from("user_roles").select("role").eq("user_id", authUserId).maybeSingle(), 15000),
+      ]), 1, 1500, false);
 
       const profile = profileRes?.data;
       const roleData = roleRes?.data;

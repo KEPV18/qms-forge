@@ -12,9 +12,11 @@ if (!supabaseUrl || !supabaseKey) {
 
 export const supabase = createBrowserClient(supabaseUrl, supabaseKey, {
   auth: {
-    // Use PKCE flow — avoids navigator.lock issues in dev with StrictMode
     flowType: 'pkce',
-    // Auto-detect OAuth redirects in URL
     detectSessionInUrl: true,
+    // Increase lock acquisition timeout to 15s (default is 5s).
+    // React dev mode + slow connections can cause the auth lock to
+    // appear orphaned when it's just slow to release.
+    lockTimeoutMs: 15000,
   },
 })
