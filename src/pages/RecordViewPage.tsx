@@ -377,7 +377,7 @@ const RecordViewPage: React.FC = () => {
           {errors._conflict && (
             <div className="mb-4 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
               <strong>Conflict:</strong> {errors._conflict}
-              <button onClick={() => refetch()} className="ml-3 underline text-red-300">Reload record</button>
+              <button onClick={() => { setErrors({}); refetch(); }} className="ml-3 underline text-red-300">Reload record</button>
             </div>
           )}
           {errors._save && (

@@ -82,7 +82,23 @@ export function preWriteValidation(
     return result;
   }
 
-  // 1b. Normalize dates: convert DD/MM/YYYY → YYYY-MM-DD before Zod validation
+  // 1b. Extract metadata keys before Zod validation (Zod strips unknown keys)
+  // Zod form schemas only define form fields — metadata keys would be lost after safeParse
+  const METADATA_KEYS = new Set([
+    'serial', 'formCode', 'formName',
+    '_createdAt', '_createdBy',
+    '_lastModifiedAt', '_lastModifiedBy',
+    '_editCount', '_modificationReason',
+    '_creationReason', '_businessEvent',
+  ]);
+  const savedMetadata: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (METADATA_KEYS.has(key)) {
+      savedMetadata[key] = value;
+    }
+  }
+
+  // 1c. Normalize dates: convert DD/MM/YYYY → YYYY-MM-DD before Zod validation
   // The UI stores dates in DD/MM/YYYY format, but Zod ISO_DATE expects YYYY-MM-DD
   const normalizedData = { ...data };
   const displayPattern = /^(\d{2})\/(\d{2})\/(\d{4})$/;
@@ -134,7 +150,16 @@ export function preWriteValidation(
   // 3. Additional pre-write checks beyond Zod
   const validatedData = zodResult.data as RecordData;
 
-  // 3a. Serial format check — only for real serials (not 'auto' placeholder)
+  // 3a. Re-merge metadata that Zod stripped during safeParse
+  // Zod form schemas only validate form fields — metadata keys are stripped from result.data
+  // We must restore them so serializeRecordToRow can write them to the correct columns
+  for (const [key, value] of Object.entries(savedMetadata)) {
+    if (!(key in validatedData)) {
+      validatedData[key] = value;
+    }
+  }
+
+  // 3b. Serial format check — only for real serials (not 'auto' placeholder)
   const serialValue = String(validatedData.serial ?? '');
   if (serialValue && serialValue !== 'auto') {
     const serialPattern = /^F\/\d{1,2}-\d{3,4}$/;
