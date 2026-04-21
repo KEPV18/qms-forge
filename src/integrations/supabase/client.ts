@@ -10,4 +10,11 @@ if (!supabaseUrl || !supabaseKey) {
   )
 }
 
-export const supabase = createBrowserClient(supabaseUrl, supabaseKey)
+export const supabase = createBrowserClient(supabaseUrl, supabaseKey, {
+  auth: {
+    // Use PKCE flow — avoids navigator.lock issues in dev with StrictMode
+    flowType: 'pkce',
+    // Auto-detect OAuth redirects in URL
+    detectSessionInUrl: true,
+  },
+})
