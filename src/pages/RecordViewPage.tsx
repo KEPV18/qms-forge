@@ -9,12 +9,13 @@ import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Edit3, Save, X, AlertTriangle, Shield, Clock, User,
-  FileText, CheckCircle, Lock, Loader2, RefreshCw,
+  FileText, CheckCircle, Lock, Loader2, RefreshCw, History,
 } from 'lucide-react';
 import { getFormSchema } from '../data/formSchemas';
 import { isoToDisplay } from '../schemas';
 import { DynamicFormRenderer, type RecordData } from '../components/forms/DynamicFormRenderer';
 import { useRecord, useUpdateRecord } from '../hooks/useRecordStorage';
+import { useAuditLog } from '../hooks/useAuditLog';
 import { getEditRiskLevel } from '../data/mockRecords';
 
 // ============================================================================
@@ -49,10 +50,15 @@ const RecordViewPage: React.FC = () => {
   const schema = originalRecord ? getFormSchema(originalRecord.formCode as string) : null;
 
   // State
-  const [mode, setMode] = useState<'view' | 'edit' | 'intent'>('view');
+  const [mode, setMode] = useState<'view' | 'edit' | 'intent' | 'history'>('view');
   const [editData, setEditData] = useState<RecordData>({});
   const [modificationReason, setModificationReason] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Audit log
+  const { data: auditEntries, isLoading: auditLoading } = useAuditLog(
+    mode === 'history' ? decodedSerial : null
+  );
 
   // ─── Derived state (MUST be before any early returns — Rules of Hooks) ─
   const riskLevel = originalRecord ? getEditRiskLevel(originalRecord as any) : 'none';
@@ -314,6 +320,17 @@ const RecordViewPage: React.FC = () => {
             <span>This record has been edited {originalRecord._editCount as number} time(s).</span>
           </div>
         )}
+
+        {/* View History button */}
+        {mode !== 'history' && (
+          <button
+            onClick={() => { setMode('history'); setErrors({}); }}
+            className="mt-3 flex items-center gap-2 px-3 py-2 bg-slate-700/50 border border-slate-600/50 rounded text-xs text-slate-300 hover:bg-slate-700 hover:text-slate-100 transition-colors"
+          >
+            <History className="w-4 h-4" />
+            <span>View History ({originalRecord._editCount as number} edits)</span>
+          </button>
+        )}
       </div>
 
       {/* Record data — DynamicFormRenderer handles both view and edit */}
@@ -325,6 +342,102 @@ const RecordViewPage: React.FC = () => {
             onSubmit={() => {}}
             readOnly={true}
           />
+        </div>
+      ) : mode === 'history' ? (
+        /* ─── Audit History View ──────────────────────────────────────── */
+        <div className="bg-slate-900/50 border border-slate-700/50 rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <History className="w-5 h-5 text-indigo-400" />
+              <h3 className="text-lg font-semibold text-slate-100">Change History</h3>
+              <span className="text-xs text-slate-500 ml-2">{decodedSerial}</span>
+            </div>
+            <button
+              onClick={() => setMode('view')}
+              className="px-3 py-1 text-sm bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg"
+            >
+              Back to Record
+            </button>
+          </div>
+
+          {auditLoading ? (
+            <div className="flex items-center gap-2 py-8 justify-center text-slate-400">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span>Loading history...</span>
+            </div>
+          ) : !auditEntries || auditEntries.length === 0 ? (
+            <div className="text-center py-8 text-slate-500">
+              <FileText className="w-8 h-8 mx-auto mb-2 opacity-30" />
+              <p>No history entries found for this record.</p>
+              <p className="text-xs mt-1">Audit logging was added in v0.7-alpha. Older edits may not appear.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {auditEntries.map((entry, idx) => (
+                <div
+                  key={entry.id}
+                  className={`border rounded-lg p-4 ${
+                    entry.action === 'create'
+                      ? 'bg-green-500/5 border-green-500/20'
+                      : 'bg-indigo-500/5 border-indigo-500/20'
+                  }`}
+                >
+                  {/* Header */}
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      {entry.action === 'create' ? (
+                        <CheckCircle className="w-4 h-4 text-green-400" />
+                      ) : (
+                        <Edit3 className="w-4 h-4 text-indigo-400" />
+                      )}
+                      <span className={`text-sm font-medium ${
+                        entry.action === 'create' ? 'text-green-400' : 'text-indigo-400'
+                      }`}>
+                        {entry.action === 'create' ? 'Created' : 'Updated'}
+                      </span>
+                      <span className="text-xs text-slate-500">#{idx + 1}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-slate-500">
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {entry.timestamp ? isoToDisplay(entry.timestamp.substring(0, 10)) + ' ' + entry.timestamp.substring(11, 19) : '—'}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <User className="w-3 h-3" />
+                        {entry.user || '—'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Changed fields */}
+                  {entry.action === 'create' ? (
+                    <p className="text-xs text-slate-400">
+                      Initial record created with {entry.changedFields.length} field{entry.changedFields.length !== 1 ? 's' : ''}
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {entry.changedFields.map(field => (
+                        <div key={field} className="flex items-start gap-2 text-xs">
+                          <span className="px-1.5 py-0.5 bg-indigo-500/20 text-indigo-300 rounded font-mono shrink-0">
+                            {field}
+                          </span>
+                          <div className="flex items-center gap-1 min-w-0">
+                            <span className="text-red-400/70 line-through truncate">
+                              {JSON.stringify(entry.previousValues[field] ?? '')}
+                            </span>
+                            <span className="text-slate-600">→</span>
+                            <span className="text-green-400 truncate">
+                              {JSON.stringify(entry.newValues[field] ?? '')}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       ) : mode === 'intent' ? (
         /* Edit Intent Check modal */

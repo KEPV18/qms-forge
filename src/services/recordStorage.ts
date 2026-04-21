@@ -8,6 +8,7 @@ import { getAccessToken } from '../lib/auth';
 import { preWriteValidation, serializeRecordToRow, parseRowToRecord } from './preWriteValidation';
 import { getFormSchema } from '../data/formSchemas';
 import { getNextSerial, isSerialUnique } from '../schemas/serialAndDate';
+import { appendAuditLog, computeDiff } from './auditLog';
 import type { RecordData } from '../components/forms/DynamicFormRenderer';
 
 // ============================================================================
@@ -354,6 +355,19 @@ export async function createRecord(formData: RecordData): Promise<StorageResult>
     await appendRow(row);
     invalidateRowCache();
     logOperation({ timestamp: new Date().toISOString(), operation: 'create', serial, formCode, success: true, durationMs: Math.round(performance.now() - startTime) });
+
+    // 7. Audit log: log full initial state on create
+    const allFields = Object.entries(data)
+      .filter(([key]) => !key.startsWith('_'))
+      .map(([key]) => key);
+    const newFieldValues: Record<string, unknown> = {};
+    for (const key of allFields) {
+      newFieldValues[key] = data[key];
+    }
+    appendAuditLog(serial, 'create', data._createdBy as string || 'unknown', allFields, {}, newFieldValues).catch(err => {
+      console.error('[recordStorage] Audit log append failed (non-blocking):', err);
+    });
+
     return { success: true, record: data };
   } catch (err) {
     const errorMsg = err instanceof RecordStorageError ? err.message : `Unexpected error: ${(err as Error).message}`;
@@ -460,6 +474,22 @@ export async function updateRecord(
     await updateRow(rowNumber, row);
     invalidateRowCache();
     logOperation({ timestamp: new Date().toISOString(), operation: 'update', serial, formCode, success: true, durationMs: Math.round(performance.now() - startTime) });
+
+    // 6. Audit log: log only changed fields
+    const diff = computeDiff(currentRecord, validatedData);
+    if (diff.changedFields.length > 0) {
+      appendAuditLog(
+        serial,
+        'update',
+        validatedData._lastModifiedBy as string || 'unknown',
+        diff.changedFields,
+        diff.previousValues,
+        diff.newValues
+      ).catch(err => {
+        console.error('[recordStorage] Audit log append failed (non-blocking):', err);
+      });
+    }
+
     return { success: true, record: validatedData };
   } catch (err) {
     const errorMsg = err instanceof RecordStorageError ? err.message : `Unexpected error: ${(err as Error).message}`;
