@@ -10,6 +10,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Edit3, Save, X, AlertTriangle, Shield, Clock, User,
   FileText, CheckCircle, Lock, Loader2, RefreshCw, History,
+  Download, FileJson, FileSpreadsheet, FileText as FileTextIcon,
 } from 'lucide-react';
 import { getFormSchema } from '../data/formSchemas';
 import { isoToDisplay } from '../schemas';
@@ -18,6 +19,9 @@ import { useRecord, useUpdateRecord, useRecords } from '../hooks/useRecordStorag
 import { useAuditLog } from '../hooks/useAuditLog';
 import { evaluateRulesForRecord, getSeverityColor, type RuleSeverity } from '../services/ruleEngine';
 import { getEditRiskLevel } from '../data/mockRecords';
+import { exportRecordToDocx } from '../services/docxExport';
+import { exportRecordToJson, exportRecordToCsv } from '../services/fileExport';
+import { toast } from 'sonner';
 
 // ============================================================================
 // Identity fields — READ-ONLY always, even in edit mode
@@ -55,6 +59,8 @@ const RecordViewPage: React.FC = () => {
   const [editData, setEditData] = useState<RecordData>({});
   const [modificationReason, setModificationReason] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Audit log
   const { data: auditEntries, isLoading: auditLoading } = useAuditLog(
@@ -220,6 +226,40 @@ const RecordViewPage: React.FC = () => {
     );
   };
 
+  // ─── Export handlers ──────────────────────────────────────────────────
+  const handleExportDocx = async () => {
+    setIsExporting(true);
+    setExportMenuOpen(false);
+    try {
+      await exportRecordToDocx(originalRecord as Record<string, unknown>);
+      toast.success(`Exported ${originalRecord.serial} as .docx`);
+    } catch (err) {
+      toast.error('Export failed: ' + (err as Error).message);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportJson = () => {
+    setExportMenuOpen(false);
+    try {
+      exportRecordToJson(originalRecord as Record<string, unknown>);
+      toast.success(`Exported ${originalRecord.serial} as JSON`);
+    } catch (err) {
+      toast.error('Export failed: ' + (err as Error).message);
+    }
+  };
+
+  const handleExportCsv = () => {
+    setExportMenuOpen(false);
+    try {
+      exportRecordToCsv(originalRecord as Record<string, unknown>);
+      toast.success(`Exported ${originalRecord.serial} as CSV`);
+    } catch (err) {
+      toast.error('Export failed: ' + (err as Error).message);
+    }
+  };
+
   // ─── Render ────────────────────────────────────────────────────────────
   const isSaving = updateMutation.isPending;
 
@@ -235,6 +275,58 @@ const RecordViewPage: React.FC = () => {
         </button>
 
         <div className="flex items-center gap-2">
+          {/* Export dropdown — view mode only */}
+          {mode === 'view' && (
+            <div className="relative">
+              <button
+                onClick={() => setExportMenuOpen(!exportMenuOpen)}
+                disabled={isExporting}
+                className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg flex items-center gap-2 text-sm transition-colors"
+              >
+                {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                Export
+              </button>
+              {exportMenuOpen && (
+                <>
+                  {/* Backdrop */}
+                  <div className="fixed inset-0 z-40" onClick={() => setExportMenuOpen(false)} />
+                  <div className="absolute right-0 mt-2 w-52 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-50 overflow-hidden">
+                    <button
+                      onClick={handleExportDocx}
+                      className="w-full px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700 flex items-center gap-3 transition-colors"
+                    >
+                      <FileTextIcon className="w-4 h-4 text-blue-400" />
+                      <div className="text-left">
+                        <div className="font-medium">Word Document</div>
+                        <div className="text-xs text-slate-500">.docx — formatted report</div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={handleExportJson}
+                      className="w-full px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700 flex items-center gap-3 transition-colors border-t border-slate-700"
+                    >
+                      <FileJson className="w-4 h-4 text-green-400" />
+                      <div className="text-left">
+                        <div className="font-medium">JSON</div>
+                        <div className="text-xs text-slate-500">.json — raw data</div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={handleExportCsv}
+                      className="w-full px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700 flex items-center gap-3 transition-colors border-t border-slate-700"
+                    >
+                      <FileSpreadsheet className="w-4 h-4 text-amber-400" />
+                      <div className="text-left">
+                        <div className="font-medium">CSV</div>
+                        <div className="text-xs text-slate-500">.csv — key-value pairs</div>
+                      </div>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           {mode === 'view' && (
             <button
               onClick={handleStartEdit}
