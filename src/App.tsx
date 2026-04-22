@@ -14,7 +14,7 @@ import { ThemeProvider } from "./hooks/useTheme";
 const Index = lazy(() => import("./pages/Index"));
 const AuditPage = lazy(() => import("./pages/AuditPage"));
 const RiskManagementPage = lazy(() => import("./pages/RiskManagementPage"));
-const AdminAccounts = lazy(() => import("./pages/AdminAccounts"));
+const AdminPanel = lazy(() => import("./pages/AdminPanel"));
 const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
 const AuthCallback = lazy(() => import("./pages/AuthCallback"));
@@ -111,7 +111,7 @@ const App = () => {
                     <Route path="/integrity" element={<RequireAuth><PageBoundary><DataIntegrityPage /></PageBoundary></RequireAuth>} />
 
                     {/* Admin */}
-                    <Route path="/admin/accounts" element={<RequireRole roles={["admin"]}><PageBoundary><AdminAccounts /></PageBoundary></RequireRole>} />
+                    <Route path="/admin/accounts" element={<RequireRole roles={["admin"]}><PageBoundary><AdminPanel /></PageBoundary></RequireRole>} />
 
                     {/* Legacy redirects */}
                     <Route path="/record/*" element={<Navigate to="/records" replace />} />

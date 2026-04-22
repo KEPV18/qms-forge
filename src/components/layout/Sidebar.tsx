@@ -291,7 +291,7 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
             <>
               <SectionLabel icon={Shield} label="Admin" />
               <div className="space-y-0.5">
-                <NavItemButton item={{ id: "admin-accounts", label: "User Accounts", icon: UsersCog, path: "/admin/accounts" }} />
+                <NavItemButton item={{ id: "admin-panel", label: "Admin Panel", icon: Shield, path: "/admin/accounts" }} />
                 <NavItemButton item={{ id: "admin-activity", label: "Activity Log", icon: Activity, path: "/activity" }} />
               </div>
             </>
