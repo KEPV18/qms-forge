@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import { Loader2 } from "lucide-react";
 import { AuthProvider } from "./hooks/useAuth";
+import { TenantIdentityProvider } from "./hooks/useTenantIdentity";
 import { RequireAuth, RequireRole } from "./components/auth/Guards";
 import { ErrorBoundary, ErrorFallback } from "./components/ui/ErrorBoundary";
 import { ThemeProvider } from "./hooks/useTheme";
@@ -75,6 +76,7 @@ const App = () => {
       <ErrorBoundary fallback={<ErrorFallback />}>
         <ThemeProvider>
           <AuthProvider>
+            <TenantIdentityProvider>
             <TooltipProvider>
               <Sonner />
               <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
@@ -121,6 +123,7 @@ const App = () => {
                 </Suspense>
               </BrowserRouter>
             </TooltipProvider>
+            </TenantIdentityProvider>
           </AuthProvider>
         </ThemeProvider>
       </ErrorBoundary>

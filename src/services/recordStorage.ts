@@ -288,32 +288,69 @@ export async function createRecord(formData: RecordData): Promise<StorageResult>
   data._modificationReason = null;
   data._status = data._status || 'pending_review';
 
-  // 6. Insert into Supabase
+  // 6. Insert via validated RPC (server-side enforcement)
   try {
-    const row = recordToRow(data);
-    const { error } = await supabase.from('records').insert(row);
-
-    if (error) {
-      // Check for unique constraint violation (duplicate serial)
-      if (error.code === '23505' || error.message?.includes('unique')) {
-        return { success: false, error: `Serial ${serial} already exists.`, duplicateSerial: true };
+    // Extract business data for form_data (metadata is handled by RPC)
+    const metadataKeys = new Set([
+      'serial', 'formCode', 'formName',
+      '_createdAt', '_createdBy',
+      '_lastModifiedAt', '_lastModifiedBy',
+      '_editCount', '_modificationReason', '_status',
+      '_section', '_sectionName', '_frequency',
+    ]);
+    const businessData: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (!metadataKeys.has(key) && key !== 'id') {
+        businessData[key] = value;
       }
-      throw new RecordStorageError(`Failed to create record: ${error.message}`, 'NETWORK', error);
     }
 
-    logOperation({ timestamp: new Date().toISOString(), operation: 'create', serial, formCode, success: true, durationMs: Math.round(performance.now() - startTime) });
+    const { data: rpcResult, error } = await supabase.rpc('create_record_validated', {
+      p_form_code: formCode,
+      p_form_name: data.formName as string || formSchema?.name || '',
+      p_form_data: businessData,
+      p_status: (data._status as string || 'draft') as any,
+      p_serial: 'auto',
+      p_section: data._section as number || formSchema?.section || null,
+      p_section_name: data._sectionName as string || formSchema?.sectionName || null,
+      p_frequency: data._frequency as string || formSchema?.frequency || null,
+    });
+
+    if (error) {
+      // Check for specific error types
+      const msg = error.message || '';
+      if (msg.includes('already exists') || msg.includes('23505')) {
+        return { success: false, error: `Serial collision — ${msg}`, duplicateSerial: true };
+      }
+      if (msg.includes('Validation failed') || msg.includes('required fields missing') || msg.includes('cannot be empty')) {
+        return { success: false, error: msg };
+      }
+      if (msg.includes('Insufficient role')) {
+        return { success: false, error: 'Insufficient permissions to create records.' };
+      }
+      throw new RecordStorageError(`Failed to create record: ${msg}`, 'NETWORK', error);
+    }
+
+    // Extract the actual serial from RPC result
+    const resultRow = Array.isArray(rpcResult) ? rpcResult[0] : rpcResult;
+    const actualSerial = resultRow?.out_serial || serial;
+    const actualId = resultRow?.out_id;
+
+    logOperation({ timestamp: new Date().toISOString(), operation: 'create', serial: actualSerial, formCode, success: true, durationMs: Math.round(performance.now() - startTime) });
 
     // 7. Audit log (non-blocking — fire and forget)
     const allFields = Object.keys(data).filter(k => !k.startsWith('_'));
     const newFieldValues: Record<string, unknown> = {};
     for (const key of allFields) { newFieldValues[key] = data[key]; }
-    appendAuditLog(serial, 'create', data._createdBy as string || 'unknown', allFields, {}, newFieldValues, formCode).catch(err => {
-      log.audit.failed(serial, String(err));
+    appendAuditLog(actualSerial, 'create', data._createdBy as string || 'unknown', allFields, {}, newFieldValues, formCode).catch(err => {
+      log.audit.failed(actualSerial, String(err));
       console.error('[recordStorage] Audit log failed (non-blocking):', err);
     });
-    log.validation.passed(formCode, serial);
-    log.record.created(formCode, serial, Math.round(performance.now() - startTime));
+    log.validation.passed(formCode, actualSerial);
+    log.record.created(formCode, actualSerial, Math.round(performance.now() - startTime));
 
+    // Update the data object with actual serial for return
+    data.serial = actualSerial;
     return { success: true, record: data };
   } catch (err) {
     const errorMsg = err instanceof RecordStorageError ? err.message : `Unexpected error: ${(err as Error).message}`;

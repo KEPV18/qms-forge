@@ -14,7 +14,8 @@ import { Button } from "@/components/ui/button";
 import { SettingsModal } from "@/components/settings/SettingsModal";
 import { MODULE_NAV_ITEMS, DOCS_NAV_ITEMS, TOOL_NAV_ITEMS, type NavItem } from "@/config/modules";
 import type { RecordData } from "@/components/forms/DynamicFormRenderer";
-import qmsLogo from "@/assets/qms-logo.png";
+import { useTenantIdentity } from "@/hooks/useTenantIdentity";
+import defaultLogo from "@/assets/qms-logo.png";
 
 const moduleItems = MODULE_NAV_ITEMS;
 const docsItems = DOCS_NAV_ITEMS;
@@ -54,6 +55,9 @@ export function TopNav() {
     });
     return Array.from(projs).sort();
   }, [records]);
+
+  const { displayName, logoUrl } = useTenantIdentity();
+  const brandLogo = logoUrl || defaultLogo;
 
   const userInitials = (user?.name || "U").slice(0, 2).toUpperCase();
 
@@ -191,9 +195,9 @@ export function TopNav() {
                className="flex items-center gap-2 hover:opacity-80 transition-opacity"
              >
                <div className="w-7 h-7 rounded-sm overflow-hidden border border-primary/20 ring-1 ring-primary/5">
-                 <img src={qmsLogo} alt="QMS" className="w-full h-full object-contain" />
+                 <img src={brandLogo} alt={displayName} className="w-full h-full object-contain" />
                </div>
-               <span className="hidden sm:inline text-sm font-bold tracking-tight">QMS Forge</span>
+               <span className="hidden sm:inline text-sm font-bold tracking-tight">{displayName}</span>
              </button>
 
             <nav className="hidden lg:flex items-center gap-0.5 ml-2">
@@ -303,9 +307,9 @@ export function TopNav() {
         <div className="flex items-center justify-between px-4 py-4 border-b border-border">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-sm overflow-hidden border border-neon-cyan/20">
-              <img src={qmsLogo} alt="QMS" className="w-full h-full object-contain" />
+              <img src={brandLogo} alt={displayName} className="w-full h-full object-contain" />
             </div>
-            <span className="text-sm font-bold">QMS Forge</span>
+            <span className="text-sm font-bold">{displayName}</span>
           </div>
           <button aria-label="Close menu" onClick={() => setIsMobileOpen(false)} className="p-2 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted/50">
             <X className="w-5 h-5" />

@@ -8,8 +8,8 @@ import { useRecords } from "@/hooks/useRecordStorage";
 import { useState, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
-import qmsLogo from "@/assets/qms-logo.png";
-import logoImg from "@/assets/logo.png";
+import { useTenantIdentity } from "@/hooks/useTenantIdentity";
+import defaultLogo from "@/assets/qms-logo.png";
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
@@ -31,6 +31,8 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [isCollapsed, setIsCollapsed] = useState(localStorage.getItem('sidebarCollapsed') === 'true');
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const { displayName, logoUrl } = useTenantIdentity();
+  const brandLogo = logoUrl || defaultLogo;
   const { user, loading } = useAuth();
   const { data: records } = useRecords();
 
@@ -218,11 +220,11 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
         )}>
           {!collapsed && (
             <div className="flex items-center gap-2">
-              <img src={logoImg} alt="QMS" className="w-6 h-6" />
-              <span className="text-sm font-semibold text-foreground">QMS Forge</span>
+              <img src={brandLogo} alt={displayName} className="w-6 h-6" />
+              <span className="text-sm font-semibold text-foreground">{displayName}</span>
             </div>
           )}
-          {collapsed && <img src={logoImg} alt="QMS" className="w-6 h-6" />}
+          {collapsed && <img src={brandLogo} alt={displayName} className="w-6 h-6" />}
 
           <button
             onClick={toggleSidebar}

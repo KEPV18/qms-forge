@@ -13,6 +13,7 @@ import {
 import { getFormSchema } from '../data/formSchemas';
 import { isoToDisplay } from '../schemas';
 import DynamicFormRenderer, { type RecordData } from '../components/forms/DynamicFormRenderer';
+import { SchemaDrivenRecordView } from '../components/forms/SchemaDrivenRecordView';
 import { useRecord, useUpdateRecord, useRecords } from '../hooks/useRecordStorage';
 import { useAuditLog } from '../hooks/useAuditLog';
 import { evaluateRulesForRecord, getSeverityColor, type RuleSeverity } from '../services/ruleEngine';
@@ -419,11 +420,9 @@ const RecordViewPage: React.FC = () => {
 
       {mode === 'view' ? (
         <div className="ds-card p-6 page-transition">
-          <DynamicFormRenderer
+          <SchemaDrivenRecordView
             formCode={originalRecord.formCode as string}
-            initialData={originalRecord as unknown as RecordData}
-            onSubmit={() => {}}
-            readOnly={true}
+            data={originalRecord as unknown as RecordData}
           />
         </div>
       ) : mode === 'history' ? (

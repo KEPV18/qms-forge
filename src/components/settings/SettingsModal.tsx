@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenantIdentity, useUpdateTenantIdentity, useInvalidateTenantIdentity } from "@/hooks/useTenantIdentity";
 import { useTheme } from "@/hooks/useTheme";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
@@ -36,7 +37,7 @@ const ACCENT_COLORS = [
     { id: 'gold', label: 'Gold', hsl: '45 93% 47%', adminOnly: true },
 ];
 
-type TabId = 'account' | 'appearance' | 'diagnostics';
+type TabId = 'account' | 'appearance' | 'company' | 'diagnostics';
 
 export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     const navigate = useNavigate();
@@ -132,6 +133,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     const tabs: { id: TabId; label: string; icon: React.ReactNode; adminOnly?: boolean }[] = [
         { id: 'account', label: 'Account', icon: <User className="w-4 h-4" /> },
         { id: 'appearance', label: 'Appearance', icon: <Palette className="w-4 h-4" /> },
+        { id: 'company', label: 'Company', icon: <Crown className="w-4 h-4" />, adminOnly: true },
         { id: 'diagnostics', label: 'Diagnostics', icon: <Monitor className="w-4 h-4" />, adminOnly: true },
     ];
 
@@ -357,6 +359,11 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                         </div>
                     )}
 
+                    {/* ===== COMPANY TAB ===== */}
+                    {activeTab === 'company' && user?.role === 'admin' && (
+                        <CompanySettingsTab />
+                    )}
+
                     {/* ===== DIAGNOSTICS TAB ===== */}
                     {activeTab === 'diagnostics' && user?.role === 'admin' && (
                         <div className="space-y-4">
@@ -476,4 +483,170 @@ function StatusIndicator({ status }: { status: 'idle' | 'checking' | 'online' | 
         </Badge>
     );
     return <Badge variant="outline" className="text-[10px] h-5 text-muted-foreground">Not Checked</Badge>;
+}
+
+// ============================================================================
+// Company Settings Tab — Admin-only tenant identity configuration
+// ============================================================================
+
+function CompanySettingsTab() {
+    const identity = useTenantIdentity();
+    const { updateIdentity } = useUpdateTenantIdentity();
+    const invalidate = useInvalidateTenantIdentity();
+
+    const [companyName, setCompanyName] = useState(identity.companyName);
+    const [logoUrl, setLogoUrl] = useState(identity.companyLogoUrl);
+    const [themeColor, setThemeColor] = useState(identity.themeColor);
+    const [saving, setSaving] = useState(false);
+    const [saved, setSaved] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const hasChanges =
+        companyName !== identity.companyName ||
+        logoUrl !== identity.companyLogoUrl ||
+        themeColor !== identity.themeColor;
+
+    const handleSave = async () => {
+        setSaving(true);
+        setError(null);
+        try {
+            await updateIdentity({
+                companyName: companyName.trim(),
+                companyLogoUrl: logoUrl.trim(),
+                themeColor: themeColor.trim(),
+            });
+            setSaved(true);
+            invalidate();
+            setTimeout(() => setSaved(false), 2000);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to save');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const PRESET_COLORS = [
+        { name: 'Cyan', value: '#06b6d4' },
+        { name: 'Indigo', value: '#6366f1' },
+        { name: 'Emerald', value: '#10b981' },
+        { name: 'Amber', value: '#f59e0b' },
+        { name: 'Rose', value: '#f43f5e' },
+        { name: 'Violet', value: '#8b5cf6' },
+        { name: 'Sky', value: '#0ea5e9' },
+        { name: 'Lime', value: '#84cc16' },
+    ];
+
+    return (
+        <div className="space-y-5">
+            <p className="text-xs text-muted-foreground">
+                Configure company branding displayed across the application. Changes apply immediately.
+            </p>
+
+            {/* Company Name */}
+            <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider">Company Name</Label>
+                <Input
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    placeholder="e.g. Vizzlo Labs"
+                    className="font-medium"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                    Shown in navigation and headers. Leave empty for default "QMS Forge".
+                </p>
+            </div>
+
+            {/* Logo URL */}
+            <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider">Logo URL</Label>
+                <div className="flex items-center gap-2">
+                    <Input
+                        value={logoUrl}
+                        onChange={(e) => setLogoUrl(e.target.value)}
+                        placeholder="https://example.com/logo.png"
+                        className="flex-1"
+                    />
+                    {logoUrl && (
+                        <div className="w-8 h-8 rounded border border-border overflow-hidden bg-muted flex-shrink-0">
+                            <img
+                                src={logoUrl}
+                                alt="Preview"
+                                className="w-full h-full object-contain"
+                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                            />
+                        </div>
+                    )}
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                    Direct URL to logo image (SVG/PNG). Leave empty for default logo.
+                </p>
+            </div>
+
+            {/* Theme Color */}
+            <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                    <Palette className="w-3 h-3" /> Accent Color
+                </Label>
+                <div className="flex items-center gap-2">
+                    <Input
+                        value={themeColor}
+                        onChange={(e) => setThemeColor(e.target.value)}
+                        placeholder="#06b6d4"
+                        className="w-28 font-mono"
+                    />
+                    <div
+                        className="w-8 h-8 rounded border border-border flex-shrink-0"
+                        style={{ backgroundColor: themeColor || '#06b6d4' }}
+                    />
+                </div>
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                    {PRESET_COLORS.map((c) => (
+                        <button
+                            key={c.value}
+                            onClick={() => setThemeColor(c.value)}
+                            className={cn(
+                                "w-6 h-6 rounded-full border-2 transition-all hover:scale-110",
+                                themeColor === c.value
+                                    ? "border-foreground ring-2 ring-foreground/20"
+                                    : "border-transparent"
+                            )}
+                            style={{ backgroundColor: c.value }}
+                            title={c.name}
+                        />
+                    ))}
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                    Primary accent color. Leave empty for default cyan.
+                </p>
+            </div>
+
+            {/* Save */}
+            <div className="flex items-center gap-3 pt-2">
+                <Button onClick={handleSave} disabled={!hasChanges || saving}>
+                    {saving ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                    ) : saved ? (
+                        <CheckCircle className="w-4 h-4 mr-1" />
+                    ) : null}
+                    {saved ? 'Saved!' : saving ? 'Saving...' : 'Save Changes'}
+                </Button>
+                {error && <span className="text-xs text-destructive">{error}</span>}
+            </div>
+
+            {/* Preview */}
+            <div className="rounded border border-border bg-muted/20 p-3 space-y-1">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Preview</p>
+                <div className="flex items-center gap-2">
+                    {logoUrl ? (
+                        <img src={logoUrl} alt="Logo" className="w-6 h-6 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                    ) : (
+                        <div className="w-6 h-6 rounded bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary">Q</div>
+                    )}
+                    <span className="text-sm font-semibold" style={{ color: themeColor || undefined }}>
+                        {companyName || 'QMS Forge'}
+                    </span>
+                </div>
+            </div>
+        </div>
+    );
 }
