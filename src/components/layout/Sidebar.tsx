@@ -2,7 +2,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, ChevronRight,
   PanelLeftClose, PanelLeftOpen, Menu, X,
-  Layers, Wrench, Briefcase,
+  Layers, Wrench, Briefcase, Shield, UsersCog, Activity,
 } from "lucide-react";
 import { useRecords } from "@/hooks/useRecordStorage";
 import { useState, useEffect, useMemo } from "react";
@@ -285,6 +285,17 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
           <div className="space-y-0.5">
             {toolItems.map(item => <NavItemButton key={item.id} item={item} />)}
           </div>
+
+          {/* Admin — only visible to admins */}
+          {user?.role === "admin" && (
+            <>
+              <SectionLabel icon={Shield} label="Admin" />
+              <div className="space-y-0.5">
+                <NavItemButton item={{ id: "admin-accounts", label: "User Accounts", icon: UsersCog, path: "/admin/accounts" }} />
+                <NavItemButton item={{ id: "admin-activity", label: "Activity Log", icon: Activity, path: "/activity" }} />
+              </div>
+            </>
+          )}
         </nav>
 
         {/* Footer */}
