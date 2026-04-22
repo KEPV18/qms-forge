@@ -14,6 +14,7 @@ import {
 import { FORM_SCHEMAS, getFormSchema, getFormSections, getFormsBySection } from '../data/formSchemas';
 import { MODULE_CONFIG } from '../config/modules';
 import DynamicFormRenderer, { type RecordData } from '../components/forms/DynamicFormRenderer';
+import { SchemaDrivenRecordView } from '../components/forms/SchemaDrivenRecordView';
 import { useCreateRecord } from '../hooks/useRecordStorage';
 import { AppShell } from '@/components/layout/AppShell';
 import { cn } from '@/lib/utils';
@@ -132,34 +133,38 @@ const RecordCreationPage: React.FC = () => {
         ...(currentSectionName ? [{ label: currentSectionName, path: `/module/${SECTION_META[activeSection!]?.id || ''}` }] : []),
         { label: "Create Record" },
       ]}>
-        <div className="max-w-2xl mx-auto page-transition">
-          <div className="ds-card p-8 text-center border-success/30">
-            <div className="w-16 h-16 rounded-full bg-success/10 border border-success/20 flex items-center justify-center mx-auto mb-4">
-              <CheckCircle className="w-8 h-8 text-success" />
+        <div className="max-w-4xl mx-auto page-transition">
+          {/* Success Header */}
+          <div className="ds-card p-6 text-center border-success/30 mb-4">
+            <div className="w-14 h-14 rounded-full bg-success/10 border border-success/20 flex items-center justify-center mx-auto mb-3">
+              <CheckCircle className="w-7 h-7 text-success" />
             </div>
-            <h2 className="text-2xl font-bold text-foreground mb-2">Record Created</h2>
-            <div className="mb-6">
-              <span className="px-3 py-1.5 text-sm bg-success/10 text-success border border-success/20 rounded-sm font-mono font-semibold">
-                {created.serial}
-              </span>
-            </div>
-            <div className="bg-secondary/50 border border-border rounded-sm p-4 text-left mb-6 max-h-64 overflow-y-auto">
-              <p className="text-xs text-muted-foreground mb-2">Record Data:</p>
-              <pre className="text-xs text-foreground whitespace-pre-wrap font-mono">
-                {JSON.stringify(created.data, null, 2)}
-              </pre>
-            </div>
-            <div className="flex gap-3 justify-center">
-              <button onClick={resetToSelect} className="ds-press ds-focus-ring px-6 py-2 bg-primary text-primary-foreground rounded-sm font-medium">
-                Create Another
-              </button>
-              <button onClick={() => navigate(`/records/${encodeURIComponent(created.serial)}`)} className="ds-press px-6 py-2 bg-secondary text-secondary-foreground rounded-sm font-medium hover:bg-accent transition-colors">
-                View Record
-              </button>
-              <button onClick={() => navigate('/records')} className="ds-press px-6 py-2 bg-secondary text-secondary-foreground rounded-sm font-medium hover:bg-accent transition-colors">
-                All Records
-              </button>
-            </div>
+            <h2 className="text-xl font-bold text-foreground mb-1">Record Created Successfully</h2>
+            <span className="px-3 py-1.5 text-sm bg-success/10 text-success border border-success/20 rounded-sm font-mono font-semibold">
+              {created.serial}
+            </span>
+          </div>
+
+          {/* Form-Formatted Record View */}
+          <div className="ds-card p-6 mb-4">
+            <SchemaDrivenRecordView
+              formCode={created.code}
+              data={created.data}
+              showMeta={true}
+            />
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-3 justify-center">
+            <button onClick={resetToSelect} className="ds-press ds-focus-ring px-6 py-2 bg-primary text-primary-foreground rounded-sm font-medium">
+              Create Another
+            </button>
+            <button onClick={() => navigate(`/records/${encodeURIComponent(created.serial)}`)} className="ds-press px-6 py-2 bg-secondary text-secondary-foreground rounded-sm font-medium hover:bg-accent transition-colors">
+              View Record
+            </button>
+            <button onClick={() => navigate('/records')} className="ds-press px-6 py-2 bg-secondary text-secondary-foreground rounded-sm font-medium hover:bg-accent transition-colors">
+              All Records
+            </button>
           </div>
         </div>
       </AppShell>
