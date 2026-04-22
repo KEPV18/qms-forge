@@ -44,31 +44,43 @@ export type Database = {
           action: string
           changed_fields: Json
           created_at: string
+          form_code: string | null
           id: string
           new_values: Json
           performed_by: string
           previous_values: Json
           record_id: string
+          serial: string | null
+          user_email: string | null
+          action_type: string | null
         }
         Insert: {
           action: string
           changed_fields?: Json
           created_at?: string
+          form_code?: string | null
           id?: string
           new_values?: Json
           performed_by?: string
           previous_values?: Json
           record_id: string
+          serial?: string | null
+          user_email?: string | null
+          action_type?: string | null
         }
         Update: {
           action?: string
           changed_fields?: Json
           created_at?: string
+          form_code?: string | null
           id?: string
           new_values?: Json
           performed_by?: string
           previous_values?: Json
           record_id?: string
+          serial?: string | null
+          user_email?: string | null
+          action_type?: string | null
         }
         Relationships: [
           {
@@ -632,79 +644,58 @@ export type Database = {
       }
       records: {
         Row: {
-          audit_issues: string[] | null
-          audit_status: string
-          category: string
-          code: string
-          created_at: string
-          days_ago: string
-          description: string
-          file_reviews: Json
-          folder_link: string
           id: string
-          last_audit_date: string | null
-          last_file_date: string
-          last_serial: string
-          next_serial: string
-          record_name: string
-          record_status: string
-          review_date: string
-          reviewed: boolean
-          reviewed_by: string
-          row_index: number
-          template_link: string
+          form_code: string
+          serial: string
+          form_name: string
+          status: string
+          form_data: Json
+          section: number | null
+          section_name: string
+          frequency: string
+          created_by: string
+          last_modified_by: string
+          edit_count: number
+          modification_reason: string | null
+          deleted_at: string | null
+          created_at: string
           updated_at: string
-          when_to_fill: string
         }
         Insert: {
-          audit_issues?: string[] | null
-          audit_status?: string
-          category?: string
-          code: string
-          created_at?: string
-          days_ago?: string
-          description?: string
-          file_reviews?: Json
-          folder_link?: string
           id?: string
-          last_audit_date?: string | null
-          last_file_date?: string
-          last_serial?: string
-          next_serial?: string
-          record_name?: string
-          record_status?: string
-          review_date?: string
-          reviewed?: boolean
-          reviewed_by?: string
-          row_index: number
-          template_link?: string
+          form_code: string
+          serial: string
+          form_name: string
+          status?: string
+          form_data?: Json
+          section?: number | null
+          section_name?: string
+          frequency?: string
+          created_by?: string
+          last_modified_by?: string
+          edit_count?: number
+          modification_reason?: string | null
+          deleted_at?: string | null
+          created_at?: string
           updated_at?: string
-          when_to_fill?: string
         }
         Update: {
-          audit_issues?: string[] | null
-          audit_status?: string
-          category?: string
-          code?: string
-          created_at?: string
-          days_ago?: string
-          description?: string
-          file_reviews?: Json
-          folder_link?: string
           id?: string
-          last_audit_date?: string | null
-          last_file_date?: string
-          last_serial?: string
-          next_serial?: string
-          record_name?: string
-          record_status?: string
-          review_date?: string
-          reviewed?: boolean
-          reviewed_by?: string
-          row_index?: number
-          template_link?: string
+          form_code?: string
+          serial?: string
+          form_name?: string
+          status?: string
+          form_data?: Json
+          section?: number | null
+          section_name?: string
+          frequency?: string
+          created_by?: string
+          last_modified_by?: string
+          edit_count?: number
+          modification_reason?: string | null
+          deleted_at?: string | null
+          created_at?: string
           updated_at?: string
-          when_to_fill?: string
         }
         Relationships: []
       }

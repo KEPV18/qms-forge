@@ -3,14 +3,15 @@
 // Consistent design system classes, improved hierarchy, better interactions.
 // ============================================================================
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   FileText, Search, CheckCircle, XCircle, ArrowLeft, Loader2,
 } from 'lucide-react';
 import { FORM_SCHEMAS, getFormSchema, getFormSections } from '../data/formSchemas';
 import DynamicFormRenderer, { type RecordData } from '../components/forms/DynamicFormRenderer';
 import { useCreateRecord } from '../hooks/useRecordStorage';
+import { AppShell } from '@/components/layout/AppShell';
 
 // ============================================================================
 // Record Creation Page
@@ -18,12 +19,16 @@ import { useCreateRecord } from '../hooks/useRecordStorage';
 
 const RecordCreationPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const urlFormCode = searchParams.get('formCode');
+  const urlSection = searchParams.get('section');
+
   const createMutation = useCreateRecord();
 
-  const [selectedCode, setSelectedCode] = useState<string>('');
+  const [selectedCode, setSelectedCode] = useState<string>(urlFormCode || '');
   const [created, setCreated] = useState<{ code: string; serial: string; data: RecordData } | null>(null);
   const [search, setSearch] = useState('');
-  const [gateStep, setGateStep] = useState<'select' | 'gate' | 'form' | 'success'>('select');
+  const [gateStep, setGateStep] = useState<'select' | 'gate' | 'form' | 'success'>(urlFormCode ? 'gate' : 'select');
   const [createError, setCreateError] = useState<string | null>(null);
 
   const sections = getFormSections();
@@ -65,7 +70,8 @@ const RecordCreationPage: React.FC = () => {
   // ─── Success ──────────────────────────────────────────────────────────
   if (created) {
     return (
-      <div className="max-w-2xl mx-auto p-6 page-transition">
+      <AppShell breadcrumbs={[{ label: "Dashboard", path: "/" }, { label: "Create Record" }]}>
+      <div className="max-w-2xl mx-auto page-transition">
         <div className="ds-card p-8 text-center border-success/30">
           <div className="w-16 h-16 rounded-full bg-success/10 border border-success/20 flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-8 h-8 text-success" />
@@ -104,12 +110,14 @@ const RecordCreationPage: React.FC = () => {
           </div>
         </div>
       </div>
+      </AppShell>
     );
   }
 
   // ─── Main ──────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-6xl mx-auto p-6 page-transition">
+    <AppShell breadcrumbs={[{ label: "Dashboard", path: "/" }, { label: "Create Record" }]}>
+    <div className="max-w-6xl mx-auto page-transition">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-foreground">Create Record</h1>
@@ -191,6 +199,7 @@ const RecordCreationPage: React.FC = () => {
         </div>
       </div>
     </div>
+    </AppShell>
   );
 };
 

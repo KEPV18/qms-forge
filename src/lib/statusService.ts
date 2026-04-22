@@ -86,7 +86,7 @@ export async function updateRecordStatus(
     reviewedBy?: string,
 ): Promise<boolean> {
     const identifier = record.recordId || record.serial;
-    const matchField = record.recordId ? 'id' : 'last_serial';
+    const matchField = record.recordId ? 'id' : 'serial';
 
     // Fetch current formData
     const { data: row, error: fetchErr } = await supabase

@@ -26,6 +26,7 @@ import {
   type MissingDependency,
 } from '../services/ruleEngine';
 import { isoToDisplay } from '../schemas';
+import { AppShell } from '@/components/layout/AppShell';
 
 // ============================================================================
 // Severity Badge
@@ -125,20 +126,25 @@ const DataIntegrityPage: React.FC = () => {
   const rules = getAllRules();
   const cleanPct = summary.total > 0 ? Math.round((summary.clean / summary.total) * 100) : 0;
 
+  const breadcrumbs = [{ label: "Dashboard", path: "/" }, { label: "Data Integrity" }];
+
   // ─── Loading ──────────────────────────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="max-w-6xl mx-auto p-6 flex flex-col items-center justify-center py-20">
+      <AppShell breadcrumbs={breadcrumbs}>
+      <div className="max-w-6xl mx-auto flex flex-col items-center justify-center py-20">
         <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
         <p className="text-muted-foreground">Scanning data integrity...</p>
       </div>
+      </AppShell>
     );
   }
 
   // ─── Error ────────────────────────────────────────────────────────────
   if (error) {
     return (
-      <div className="max-w-6xl mx-auto p-6 flex flex-col items-center justify-center py-20 ds-fade-enter">
+      <AppShell breadcrumbs={breadcrumbs}>
+      <div className="max-w-6xl mx-auto flex flex-col items-center justify-center py-20 ds-fade-enter">
         <XCircle className="w-12 h-12 text-destructive mb-4" />
         <h2 className="text-xl text-foreground mb-2">Failed to Load Integrity Data</h2>
         <p className="text-muted-foreground mb-4">{(error as Error).message}</p>
@@ -146,11 +152,13 @@ const DataIntegrityPage: React.FC = () => {
           <RefreshCw className="w-4 h-4" /> Retry
         </button>
       </div>
+      </AppShell>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6 page-transition">
+    <AppShell breadcrumbs={breadcrumbs}>
+    <div className="max-w-6xl mx-auto page-transition">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
@@ -383,6 +391,7 @@ const DataIntegrityPage: React.FC = () => {
         </div>
       </CollapsibleSection>
     </div>
+    </AppShell>
   );
 };
 

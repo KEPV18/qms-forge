@@ -3,8 +3,8 @@
 // Consistent design system classes, improved hierarchy, better interactions.
 // ============================================================================
 
-import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   FileText, Search, AlertTriangle, Eye, ChevronRight, Loader2,
   RefreshCw, Shield, CheckCircle, Download, FileJson, FileSpreadsheet,
@@ -19,6 +19,7 @@ import { getEditRiskLevel } from '../services/recordUtils';
 import { exportRecordsToDocx } from '../services/docxExport';
 import { exportRecordsToJson, exportRecordsToCsv } from '../services/fileExport';
 import { toast } from 'sonner';
+import { AppShell } from '@/components/layout/AppShell';
 
 // ============================================================================
 // Constants
@@ -55,8 +56,12 @@ const INTEGRITY_ICON: Record<RuleSeverity, React.ReactNode> = {
 
 const RecordListPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const urlFormCode = searchParams.get('formCode');
+  const urlSection = searchParams.get('section');
+
   const [search, setSearch] = useState('');
-  const [formFilter, setFormFilter] = useState<string>('all');
+  const [formFilter, setFormFilter] = useState<string>(urlFormCode || 'all');
   const [sortBy, setSortBy] = useState<'serial' | 'date' | 'edited'>('serial');
   const [page, setPage] = useState(1);
   const [selectedSerials, setSelectedSerials] = useState<Set<string>>(new Set());
@@ -67,6 +72,19 @@ const RecordListPage: React.FC = () => {
   const activeFormCodes = [...new Set(records?.map(r => r.formCode as string) || [])].sort();
   const formNames: Record<string, string> = {};
   FORM_SCHEMAS.forEach(f => { formNames[f.code] = f.name; });
+
+  const sectionFormCodes = useMemo(() => {
+    if (!urlSection) return null;
+    const sectionNum = parseInt(urlSection, 10);
+    return new Set(FORM_SCHEMAS.filter(f => f.section === sectionNum).map(f => f.code));
+  }, [urlSection]);
+
+  useEffect(() => {
+    if (urlFormCode) {
+      setFormFilter(urlFormCode);
+      setPage(1);
+    }
+  }, [urlFormCode]);
 
   // Integrity cache
   const integrityCache = useMemo(() => {
@@ -83,6 +101,7 @@ const RecordListPage: React.FC = () => {
   const filteredRecords = useMemo(() => {
     if (!records) return [];
     let list = [...records];
+    if (sectionFormCodes) list = list.filter(r => sectionFormCodes.has(r.formCode as string));
     if (formFilter !== 'all') list = list.filter(r => r.formCode === formFilter);
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -148,9 +167,12 @@ const RecordListPage: React.FC = () => {
   };
 
   // ─── Loading ───────────────────────────────────────────────────────────
+  const breadcrumbs = [{ label: "Dashboard", path: "/" }, { label: "Records" }];
+
   if (isLoading) {
     return (
-      <div className="max-w-6xl mx-auto p-6">
+      <AppShell breadcrumbs={breadcrumbs}>
+      <div className="max-w-6xl mx-auto">
         <div className="ds-skeleton h-10 w-48 mb-6" />
         <div className="ds-skeleton h-10 w-full mb-4" />
         <div className="space-y-3">
@@ -159,12 +181,14 @@ const RecordListPage: React.FC = () => {
           ))}
         </div>
       </div>
+      </AppShell>
     );
   }
 
   if (error) {
     return (
-      <div className="max-w-6xl mx-auto p-6 flex flex-col items-center justify-center py-20 ds-fade-enter">
+      <AppShell breadcrumbs={breadcrumbs}>
+      <div className="max-w-6xl mx-auto flex flex-col items-center justify-center py-20 ds-fade-enter">
         <AlertTriangle className="w-12 h-12 text-destructive mb-4" />
         <h2 className="text-xl text-foreground mb-2">Failed to Load Records</h2>
         <p className="text-muted-foreground mb-4">{(error as Error).message}</p>
@@ -172,12 +196,14 @@ const RecordListPage: React.FC = () => {
           <RefreshCw className="w-4 h-4" /> Retry
         </button>
       </div>
+      </AppShell>
     );
   }
 
   // ─── Render ────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-6xl mx-auto p-6 page-transition">
+    <AppShell breadcrumbs={breadcrumbs}>
+    <div className="max-w-6xl mx-auto page-transition">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -426,6 +452,7 @@ const RecordListPage: React.FC = () => {
         </>
       )}
     </div>
+    </AppShell>
   );
 };
 

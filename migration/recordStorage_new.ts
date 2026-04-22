@@ -491,7 +491,4 @@ export async function changeRecordStatus(
   }
 }
 
-// invalidateRowCache was a legacy React Query cache helper.
-// React Query now handles its own cache via queryClient.invalidateQueries().
-// Kept as no-op for API compatibility.
-export function invalidateRowCache(): void {}
+export { invalidateRowCache } from './recordStorage';

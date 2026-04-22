@@ -97,7 +97,7 @@ export default function DashboardPage() {
               <Card
                 key={mod.id}
                 className={cn("cursor-pointer hover:border-primary/30 transition-all group", mod.moduleClass)}
-                onClick={() => navigate(`/records?section=${mod.section}`)}
+                onClick={() => navigate(`/module/${mod.id}`)}
               >
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">

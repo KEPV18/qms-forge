@@ -1,0 +1,4 @@
+sha256:c969f46d6cff5b5b3f83bd90f0bb05d73afa090804a9db0d7efa442b2ac3d778
+file:/home/kepa/qms-forge/migration/backup_20260422_110838.json
+timestamp:20260422_110838
+size:525229

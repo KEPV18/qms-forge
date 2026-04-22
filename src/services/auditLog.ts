@@ -1,7 +1,7 @@
 // ============================================================================
 // QMS Forge — Audit Log Service
-// Phase 7A: Full traceability for every create/update operation
-//
+// CUTOVER EDITION — Uses ONLY new schema columns.
+// No legacy field references. No last_serial. No code/record_name.
 // Storage: Supabase audit_log table (append-only)
 // ============================================================================
 
@@ -13,6 +13,7 @@ export interface AuditLogEntry {
   id: string;
   timestamp: string;
   serial: string;
+  formCode: string;
   action: 'create' | 'update' | 'delete' | 'status_change';
   user: string;
   changedFields: string;
@@ -82,18 +83,19 @@ export async function appendAuditLog(
   user: string,
   changedFields: string[],
   previousValues: Record<string, unknown>,
-  newValues: Record<string, unknown>
+  newValues: Record<string, unknown>,
+  formCode?: string
 ): Promise<{ success: boolean; id: string }> {
-  // Find the record_id for this serial
+  // Find the record_id for this serial using new schema column
   const { data: record } = await supabase
     .from('records')
     .select('id')
-    .eq('last_serial', serial)
+    .eq('serial', serial)
     .maybeSingle();
 
   const recordId = record?.id || crypto.randomUUID();
 
-  // Use RPC instead of direct INSERT (RLS blocks client-side INSERT on audit_log)
+  // Use RPC — now passes form_code and serial directly
   const { error } = await supabase.rpc('append_audit_log', {
     p_record_id: recordId,
     p_action: action,
@@ -101,6 +103,8 @@ export async function appendAuditLog(
     p_previous_values: previousValues,
     p_new_values: newValues,
     p_performed_by: user,
+    p_form_code: formCode || '',
+    p_serial: serial,
   });
 
   if (error) {
@@ -118,6 +122,7 @@ export interface AuditLogReadEntry {
   id: string;
   timestamp: string;
   serial: string;
+  formCode: string;
   action: 'create' | 'update' | 'delete' | 'status_change';
   user: string;
   changedFields: string[];
@@ -135,11 +140,11 @@ export interface AuditLogReadEntry {
  * Returns entries in chronological order (oldest first).
  */
 export async function getAuditLogForSerial(serial: string): Promise<AuditLogReadEntry[]> {
-  // Find the record_id for this serial
+  // Find the record_id for this serial using new schema column
   const { data: record } = await supabase
     .from('records')
     .select('id')
-    .eq('last_serial', serial)
+    .eq('serial', serial)
     .maybeSingle();
 
   if (!record) return [];
@@ -158,7 +163,8 @@ export async function getAuditLogForSerial(serial: string): Promise<AuditLogRead
   return (logs as any[]).map((row) => ({
     id: row.id,
     timestamp: row.created_at,
-    serial,
+    serial: row.serial || serial,
+    formCode: row.form_code || '',
     action: row.action as 'create' | 'update' | 'delete' | 'status_change',
     user: row.performed_by,
     changedFields: Array.isArray(row.changed_fields) ? row.changed_fields : [],
@@ -178,7 +184,7 @@ export async function getAuditLogForSerial(serial: string): Promise<AuditLogRead
 export async function getAllAuditLogs(limit = 100): Promise<AuditLogReadEntry[]> {
   const { data: logs, error } = await supabase
     .from('audit_log')
-    .select('*, records(last_serial)')
+    .select('*, records(serial, form_code)')
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -190,7 +196,8 @@ export async function getAllAuditLogs(limit = 100): Promise<AuditLogReadEntry[]>
   return (logs as any[]).map((row) => ({
     id: row.id,
     timestamp: row.created_at,
-    serial: row.records?.last_serial || row.record_id || '',
+    serial: row.serial || row.records?.serial || '',
+    formCode: row.form_code || row.records?.form_code || '',
     action: row.action as 'create' | 'update' | 'delete' | 'status_change',
     user: row.performed_by,
     changedFields: Array.isArray(row.changed_fields) ? row.changed_fields : [],

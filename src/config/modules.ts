@@ -45,7 +45,7 @@ export const MODULE_CONFIG: Record<string, ModuleConfig> = {
     isoClause: "Clause 8.2, 9.1.2",
     section: 1,
     moduleClass: "module-sales",
-    path: "/records",
+    path: "/module/sales",
   },
   operations: {
     id: "operations",
@@ -55,7 +55,7 @@ export const MODULE_CONFIG: Record<string, ModuleConfig> = {
     isoClause: "Clause 8.1, 8.5",
     section: 2,
     moduleClass: "module-operations",
-    path: "/records",
+    path: "/module/operations",
   },
   quality: {
     id: "quality",
@@ -65,7 +65,7 @@ export const MODULE_CONFIG: Record<string, ModuleConfig> = {
     isoClause: "Clause 9, 10",
     section: 3,
     moduleClass: "module-quality",
-    path: "/records",
+    path: "/module/quality",
   },
   procurement: {
     id: "procurement",
@@ -75,7 +75,7 @@ export const MODULE_CONFIG: Record<string, ModuleConfig> = {
     isoClause: "Clause 8.4",
     section: 4,
     moduleClass: "module-procurement",
-    path: "/records",
+    path: "/module/procurement",
   },
   hr: {
     id: "hr",
@@ -85,7 +85,7 @@ export const MODULE_CONFIG: Record<string, ModuleConfig> = {
     isoClause: "Clause 7.2, 7.3",
     section: 5,
     moduleClass: "module-hr",
-    path: "/records",
+    path: "/module/hr",
   },
   rnd: {
     id: "rnd",
@@ -95,7 +95,7 @@ export const MODULE_CONFIG: Record<string, ModuleConfig> = {
     isoClause: "Clause 8.3",
     section: 6,
     moduleClass: "module-rnd",
-    path: "/records",
+    path: "/module/rnd",
   },
   management: {
     id: "management",
@@ -105,7 +105,7 @@ export const MODULE_CONFIG: Record<string, ModuleConfig> = {
     isoClause: "Clause 5, 6, 7.5",
     section: 7,
     moduleClass: "module-management",
-    path: "/records",
+    path: "/module/management",
   },
 };
 

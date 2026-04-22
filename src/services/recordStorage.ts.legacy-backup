@@ -1,7 +1,5 @@
 // ============================================================================
 // QMS Forge — Record Storage Service
-// CUTOVER EDITION — Uses ONLY new schema columns.
-// No legacy field mappings. No file_reviews. No code/record_name.
 // Supabase is the ONLY source of truth.
 // No write without validation. No bypass paths.
 // ============================================================================
@@ -12,32 +10,12 @@ import { getFormSchema } from '../data/formSchemas';
 import { getNextSerial, isSerialUnique } from '../schemas/serialAndDate';
 import { appendAuditLog, computeDiff } from './auditLog';
 import type { RecordData } from '../components/forms/DynamicFormRenderer';
+import type { Tables } from '@/integrations/supabase/types';
+
+type SupabaseRecord = Tables<'records'>;
 
 // ============================================================================
-// Database row type — mirrors the new schema exactly
-// ============================================================================
-
-interface DbRecord {
-  id: string;
-  form_code: string;
-  serial: string;
-  form_name: string;
-  status: string;
-  form_data: Record<string, unknown>;
-  section: number | null;
-  section_name: string;
-  frequency: string;
-  created_by: string;
-  last_modified_by: string;
-  edit_count: number;
-  modification_reason: string;
-  deleted_at: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-// ============================================================================
-// Operation Log
+// Operation Log — structured log of all write operations for observability
 // ============================================================================
 
 export interface OperationLogEntry {
@@ -92,74 +70,63 @@ export class RecordStorageError extends Error {
 }
 
 // ============================================================================
-// Row ↔ RecordData conversion — NEW SCHEMA ONLY
+// Row ↔ RecordData conversion
 // ============================================================================
 
-function parseRowToRecord(row: DbRecord): RecordData | null {
-  if (!row.form_code) return null;
+const FIELD_COLUMNS = [
+  'serial', 'formCode', 'formName', 'category', 'description',
+  '_createdAt', '_createdBy', '_lastModifiedAt', '_lastModifiedBy',
+  '_editCount', '_modificationReason', 'formData',
+];
 
-  // form_data is the single source of truth for all form field data
-  const formData = row.form_data && typeof row.form_data === 'object'
-    ? { ...(row.form_data as Record<string, unknown>) }
-    : {};
+function parseRowToRecord(row: SupabaseRecord): RecordData | null {
+  if (!row.code) return null;
 
-  // Inject system metadata into the record data structure
-  // (FormData contains business fields; metadata is on the row itself)
-  const recordData: RecordData = {
-    serial: row.serial || row.form_code,
-    formCode: row.form_code,
-    formName: row.form_name || '',
-    _createdAt: row.created_at || '',
-    _createdBy: row.created_by || '',
-    _lastModifiedAt: row.updated_at || '',
-    _lastModifiedBy: row.last_modified_by || '',
-    _editCount: row.edit_count || 0,
-    _modificationReason: row.modification_reason || '',
-    _status: row.status || 'draft',
-    _section: row.section || 0,
-    _sectionName: row.section_name || '',
-    _frequency: row.frequency || '',
-    ...formData,  // Business fields from form_data
-  };
-
-  return recordData;
-}
-
-function recordToRow(data: RecordData): Omit<DbRecord, 'id' | 'created_at' | 'updated_at'> {
-  // Extract metadata from RecordData (fields starting with _)
-  const metadataKeys = new Set([
-    'serial', 'formCode', 'formName',
-    '_createdAt', '_createdBy', '_lastModifiedAt', '_lastModifiedBy',
-    '_editCount', '_modificationReason', '_status',
-    '_section', '_sectionName', '_frequency',
-  ]);
-
-  // Everything else is business data → form_data
-  const formData: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(data)) {
-    if (!metadataKeys.has(key)) {
-      formData[key] = value;
-    }
+  const formData = (row.file_reviews || {}) as Record<string, unknown>;
+  let parsedFormData: Record<string, unknown> = {};
+  if (typeof formData === 'object' && !Array.isArray(formData)) {
+    parsedFormData = { ...formData };
   }
 
-  const formCode = String(data.formCode ?? '');
-  const formSchema = getFormSchema(formCode);
-
   return {
-    form_code: formCode,
-    serial: String(data.serial ?? ''),
-    form_name: String(data.formName ?? formSchema?.name ?? ''),
-    status: String(data._status ?? 'draft'),
-    form_data: formData,
-    section: Number(data._section ?? formSchema?.section ?? 0),
-    section_name: String(data._sectionName ?? formSchema?.sectionName ?? ''),
-    frequency: String(data._frequency ?? formSchema?.frequency ?? ''),
-    created_by: String(data._createdBy ?? ''),
-    last_modified_by: String(data._lastModifiedBy ?? ''),
-    edit_count: Number(data._editCount ?? 0),
-    modification_reason: String(data._modificationReason ?? ''),
-    deleted_at: null,
+    serial: row.last_serial || row.code,
+    formCode: row.code,
+    formName: row.record_name || '',
+    category: row.category || '',
+    description: row.description || '',
+    _createdAt: row.created_at || '',
+    _createdBy: row.reviewed_by || '',
+    _lastModifiedAt: row.updated_at || '',
+    _lastModifiedBy: '',
+    _editCount: 0,
+    _modificationReason: '',
+    formData: parsedFormData,
+  } as RecordData;
+}
+
+function recordToRow(data: RecordData): Partial<SupabaseRecord> {
+  return {
+    code: data.formCode as string,
+    record_name: data.formName as string || '',
+    category: data.category as string || '',
+    description: data.description as string || '',
+    last_serial: data.serial as string,
+    audit_status: (data.formData as Record<string, unknown>)?.recordStatus as string || 'pending',
+    reviewed: false,
+    reviewed_by: data._createdBy as string || '',
+    review_date: data._createdAt as string || '',
+    file_reviews: (data.formData as Record<string, unknown>) || {},
+    record_status: (data.formData as Record<string, unknown>)?.recordStatus as string || 'pending',
   };
+}
+
+// ============================================================================
+// Supabase query cache invalidation
+// ============================================================================
+
+function invalidateRowCache(): void {
+  // React Query handles cache — just trigger a refetch via queryClient
+  // This function exists for API compatibility
 }
 
 // ============================================================================
@@ -167,11 +134,7 @@ function recordToRow(data: RecordData): Omit<DbRecord, 'id' | 'created_at' | 'up
 // ============================================================================
 
 export async function getRecords(formCode?: string): Promise<RecordData[]> {
-  let query = supabase
-    .from('records')
-    .select('*')
-    .is('deleted_at', null)  // Only active records
-    .order('form_code', { ascending: true });
+  let query = supabase.from('records').select('*').order('row_index', { ascending: true });
 
   const { data, error } = await query;
 
@@ -179,7 +142,7 @@ export async function getRecords(formCode?: string): Promise<RecordData[]> {
     throw new RecordStorageError(`Failed to fetch records: ${error.message}`, 'NETWORK', error);
   }
 
-  const records = (data as DbRecord[])
+  const records = (data as SupabaseRecord[])
     .map(row => parseRowToRecord(row))
     .filter((r): r is RecordData => r !== null);
 
@@ -194,30 +157,31 @@ export async function getRecord(serial: string): Promise<RecordData | null> {
   const { data, error } = await supabase
     .from('records')
     .select('*')
-    .eq('serial', serial)
-    .is('deleted_at', null)
+    .eq('last_serial', serial)
     .maybeSingle();
 
   if (error) {
     throw new RecordStorageError(`Failed to fetch record ${serial}: ${error.message}`, 'NETWORK', error);
   }
 
-  if (!data) return null;
-  return parseRowToRecord(data as DbRecord);
+  if (!data) {
+    // Try matching by code (form code like F/08)
+    const { data: dataByCode, error: err2 } = await supabase
+      .from('records')
+      .select('*')
+      .eq('code', serial)
+      .maybeSingle();
+
+    if (err2 || !dataByCode) return null;
+    return parseRowToRecord(dataByCode as SupabaseRecord);
+  }
+
+  return parseRowToRecord(data as SupabaseRecord);
 }
 
 export async function getExistingSerials(formCode: string): Promise<string[]> {
-  const { data, error } = await supabase
-    .from('records')
-    .select('serial')
-    .eq('form_code', formCode)
-    .is('deleted_at', null);
-
-  if (error) {
-    throw new RecordStorageError(`Failed to fetch serials for ${formCode}: ${error.message}`, 'NETWORK', error);
-  }
-
-  return (data as Pick<DbRecord, 'serial'>[]).map(r => r.serial).filter(Boolean);
+  const records = await getRecords(formCode);
+  return records.map(r => r.serial as string).filter(Boolean);
 }
 
 // ============================================================================
@@ -283,7 +247,6 @@ export async function createRecord(formData: RecordData): Promise<StorageResult>
   data._lastModifiedBy = null;
   data._editCount = 0;
   data._modificationReason = null;
-  data._status = data._status || 'pending_review';
 
   // 6. Insert into Supabase
   try {
@@ -291,16 +254,12 @@ export async function createRecord(formData: RecordData): Promise<StorageResult>
     const { error } = await supabase.from('records').insert(row);
 
     if (error) {
-      // Check for unique constraint violation (duplicate serial)
-      if (error.code === '23505' || error.message?.includes('unique')) {
-        return { success: false, error: `Serial ${serial} already exists.`, duplicateSerial: true };
-      }
       throw new RecordStorageError(`Failed to create record: ${error.message}`, 'NETWORK', error);
     }
 
     logOperation({ timestamp: new Date().toISOString(), operation: 'create', serial, formCode, success: true, durationMs: Math.round(performance.now() - startTime) });
 
-    // 7. Audit log (non-blocking — fire and forget)
+    // 7. Audit log (non-blocking)
     const allFields = Object.keys(data).filter(k => !k.startsWith('_'));
     const newFieldValues: Record<string, unknown> = {};
     for (const key of allFields) { newFieldValues[key] = data[key]; }
@@ -324,12 +283,11 @@ export async function updateRecord(
 ): Promise<StorageResult> {
   const startTime = performance.now();
 
-  // 1. Fetch current record using NEW schema column (serial, not last_serial)
+  // 1. Fetch current record
   const { data: currentRow, error: fetchError } = await supabase
     .from('records')
     .select('*')
-    .eq('serial', serial)
-    .is('deleted_at', null)
+    .eq('last_serial', serial)
     .maybeSingle();
 
   if (fetchError || !currentRow) {
@@ -337,19 +295,19 @@ export async function updateRecord(
     return { success: false, error: `Record ${serial} not found.` };
   }
 
-  const currentRecord = parseRowToRecord(currentRow as DbRecord);
+  const currentRecord = parseRowToRecord(currentRow as SupabaseRecord);
   if (!currentRecord) {
     return { success: false, error: `Failed to parse record ${serial}.` };
   }
 
   const formCode = String(currentRecord.formCode || '?');
 
-  // 2. Optimistic locking using edit_count
-  const currentEditCount = (currentRow as DbRecord).edit_count ?? 0;
+  // 2. Optimistic locking
+  const currentEditCount = Number(currentRow.updated_at ? 1 : 0);
   const clientEditCount = changes._editCount !== undefined ? Number(changes._editCount) : -1;
 
   if (clientEditCount >= 0 && clientEditCount !== currentEditCount) {
-    logOperation({ timestamp: new Date().toISOString(), operation: 'update', serial, formCode, success: false, error: 'Optimistic lock conflict', conflict: true, durationMs: Math.round(performance.now() - startTime) });
+    logOperation({ timestamp: new Date().toISOString(), operation: 'update', serial, formCode, success: false, error: `Optimistic lock conflict`, conflict: true, durationMs: Math.round(performance.now() - startTime) });
     return {
       success: false,
       error: `Record ${serial} was modified by another user. Please reload and try again.`,
@@ -378,16 +336,13 @@ export async function updateRecord(
     return { success: false, error: `Validation failed: ${validation.errors.map(e => `${e.field}: ${e.message}`).join('; ')}` };
   }
 
-  // 5. Update in Supabase — using ID (not serial) for precise targeting
+  // 5. Update in Supabase
   try {
     const updateData = recordToRow(validation.sanitizedData);
-    // Remove id from update payload — we don't update the primary key
-    const { id: _id, ...updateFields } = updateData as DbRecord & { id?: string };
-
     const { error: updateError } = await supabase
       .from('records')
-      .update(updateFields)
-      .eq('id', (currentRow as DbRecord).id);
+      .update(updateData)
+      .eq('last_serial', serial);
 
     if (updateError) {
       throw new RecordStorageError(`Failed to update record: ${updateError.message}`, 'NETWORK', updateError);
@@ -412,86 +367,4 @@ export async function updateRecord(
   }
 }
 
-// ============================================================================
-// Soft delete — uses RPC function
-// ============================================================================
-
-export async function softDeleteRecord(id: string): Promise<StorageResult> {
-  const startTime = performance.now();
-
-  try {
-    const { data, error } = await supabase.rpc('soft_delete_record', { p_id: id });
-
-    if (error) {
-      throw new RecordStorageError(`Failed to delete record: ${error.message}`, 'NETWORK', error);
-    }
-
-    logOperation({ timestamp: new Date().toISOString(), operation: 'delete', serial: id, formCode: '?', success: true, durationMs: Math.round(performance.now() - startTime) });
-    return { success: true };
-  } catch (err) {
-    const errorMsg = err instanceof RecordStorageError ? err.message : `Unexpected error: ${(err as Error).message}`;
-    logOperation({ timestamp: new Date().toISOString(), operation: 'delete', serial: id, formCode: '?', success: false, error: errorMsg, durationMs: Math.round(performance.now() - startTime) });
-    if (err instanceof RecordStorageError) return { success: false, error: err.message };
-    return { success: false, error: `Unexpected error: ${(err as Error).message}` };
-  }
-}
-
-// ============================================================================
-// Status changes — uses direct update with audit
-// ============================================================================
-
-export async function changeRecordStatus(
-  serial: string,
-  newStatus: string,
-  reason?: string
-): Promise<StorageResult> {
-  const startTime = performance.now();
-
-  const { data: currentRow, error: fetchError } = await supabase
-    .from('records')
-    .select('*')
-    .eq('serial', serial)
-    .is('deleted_at', null)
-    .maybeSingle();
-
-  if (fetchError || !currentRow) {
-    return { success: false, error: `Record ${serial} not found.` };
-  }
-
-  const currentRecord = parseRowToRecord(currentRow as DbRecord);
-  if (!currentRecord) {
-    return { success: false, error: `Failed to parse record ${serial}.` };
-  }
-
-  const previousStatus = currentRecord._status;
-  const formCode = String(currentRecord.formCode);
-
-  try {
-    const { error: updateError } = await supabase
-      .from('records')
-      .update({ status: newStatus, edit_count: ((currentRow as DbRecord).edit_count ?? 0) + 1 })
-      .eq('id', (currentRow as DbRecord).id);
-
-    if (updateError) {
-      throw new RecordStorageError(`Failed to update status: ${updateError.message}`, 'NETWORK', updateError);
-    }
-
-    // Audit status change
-    appendAuditLog(serial, 'status_change', 'akh.dev185@gmail.com', ['status'], { status: previousStatus }, { status: newStatus }).catch(err => {
-      console.error('[recordStorage] Status audit log failed (non-blocking):', err);
-    });
-
-    logOperation({ timestamp: new Date().toISOString(), operation: 'update', serial, formCode, success: true, durationMs: Math.round(performance.now() - startTime) });
-    return { success: true, record: { ...currentRecord, _status: newStatus } };
-  } catch (err) {
-    const errorMsg = err instanceof RecordStorageError ? err.message : `Unexpected error: ${(err as Error).message}`;
-    logOperation({ timestamp: new Date().toISOString(), operation: 'update', serial, formCode, success: false, error: errorMsg, durationMs: Math.round(performance.now() - startTime) });
-    if (err instanceof RecordStorageError) return { success: false, error: err.message };
-    return { success: false, error: `Unexpected error: ${(err as Error).message}` };
-  }
-}
-
-// invalidateRowCache was a legacy React Query cache helper.
-// React Query now handles its own cache via queryClient.invalidateQueries().
-// Kept as no-op for API compatibility.
-export function invalidateRowCache(): void {}
+export { invalidateRowCache };

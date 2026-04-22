@@ -27,6 +27,8 @@ const RecordCreationPage = lazy(() => import("./pages/RecordCreationPage"));
 const RecordListPage = lazy(() => import("./pages/RecordListPage"));
 const RecordViewPage = lazy(() => import("./pages/RecordViewPage"));
 const DataIntegrityPage = lazy(() => import("./pages/DataIntegrityPage"));
+const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
+const ModulePage = lazy(() => import("./pages/ModulePage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -93,6 +95,10 @@ const App = () => {
                     <Route path="/procedures" element={<RequireAuth><PageBoundary><ProceduresPage /></PageBoundary></RequireAuth>} />
                     <Route path="/iso-manual" element={<RequireAuth><PageBoundary><ISOManualPage /></PageBoundary></RequireAuth>} />
                     <Route path="/forms" element={<RequireAuth><PageBoundary><FormsRegistryPage /></PageBoundary></RequireAuth>} />
+                    <Route path="/notifications" element={<RequireAuth><PageBoundary><NotificationsPage /></PageBoundary></RequireAuth>} />
+
+                    {/* Module pages — dedicated page per ISO section */}
+                    <Route path="/module/:moduleId" element={<RequireAuth><PageBoundary><ModulePage /></PageBoundary></RequireAuth>} />
 
                     {/* Record system — Supabase-backed via useRecordStorage */}
                     <Route path="/create" element={<RequireAuth><PageBoundary><RecordCreationPage /></PageBoundary></RequireAuth>} />
@@ -105,8 +111,7 @@ const App = () => {
                     {/* Admin */}
                     <Route path="/admin/accounts" element={<RequireRole roles={["admin"]}><PageBoundary><AdminAccounts /></PageBoundary></RequireRole>} />
 
-                    {/* Legacy redirects — old routes → new equivalents */}
-                    <Route path="/module/:moduleId" element={<Navigate to="/records" replace />} />
+                    {/* Legacy redirects */}
                     <Route path="/record/*" element={<Navigate to="/records" replace />} />
                     <Route path="/archive" element={<Navigate to="/records" replace />} />
 

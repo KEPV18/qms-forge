@@ -127,6 +127,7 @@ export function TopNav() {
 
   const isActive = (item: NavItem): boolean => {
     if (item.path && location.pathname === item.path) return true;
+    if (item.path && item.path.startsWith("/module/") && location.pathname.startsWith(item.path)) return true;
     if (item.id === "dashboard" && location.pathname === "/") return true;
     return false;
   };
@@ -181,17 +182,19 @@ export function TopNav() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-neon-cyan/8">
-        <div className="flex items-center h-14 px-4 gap-2">
+      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/40 shadow-sm shadow-black/5">
+        <div className="flex items-center h-14 px-4 md:px-6 lg:px-8 max-w-[1400px] mx-auto gap-2">
           {/* Left: Logo + Nav */}
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate("/")}
-              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
-            >
-              <img src={qmsLogo} alt="QMS" className="w-7 h-7 rounded-sm" />
-              <span className="hidden sm:inline text-sm font-bold tracking-tight">QMS Forge</span>
-            </button>
+             <button
+               onClick={() => navigate("/")}
+               className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+             >
+               <div className="w-7 h-7 rounded-sm overflow-hidden border border-primary/20 ring-1 ring-primary/5">
+                 <img src={qmsLogo} alt="QMS" className="w-full h-full object-contain" />
+               </div>
+               <span className="hidden sm:inline text-sm font-bold tracking-tight">QMS Forge</span>
+             </button>
 
             <nav className="hidden lg:flex items-center gap-0.5 ml-2">
               <DropdownMenu id="modules" label="Modules" icon={Layers} items={moduleItems} />

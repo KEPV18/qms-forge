@@ -20,6 +20,7 @@ import { getEditRiskLevel } from '../services/recordUtils';
 import { exportRecordToDocx } from '../services/docxExport';
 import { exportRecordToJson, exportRecordToCsv } from '../services/fileExport';
 import { toast } from 'sonner';
+import { AppShell } from '@/components/layout/AppShell';
 
 // ============================================================================
 // Constants
@@ -85,20 +86,29 @@ const RecordViewPage: React.FC = () => {
     ? 'clean'
     : integritySignals.some(s => s.severity === 'critical') ? 'critical' : 'warning';
 
+  const getBreadcrumbs = () => [
+    { label: "Dashboard", path: "/" },
+    { label: "Records", path: "/records" },
+    { label: decodedSerial },
+  ];
+
   // ─── Loading state ─────────────────────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="max-w-4xl mx-auto p-6 flex flex-col items-center justify-center py-20">
+      <AppShell breadcrumbs={getBreadcrumbs()}>
+      <div className="max-w-4xl mx-auto flex flex-col items-center justify-center py-20">
         <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
         <p className="text-muted-foreground">Loading record {decodedSerial}...</p>
       </div>
+      </AppShell>
     );
   }
 
   // ─── Error state ───────────────────────────────────────────────────────
   if (error) {
     return (
-      <div className="max-w-4xl mx-auto p-6 flex flex-col items-center justify-center py-20 ds-fade-enter">
+      <AppShell breadcrumbs={getBreadcrumbs()}>
+      <div className="max-w-4xl mx-auto flex flex-col items-center justify-center py-20 ds-fade-enter">
         <AlertTriangle className="w-12 h-12 text-destructive mb-4" />
         <h2 className="text-xl text-foreground mb-2">Failed to Load Record</h2>
         <p className="text-muted-foreground mb-4">{(error as Error).message}</p>
@@ -106,13 +116,15 @@ const RecordViewPage: React.FC = () => {
           <RefreshCw className="w-4 h-4" /> Retry
         </button>
       </div>
+      </AppShell>
     );
   }
 
   // ─── No record ─────────────────────────────────────────────────────────
   if (!originalRecord || !schema) {
     return (
-      <div className="max-w-4xl mx-auto p-6 flex flex-col items-center justify-center py-20 ds-fade-enter">
+      <AppShell breadcrumbs={getBreadcrumbs()}>
+      <div className="max-w-4xl mx-auto flex flex-col items-center justify-center py-20 ds-fade-enter">
         <FileText className="w-12 h-12 text-muted-foreground/40 mb-4" />
         <h2 className="text-xl text-foreground mb-2">Record Not Found</h2>
         <p className="text-muted-foreground mb-4">No record with serial <code className="text-primary font-mono">{decodedSerial}</code></p>
@@ -120,6 +132,7 @@ const RecordViewPage: React.FC = () => {
           <ArrowLeft className="w-4 h-4" /> Back to Records
         </button>
       </div>
+      </AppShell>
     );
   }
 
@@ -210,7 +223,8 @@ const RecordViewPage: React.FC = () => {
   // ─── Render ────────────────────────────────────────────────────────────
 
   return (
-    <div className="max-w-4xl mx-auto p-6 page-transition">
+    <AppShell breadcrumbs={getBreadcrumbs()}>
+    <div className="max-w-4xl mx-auto page-transition">
       {/* Top bar */}
       <div className="flex items-center justify-between mb-6">
         <button onClick={() => navigate('/records')} className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors ds-press rounded-sm px-2 py-1">
@@ -556,6 +570,7 @@ const RecordViewPage: React.FC = () => {
         </>
       )}
     </div>
+    </AppShell>
   );
 };
 
