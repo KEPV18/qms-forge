@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenantIdentity, useUpdateTenantIdentity, useInvalidateTenantIdentity } from "@/hooks/useTenantIdentity";
+import { useNotifications, SOUND_LEVELS, type SoundLevel } from "@/hooks/useNotifications";
 import { useTheme } from "@/hooks/useTheme";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
@@ -356,6 +357,9 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                                     })}
                                 </div>
                             </div>
+
+                            {/* Notification Sound */}
+                            <NotificationSoundSettings />
                         </div>
                     )}
 
@@ -462,6 +466,9 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                                     ))}
                                 </div>
                             </div>
+
+                            {/* Notification Sound */}
+                            <NotificationSoundSettings />
                         </div>
                     )}
                 </div>
@@ -646,6 +653,45 @@ function CompanySettingsTab() {
                         {companyName || 'QMS Forge'}
                     </span>
                 </div>
+            </div>
+        </div>
+    );
+}
+
+// ============================================================================
+// Notification Sound Settings — embedded in Appearance tab
+// ============================================================================
+
+function NotificationSoundSettings() {
+    const { soundLevel, setSoundLevel } = useNotifications();
+
+    return (
+        <div className="space-y-3">
+            <div className="flex items-center gap-2">
+                <Bell className="w-4 h-4 text-muted-foreground" />
+                <Label className="text-sm font-semibold">Notification Sound</Label>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+                {(Object.entries(SOUND_LEVELS) as [SoundLevel, { label: string; description: string }][]).map(([level, config]) => (
+                    <button
+                        key={level}
+                        onClick={() => setSoundLevel(level)}
+                        className={cn(
+                            "flex flex-col items-center gap-1 p-3 rounded-sm border text-center transition-all",
+                            soundLevel === level
+                                ? "border-primary bg-primary/5 ring-1 ring-primary"
+                                : "border-border hover:border-primary/30 hover:bg-muted/30"
+                        )}
+                    >
+                        <span className="text-lg">
+                            {level === 'off' ? '🔇' : level === 'critical_only' ? '🔔' : '🔔🔔'}
+                        </span>
+                        <span className={cn("text-xs font-semibold", soundLevel === level ? "text-primary" : "text-muted-foreground")}>
+                            {config.label}
+                        </span>
+                        <span className="text-[9px] text-muted-foreground leading-tight">{config.description}</span>
+                    </button>
+                ))}
             </div>
         </div>
     );

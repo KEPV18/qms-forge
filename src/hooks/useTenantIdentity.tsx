@@ -8,6 +8,7 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { emitEvent, Events } from '@/services/eventBus';
 
 // ============================================================================
 // Types
@@ -64,8 +65,8 @@ async function fetchTenantSettings(): Promise<TenantIdentity> {
     .maybeSingle();
 
   if (error) {
-    console.error('[tenantIdentity] Failed to fetch:', error.message);
-    return DEFAULT_IDENTITY;
+    // Let React Query retry — don't swallow the error as default identity
+    throw new Error(`[tenantIdentity] ${error.message}`);
   }
 
   if (!data) {
@@ -98,7 +99,9 @@ export function TenantIdentityProvider({ children }: { children: React.ReactNode
     queryFn: fetchTenantSettings,
     staleTime: 60_000,       // 1 minute — branding doesn't change often
     gcTime: 30 * 60_000,     // 30 minutes
+    retry: 3,                 // Retry on auth lock timeouts
     refetchOnWindowFocus: true,
+    placeholderData: DEFAULT_IDENTITY,
   });
 
   const identity = useMemo(() => data || DEFAULT_IDENTITY, [data]);
@@ -162,6 +165,12 @@ export function useUpdateTenantIdentity() {
 
     // Invalidate cache to force UI refresh
     invalidate();
+
+    // Emit tenant event (non-blocking)
+    emitEvent(Events.tenantSettingsUpdated(
+      updates.companyName || undefined,
+      undefined // userId not easily available here
+    )).catch(() => {});
   };
 
   return { updateIdentity };

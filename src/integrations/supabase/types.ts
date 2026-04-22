@@ -491,37 +491,52 @@ export type Database = {
       }
       notifications: {
         Row: {
+          actor_id: string | null
+          category: string | null
           created_at: string | null
           created_by: string | null
           data: Json | null
+          event_type: string | null
           id: string
           link: string | null
           message: string
+          priority: string | null
           read: boolean | null
+          target_id: string | null
           title: string
           type: string | null
           user_id: string
         }
         Insert: {
+          actor_id?: string | null
+          category?: string | null
           created_at?: string | null
           created_by?: string | null
           data?: Json | null
+          event_type?: string | null
           id?: string
           link?: string | null
           message: string
+          priority?: string | null
           read?: boolean | null
+          target_id?: string | null
           title: string
           type?: string | null
           user_id: string
         }
         Update: {
+          actor_id?: string | null
+          category?: string | null
           created_at?: string | null
           created_by?: string | null
           data?: Json | null
+          event_type?: string | null
           id?: string
           link?: string | null
           message?: string
+          priority?: string | null
           read?: boolean | null
+          target_id?: string | null
           title?: string
           type?: string | null
           user_id?: string

@@ -12,6 +12,7 @@ import { getFormSchema } from '../data/formSchemas';
 import { getNextSerial, isSerialUnique } from '../schemas/serialAndDate';
 import { appendAuditLog, computeDiff } from './auditLog';
 import { log } from './logger';
+import { emitEvent, Events } from './eventBus';
 import type { RecordData } from '../components/forms/DynamicFormRenderer';
 
 // ============================================================================
@@ -349,6 +350,13 @@ export async function createRecord(formData: RecordData): Promise<StorageResult>
     log.validation.passed(formCode, actualSerial);
     log.record.created(formCode, actualSerial, Math.round(performance.now() - startTime));
 
+    // 8. Event emission (non-blocking — fire and forget)
+    emitEvent(Events.recordCreated(
+      actualSerial, formCode, data.formName as string || '', data._createdBy as string
+    )).catch(err => {
+      console.warn('[recordStorage] Event emission failed (non-blocking):', err);
+    });
+
     // Update the data object with actual serial for return
     data.serial = actualSerial;
     return { success: true, record: data };
@@ -449,6 +457,16 @@ export async function updateRecord(
     }
 
     log.record.updated(formCode, serial, Math.round(performance.now() - startTime), undefined, { changedFields: diff.changedFields });
+
+    // 7. Event emission (non-blocking)
+    if (diff.changedFields.length > 0) {
+      emitEvent(Events.recordUpdated(
+        serial, formCode, merged.formName as string || '', diff.changedFields, merged._lastModifiedBy as string
+      )).catch(err => {
+        console.warn('[recordStorage] Update event emission failed (non-blocking):', err);
+      });
+    }
+
     return { success: true, record: validation.sanitizedData };
   } catch (err) {
     const errorMsg = err instanceof RecordStorageError ? err.message : `Unexpected error: ${(err as Error).message}`;
@@ -473,6 +491,15 @@ export async function softDeleteRecord(id: string): Promise<StorageResult> {
     }
 
     logOperation({ timestamp: new Date().toISOString(), operation: 'delete', serial: id, formCode: '?', success: true, durationMs: Math.round(performance.now() - startTime) });
+
+    // Event emission (non-blocking) — id used as target reference
+    emitEvent({
+      action: 'delete', category: 'records', priority: 'important',
+      eventType: 'record.deleted', title: 'Record Deleted',
+      message: `A record was soft-deleted (id: ${id.substring(0, 8)}...).`,
+      targetId: id, metadata: { recordId: id },
+    }).catch(() => {});
+
     return { success: true };
   } catch (err) {
     const errorMsg = err instanceof RecordStorageError ? err.message : `Unexpected error: ${(err as Error).message}`;
