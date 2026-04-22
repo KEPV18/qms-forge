@@ -11,6 +11,7 @@ import { preWriteValidation } from './preWriteValidation';
 import { getFormSchema } from '../data/formSchemas';
 import { getNextSerial, isSerialUnique } from '../schemas/serialAndDate';
 import { appendAuditLog, computeDiff } from './auditLog';
+import { log } from './logger';
 import type { RecordData } from '../components/forms/DynamicFormRenderer';
 
 // ============================================================================
@@ -228,6 +229,7 @@ export async function createRecord(formData: RecordData): Promise<StorageResult>
   const startTime = performance.now();
   const formCode = formData.formCode as string;
   if (!formCode) {
+    log.record.failed('?', '?', 'formCode is required');
     logOperation({ timestamp: new Date().toISOString(), operation: 'create', serial: '?', formCode: '?', success: false, error: 'formCode is required', durationMs: Math.round(performance.now() - startTime) });
     return { success: false, error: 'formCode is required for record creation' };
   }
@@ -235,7 +237,8 @@ export async function createRecord(formData: RecordData): Promise<StorageResult>
   // 1. Pre-write validation
   const validation = preWriteValidation(formCode, formData, 'create');
   if (!validation.valid || !validation.sanitizedData) {
-    console.error('[recordStorage] Pre-write validation failed:', validation.errors);
+    log.validation.rejected(formCode, validation.errors.map(e => e.field));
+    log.record.failed(formCode, '?', `Validation: ${validation.errors.map(e => e.message).join('; ')}`);
     logOperation({ timestamp: new Date().toISOString(), operation: 'create', serial: '?', formCode, success: false, error: `Validation: ${validation.errors.map(e => e.message).join('; ')}`, durationMs: Math.round(performance.now() - startTime) });
     return {
       success: false,
@@ -304,9 +307,12 @@ export async function createRecord(formData: RecordData): Promise<StorageResult>
     const allFields = Object.keys(data).filter(k => !k.startsWith('_'));
     const newFieldValues: Record<string, unknown> = {};
     for (const key of allFields) { newFieldValues[key] = data[key]; }
-    appendAuditLog(serial, 'create', data._createdBy as string || 'unknown', allFields, {}, newFieldValues).catch(err => {
+    appendAuditLog(serial, 'create', data._createdBy as string || 'unknown', allFields, {}, newFieldValues, formCode).catch(err => {
+      log.audit.failed(serial, String(err));
       console.error('[recordStorage] Audit log failed (non-blocking):', err);
     });
+    log.validation.passed(formCode, serial);
+    log.record.created(formCode, serial, Math.round(performance.now() - startTime));
 
     return { success: true, record: data };
   } catch (err) {
@@ -349,6 +355,7 @@ export async function updateRecord(
   const clientEditCount = changes._editCount !== undefined ? Number(changes._editCount) : -1;
 
   if (clientEditCount >= 0 && clientEditCount !== currentEditCount) {
+    log.record.conflict(formCode, serial, clientEditCount, currentEditCount);
     logOperation({ timestamp: new Date().toISOString(), operation: 'update', serial, formCode, success: false, error: 'Optimistic lock conflict', conflict: true, durationMs: Math.round(performance.now() - startTime) });
     return {
       success: false,
@@ -398,11 +405,13 @@ export async function updateRecord(
     // 6. Audit log
     const diff = computeDiff(currentRecord, validation.sanitizedData);
     if (diff.changedFields.length > 0) {
-      appendAuditLog(serial, 'update', merged._lastModifiedBy as string || 'unknown', diff.changedFields, diff.previousValues, diff.newValues).catch(err => {
+      appendAuditLog(serial, 'update', merged._lastModifiedBy as string || 'unknown', diff.changedFields, diff.previousValues, diff.newValues, formCode).catch(err => {
+        log.audit.failed(serial, String(err));
         console.error('[recordStorage] Audit log failed (non-blocking):', err);
       });
     }
 
+    log.record.updated(formCode, serial, Math.round(performance.now() - startTime), undefined, { changedFields: diff.changedFields });
     return { success: true, record: validation.sanitizedData };
   } catch (err) {
     const errorMsg = err instanceof RecordStorageError ? err.message : `Unexpected error: ${(err as Error).message}`;
