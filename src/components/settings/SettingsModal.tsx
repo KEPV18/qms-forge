@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenantIdentity, useUpdateTenantIdentity, useInvalidateTenantIdentity } from "@/hooks/useTenantIdentity";
-import { useNotifications, SOUND_LEVELS, type SoundLevel } from "@/hooks/useNotifications";
+import { useNotifications, SOUND_LEVELS, type SoundLevel, testNotificationSound, type NotificationPriority } from "@/hooks/useNotifications";
 import { useTheme } from "@/hooks/useTheme";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
@@ -693,6 +693,24 @@ function NotificationSoundSettings() {
                     </button>
                 ))}
             </div>
+            {/* Test Sounds */}
+            {soundLevel !== 'off' && (
+                <div className="flex items-center gap-2 pt-1">
+                    <span className="text-[11px] text-muted-foreground">Test:</span>
+                    <button
+                        onClick={() => testNotificationSound('critical')}
+                        className="text-[10px] px-2 py-1 rounded-sm bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 transition-colors"
+                    >
+                        🔴 Critical
+                    </button>
+                    <button
+                        onClick={() => testNotificationSound('important')}
+                        className="text-[10px] px-2 py-1 rounded-sm bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/20 transition-colors"
+                    >
+                        🟡 Important
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

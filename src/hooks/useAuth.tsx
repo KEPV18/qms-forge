@@ -1,6 +1,7 @@
 import * as React from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
+import { emitEvent } from "@/services/eventBus";
 
 type ProfileRow = Tables<'profiles'>;
 
@@ -557,6 +558,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(u);
         saveSession(u.id, u.role, u.name);
         setSupabaseDisabled(false);
+        // Event: user login (non-blocking)
+        emitEvent({
+          action: 'login', category: 'security', priority: 'important',
+          eventType: 'user.login', title: 'User Login',
+          message: `${u.name} logged in (${u.role})`,
+          targetId: u.id, metadata: { role: u.role, backend },
+        }).catch(() => {});
         return { ok: true, code: "ok", message: "Logged in successfully", user: u, backend };
 
       } catch (err) {
@@ -600,6 +608,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(u);
             saveSession(u.id, u.role, u.name);
             setSupabaseDisabled(false);
+            emitEvent({
+              action: 'login', category: 'security', priority: 'important',
+              eventType: 'user.login_fallback', title: 'User Login (Fallback)',
+              message: `${u.name} logged in via password fallback (${u.role})`,
+              targetId: u.id, metadata: { role: u.role, backend },
+            }).catch(() => {});
             return { ok: true, code: "ok", message: "Logged in successfully", user: u, backend };
           }
         } catch (fallbackErr) {
@@ -619,6 +633,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUsers(users.map(x => (x.id === u.id ? u : x)));
           setUser(u);
           saveSession(u.id, u.role, u.name);
+          emitEvent({
+            action: 'login', category: 'security', priority: 'important',
+            eventType: 'user.login_local', title: 'User Login (Local)',
+            message: `${u.name} logged in locally (${u.role})`,
+            targetId: u.id, metadata: { role: u.role, backend: 'local' },
+          }).catch(() => {});
           return { ok: true, code: "ok", message: "Logged in successfully", user: u, backend: "local" };
         }
       }
@@ -738,6 +758,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Update Roles
       if (typeof updates.role === "string" && !failed) {
         const roleToSave = updates.role.toLowerCase();
+        const previousRole = users.find(u => u.id === id)?.role;
         try {
           // Check if it's one of the supported roles
           const validRoles = ["admin", "manager", "auditor", "user", "moderator"];
@@ -777,6 +798,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (previousUser && user?.id === id) setUser(previousUser);
         throw new Error("Update failed on server. Please check your permissions or network.");
       } else {
+        // Event: role change (non-blocking)
+        if (typeof updates.role === "string" && previousRole && updates.role !== previousRole) {
+          const targetName = users.find(u => u.id === id)?.name || id;
+          emitEvent({
+            action: 'role_change', category: 'security', priority: 'critical',
+            eventType: 'user.role_changed', title: 'User Role Changed',
+            message: `${targetName}: ${previousRole} → ${updates.role}`,
+            targetId: id, metadata: { previousRole, newRole: updates.role, changedBy: user?.name },
+          }).catch(() => {});
+        }
         await reloadUsers();
       }
     }

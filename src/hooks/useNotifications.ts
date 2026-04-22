@@ -60,23 +60,43 @@ function shouldPlaySound(priority: NotificationPriority, level: SoundLevel): boo
   return false;
 }
 
-// Simple browser beep using Web Audio API
-function playNotificationBeep() {
+// Browser audio using Web Audio API — different tones per priority
+function playNotificationSound(priority: NotificationPriority) {
   try {
     const ctx = new AudioContext();
     const oscillator = ctx.createOscillator();
     const gain = ctx.createGain();
     oscillator.connect(gain);
     gain.connect(ctx.destination);
-    oscillator.frequency.value = 880; // A5 note
-    oscillator.type = 'sine';
-    gain.gain.value = 0.15; // Subtle volume
-    oscillator.start();
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-    oscillator.stop(ctx.currentTime + 0.4);
+
+    if (priority === 'critical') {
+      // Urgent double-beep: two short high-pitched tones
+      oscillator.frequency.value = 932; // Bb5
+      oscillator.type = 'square';
+      gain.gain.value = 0.12;
+      oscillator.start(ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.12, ctx.currentTime + 0.2);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+      oscillator.stop(ctx.currentTime + 0.4);
+    } else if (priority === 'important') {
+      // Single clean chime: sine wave descending
+      oscillator.frequency.value = 660; // E5
+      oscillator.type = 'sine';
+      gain.gain.value = 0.1;
+      oscillator.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.3);
+      oscillator.start();
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+      oscillator.stop(ctx.currentTime + 0.5);
+    }
   } catch {
     // Audio not supported or blocked — silent fail
   }
+}
+
+// Test function — plays sound for each priority (used by settings)
+export function testNotificationSound(priority: NotificationPriority) {
+  playNotificationSound(priority);
 }
 
 // ============================================================================
@@ -114,7 +134,7 @@ export function useNotifications() {
         const newest = newNotifications[0];
         const level = getStoredSoundLevel();
         if (shouldPlaySound(newest.priority, level)) {
-          playNotificationBeep();
+          playNotificationSound(newest.priority);
         }
       }
       previousCountRef.current = newNotifications.length;
