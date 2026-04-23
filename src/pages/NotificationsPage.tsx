@@ -234,9 +234,10 @@ export default function NotificationsPage() {
 
         {/* ─── Content ──────────────────────────────────── */}
         {loading ? (
-          <StateScreen icon={Bell} title="Loading..." />
+          <StateScreen state="loading" icon={Bell} title="Loading..." />
         ) : filtered.length === 0 ? (
           <StateScreen
+            state="empty"
             icon={Bell}
             title={search ? "No matches" : "No notifications"}
             message={search ? "Try a different search term." : filter !== "all" ? "No notifications in this category." : "You'll see system alerts and updates here."}

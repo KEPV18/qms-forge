@@ -1,11 +1,12 @@
 import { cn } from "@/lib/utils";
-import { Loader2, AlertTriangle, Inbox, CheckCircle } from "lucide-react";
+import { type LucideIcon, Loader2, AlertTriangle, Inbox, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type StateType = "loading" | "empty" | "error" | "success" | "critical";
 
 interface StateScreenProps {
-  state: StateType;
+  state?: StateType;
+  icon?: LucideIcon;
   title?: string;
   message?: string;
   action?: {
@@ -23,9 +24,9 @@ const stateConfig: Record<StateType, { icon: typeof Loader2; iconClass: string; 
   critical: { icon: AlertTriangle, iconClass: "text-destructive", titleDefault: "Action required" },
 };
 
-export function StateScreen({ state, title, message, action, className }: StateScreenProps) {
+export function StateScreen({ state = "empty", icon: CustomIcon, title, message, action, className }: StateScreenProps) {
   const config = stateConfig[state];
-  const Icon = config.icon;
+  const Icon = CustomIcon || config.icon;
 
   return (
     <div className={cn(
