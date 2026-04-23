@@ -167,9 +167,11 @@ export function useUpdateTenantIdentity() {
     invalidate();
 
     // Emit tenant event (non-blocking)
-    emitEvent(Events.tenantSettingsUpdated(
-      updates.companyName || undefined,
-      undefined // userId not easily available here
+    emitEvent(Events.tenantSettingsChanged(
+      'companyName',
+      existing?.company_name || '',
+      updates.company_name || '',
+      undefined
     )).catch(() => {});
   };
 

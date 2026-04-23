@@ -2,7 +2,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, ChevronDown,
   Search, FileText, Loader2,
-  Menu, X, Layers, Wrench, Briefcase,
+  Menu, X, Layers, Wrench, Briefcase, Shield, Activity,
 } from "lucide-react";
 import { UserDropdown } from "./UserDropdown";
 import { Input } from "@/components/ui/input";
@@ -205,6 +205,21 @@ export function TopNav() {
               <DropdownMenu id="docs" label="Manual" icon={FileText} items={docsItems} />
               <DropdownMenu id="tools" label="Tools" icon={Wrench} items={toolItems} />
 
+              {user?.role === "admin" && (
+                <button
+                  onClick={() => navigate("/admin/accounts")}
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-1.5 text-sm rounded-md transition-colors",
+                    location.pathname.startsWith("/admin") 
+                      ? "bg-accent/20 text-accent-foreground font-medium"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  )}
+                >
+                  <Shield className="w-4 h-4" />
+                  <span className="hidden lg:inline">Admin</span>
+                </button>
+              )}
+
               {projects.length > 0 && (
                 <button
                   onClick={() => navigate("/projects")}
@@ -349,6 +364,14 @@ export function TopNav() {
           ))}
 
           <MobileNavItem icon={Briefcase} label="Projects" active={location.pathname.startsWith("/project")} onClick={() => { navigate("/projects"); setIsMobileOpen(false); }} />
+
+          {user?.role === "admin" && (
+            <>
+              <div className="px-3 pt-4 pb-2 text-[9px] font-mono font-bold text-muted-foreground uppercase tracking-widest">Admin</div>
+              <MobileNavItem icon={Shield} label="Admin Panel" active={location.pathname.startsWith("/admin")} onClick={() => { navigate("/admin/accounts"); setIsMobileOpen(false); }} />
+              <MobileNavItem icon={Activity} label="Activity Log" active={location.pathname === "/activity"} onClick={() => { navigate("/activity"); setIsMobileOpen(false); }} />
+            </>
+          )}
         </nav>
 
         {/* Mobile footer */}

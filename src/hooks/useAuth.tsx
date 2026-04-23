@@ -657,6 +657,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.warn("[AUTH] Supabase signOut error:", err);
       }
     }
+    // Event: user logout (fire before page reload)
+    if (user) {
+      emitEvent({
+        action: 'logout', category: 'security', priority: 'info',
+        eventType: 'user.logout', title: 'User Logout',
+        message: `${user.name} logged out`,
+        targetId: user.id, metadata: { role: user.role },
+      }).catch(() => {});
+    }
     setUser(null);
     saveSession(null);
     // Clear all potential auth data from localStorage
