@@ -54,13 +54,11 @@ function PageLoader() {
 // Page-level error boundary with retry button
 function PageBoundary({ children }: { children: React.ReactNode }) {
   return (
-    <ErrorBoundary fallback={
-      <ErrorFallback
-        title="Page Error"
-        message="Something went wrong on this page. Try refreshing or go back to the dashboard."
-        onRetry={() => window.location.reload()}
-      />
-    }>
+    <ErrorBoundary
+      onError={(error, errorInfo) => {
+        console.error('[PageBoundary]', error.message, errorInfo.componentStack);
+      }}
+    >
       {children}
     </ErrorBoundary>
   );

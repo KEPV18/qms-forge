@@ -23,6 +23,8 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
+    // Expose error message for debugging (visible in ErrorFallback)
+    (this.state as any).__errorDetail = error.message + '\n' + (errorInfo.componentStack || '');
     this.props.onError?.(error, errorInfo);
   }
 
@@ -32,6 +34,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
         return this.props.fallback;
       }
 
+      const detail = (this.state as any).__errorDetail || '';
       return (
         <div className="flex items-center justify-center min-h-[200px] p-4">
           <div className="text-center space-y-4">
@@ -41,8 +44,13 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
             <p className="text-muted-foreground text-sm max-w-md">
               {this.state.error?.message || 'An unexpected error occurred'}
             </p>
+            {detail && (
+              <pre className="text-xs text-muted-foreground bg-muted/30 p-2 rounded text-left overflow-auto max-h-40 max-w-lg">
+                {detail}
+              </pre>
+            )}
             <button
-              onClick={() => this.setState({ hasError: false, error: undefined })}
+              onClick={() => this.setState({ hasError: false, error: undefined } as any)}
               className="px-4 py-2 bg-primary text-primary-foreground rounded-sm hover:opacity-90 transition-opacity"
             >
               Try Again

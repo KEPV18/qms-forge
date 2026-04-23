@@ -35,3 +35,4 @@ dist-ssr
 skills/
 skills-lock.json
 supabase/.temp/
+.vercel
