@@ -144,61 +144,19 @@ export function useNotifications() {
     setLoading(false);
   }, []);
 
-  // Realtime subscription — graceful fallback if WebSocket fails
-  // Supabase Realtime WebSocket can fail due to auth/cloudflare issues.
-  // We subscribe but don't crash if it fails — polling backs it up.
+  // Notification refresh — polling-based (Realtime WebSocket disabled)
+  // Supabase Realtime WebSocket fails with "HTTP Authentication failed" when
+  // connecting through Cloudflare. The __cf_bm cookie rejection and auth
+  // errors in console come from WebSocket connection attempts.
+  // Using polling until Realtime auth is properly configured.
   useEffect(() => {
     fetchNotifications();
 
-    let channel: ReturnType<typeof supabase.channel> | null = null;
-    let pollInterval: ReturnType<typeof setInterval> | null = null;
-    let realtimeFailed = false;
-
-    try {
-      const channelId = `notif-rt-${Date.now()}`;
-      channel = supabase
-        .channel(channelId, {
-          config: { broadcast: { self: true } },
-        })
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'notifications',
-        }, () => {
-          fetchNotifications();
-        })
-        .subscribe((status, err) => {
-          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            realtimeFailed = true;
-            log.warn('notifications', `Realtime ${status}: ${err?.message ?? 'unknown'}. Polling fallback active.`);
-            // Start polling fallback if not already running
-            if (!pollInterval) {
-              pollInterval = setInterval(fetchNotifications, 30_000);
-            }
-          }
-          if (status === 'SUBSCRIBED') {
-            realtimeFailed = false;
-            log.info('notifications', 'Realtime subscribed successfully');
-          }
-        });
-    } catch {
-      realtimeFailed = true;
-      log.warn('notifications', 'Realtime init failed. Polling fallback active.');
-    }
-
-    // Always start a gentle poll as safety net (every 60s, less aggressive than 30s fallback)
-    // This ensures notifications stay fresh even if realtime silently breaks
-    if (!pollInterval) {
-      pollInterval = setInterval(fetchNotifications, 60_000);
-    }
+    // Poll every 30s for notification updates
+    const pollInterval = setInterval(fetchNotifications, 30_000);
 
     return () => {
-      if (channel) {
-        supabase.removeChannel(channel);
-      }
-      if (pollInterval) {
-        clearInterval(pollInterval);
-      }
+      clearInterval(pollInterval);
     };
   }, [fetchNotifications]);
 
