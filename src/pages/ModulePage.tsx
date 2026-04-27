@@ -43,11 +43,12 @@ export default function ModulePage() {
 
   // Records for the currently selected form
   const selectedFormRecords = useMemo(() => {
-    if (!selectedForm) return [];
+    const form = selectedForm ?? (sectionForms[0]?.code ?? null);
+    if (!form) return [];
     return sectionRecords
-      .filter(r => r.formCode === selectedForm)
+      .filter(r => r.formCode === form)
       .sort((a, b) => ((b._createdAt as string) || '').localeCompare((a._createdAt as string) || ''));
-  }, [selectedForm, sectionRecords]);
+  }, [selectedForm, sectionForms, sectionRecords]);
 
   const formCodesWithRecords = useMemo(() => {
     const codes = new Set(sectionRecords.map(r => r.formCode as string));
