@@ -52,6 +52,9 @@ const RecordCreationPage: React.FC = () => {
   );
   const [createError, setCreateError] = useState<string | null>(null);
 
+  const sections = getFormSections();
+  const schema = selectedCode ? getFormSchema(selectedCode) : null;
+
   // Template form data for DOCX-accurate form editing
   const [formData, setFormData] = useState<Record<string, unknown>>({});
 
@@ -84,12 +87,6 @@ const RecordCreationPage: React.FC = () => {
       },
     });
   }, [schema, selectedCode, formData, createMutation]);
-
-  // If we came from a module but no formCode, skip straight to form list (no section picker)
-  // If we came from /create directly with nothing, show section picker
-
-  const sections = getFormSections();
-  const schema = selectedCode ? getFormSchema(selectedCode) : null;
 
   // Filter forms based on active section
   const filteredForms = useMemo(() => {
