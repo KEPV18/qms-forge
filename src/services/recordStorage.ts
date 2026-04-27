@@ -108,6 +108,7 @@ function parseRowToRecord(row: DbRecord): RecordData | null {
   // Inject system metadata into the record data structure
   // (FormData contains business fields; metadata is on the row itself)
   const recordData: RecordData = {
+    id: row.id || '',          // Supabase UUID — needed for delete RPC
     serial: row.serial || row.form_code,
     formCode: row.form_code,
     formName: row.form_name || '',

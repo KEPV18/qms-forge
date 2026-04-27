@@ -229,22 +229,17 @@ const RecordViewPage: React.FC = () => {
   };
 
   const handleDelete = async () => {
-    console.log('[DELETE] handleDelete called, confirmDelete:', confirmDelete);
     if (!confirmDelete) {
       setConfirmDelete(true);
       return;
     }
-    const recordId = (originalRecord as Record<string, unknown>)?.id as string;
-    console.log('[DELETE] recordId:', recordId, 'originalRecord keys:', originalRecord ? Object.keys(originalRecord as Record<string, unknown>).join(',') : 'null');
+    const recordId = originalRecord?.id as string | undefined;
     if (!recordId) { toast.error('Cannot delete: record ID not found'); return; }
     try {
-      console.log('[DELETE] calling mutateAsync with id:', recordId);
       await deleteMutation.mutateAsync(recordId);
-      console.log('[DELETE] success, navigating to /records');
       setConfirmDelete(false);
       navigate('/records');
-    } catch (err) {
-      console.error('[DELETE] error:', err);
+    } catch {
       // Error handled by mutation onError
     }
   };
