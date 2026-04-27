@@ -14,6 +14,7 @@ import { getFormSchema } from '../data/formSchemas';
 import { isoToDisplay } from '../schemas';
 import DynamicFormRenderer, { type RecordData } from '../components/forms/DynamicFormRenderer';
 import { SchemaDrivenRecordView } from '../components/forms/SchemaDrivenRecordView';
+import { getFormTemplateComponent } from '@/components/forms/templates';
 import { useRecord, useUpdateRecord, useRecords } from '../hooks/useRecordStorage';
 import { useAuditLog } from '../hooks/useAuditLog';
 import { evaluateRulesForRecord, getSeverityColor, type RuleSeverity } from '../services/ruleEngine';
@@ -420,10 +421,23 @@ const RecordViewPage: React.FC = () => {
 
       {mode === 'view' ? (
         <div className="ds-card p-6 page-transition">
-          <SchemaDrivenRecordView
-            formCode={originalRecord.formCode as string}
-            data={originalRecord as unknown as RecordData}
-          />
+          {(() => {
+            const TemplateComponent = getFormTemplateComponent(originalRecord.formCode as string);
+            if (TemplateComponent) {
+              return (
+                <TemplateComponent
+                  data={originalRecord as unknown as Record<string, unknown>}
+                  isTemplate={false}
+                />
+              );
+            }
+            return (
+              <SchemaDrivenRecordView
+                formCode={originalRecord.formCode as string}
+                data={originalRecord as unknown as RecordData}
+              />
+            );
+          })()}
         </div>
       ) : mode === 'history' ? (
         <div className="ds-card p-6 page-transition">

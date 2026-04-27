@@ -13,6 +13,7 @@ import {
   ChevronRight, ArrowRight, BarChart3, Shield, Clock,
   FolderOpen, Inbox, ListChecks, LayoutList, Layers,
 } from "lucide-react";
+import { getFormTemplateComponent } from "@/components/forms/templates";
 import { StateScreen } from "@/components/ui/StateScreen";
 
 function getModuleById(id: string): ModuleConfig | undefined {
@@ -293,83 +294,60 @@ export default function ModulePage() {
                 {/* ─── Tab Content ─────────────────────────── */}
                 <div className="flex-1 overflow-y-auto">
                   {rightTab === "template" ? (
-                    /* ===== TEMPLATE TAB ===== */
-                    <div className="p-5 space-y-4">
-                      {/* Description */}
-                      <div>
-                        <h4 className="text-sm font-semibold text-foreground mb-1">About this form</h4>
-                        <p className="text-xs text-muted-foreground">{selectedFormSchema.description}</p>
-                        <div className="flex items-center gap-3 mt-2 flex-wrap">
-                          <Badge variant="outline" className="text-[10px] gap-1">
-                            <Clock className="w-2.5 h-2.5" /> {selectedFormSchema.frequency}
-                          </Badge>
-                          <Badge variant="outline" className="text-[10px]">{selectedFormSchema.fields.length} fields</Badge>
-                          <Badge variant="outline" className="text-[10px]">{selectedFormSchema.sectionName}</Badge>
-                          <Badge variant="outline" className={cn(
-                            "text-[10px]",
-                            selectedFormSchema.importance === "Critical" ? "border-red-500/30 text-red-400" :
-                            selectedFormSchema.importance === "High" ? "border-amber-500/30 text-amber-400" : ""
-                          )}>
-                            {selectedFormSchema.importance}
-                          </Badge>
-                        </div>
+                    /* ===== TEMPLATE TAB — DOCX-accurate form layout ===== */
+                    <div className="p-4 space-y-4">
+                      {/* Meta badges */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="outline" className="text-[10px] gap-1">
+                          <Clock className="w-2.5 h-2.5" /> {selectedFormSchema.frequency}
+                        </Badge>
+                        <Badge variant="outline" className="text-[10px]">{selectedFormSchema.fields.length} fields</Badge>
+                        <Badge variant="outline" className="text-[10px]">{selectedFormSchema.sectionName}</Badge>
+                        <Badge variant="outline" className={cn(
+                          "text-[10px]",
+                          selectedFormSchema.importance === "Critical" ? "border-red-500/30 text-red-400" :
+                          selectedFormSchema.importance === "High" ? "border-amber-500/30 text-amber-400" : ""
+                        )}>
+                          {selectedFormSchema.importance}
+                        </Badge>
                       </div>
 
-                      {/* Field list */}
-                      <div>
-                        <h4 className="text-sm font-semibold text-foreground mb-2">Fields ({selectedFormSchema.fields.length})</h4>
-                        <div className="space-y-1">
-                          {selectedFormSchema.fields.map((field: FieldSchema, idx: number) => {
-                            // Skip heading-type fields — show them as section dividers
-                            if (field.type === "heading") {
+                      {/* DOCX-accurate template or schema fallback */}
+                      {(() => {
+                        const TemplateComponent = getFormTemplateComponent(effectiveSelectedForm ?? "");
+                        if (TemplateComponent) {
+                          return <TemplateComponent isTemplate={true} />;
+                        }
+                        // Fallback: schema-driven field list for forms without a dedicated template
+                        return (
+                          <div className="space-y-1">
+                            <h4 className="text-sm font-semibold text-foreground mb-2">Fields ({selectedFormSchema.fields.length})</h4>
+                            {selectedFormSchema.fields.map((field: FieldSchema, idx: number) => {
+                              if (field.type === "heading") {
+                                return (
+                                  <div key={field.key} className="pt-3 pb-1">
+                                    <span className="text-xs font-semibold text-foreground/80">{field.label}</span>
+                                  </div>
+                                );
+                              }
                               return (
-                                <div key={field.key} className="pt-3 pb-1">
-                                  <span className="text-xs font-semibold text-foreground/80">{field.label}</span>
+                                <div
+                                  key={field.key}
+                                  className={cn(
+                                    "flex items-center gap-2 px-3 py-1.5 rounded-sm text-xs",
+                                    idx % 2 === 0 ? "bg-muted/20" : ""
+                                  )}
+                                >
+                                  <span className="font-medium text-foreground/80">{field.label}</span>
+                                  <span className="text-muted-foreground/40 font-mono">{field.key}</span>
+                                  {field.required && <span className="text-red-400 text-[10px] ml-0.5">*</span>}
+                                  <Badge variant="outline" className="text-[9px] ml-auto py-0">{field.type}</Badge>
                                 </div>
                               );
-                            }
-                            return (
-                              <div
-                                key={field.key}
-                                className={cn(
-                                  "flex items-center gap-2 px-3 py-1.5 rounded-sm text-xs",
-                                  idx % 2 === 0 ? "bg-muted/20" : ""
-                                )}
-                              >
-                                {/* Type icon */}
-                                {field.type === "text" || field.type === "textarea" ? (
-                                  <FileText className="w-3 h-3 text-muted-foreground/50" />
-                                ) : field.type === "number" ? (
-                                  <BarChart3 className="w-3 h-3 text-muted-foreground/50" />
-                                ) : field.type === "date" ? (
-                                  <Clock className="w-3 h-3 text-muted-foreground/50" />
-                                ) : field.type === "select" || field.type === "radio" ? (
-                                  <ListChecks className="w-3 h-3 text-muted-foreground/50" />
-                                ) : field.type === "multiselect" ? (
-                                  <Layers className="w-3 h-3 text-muted-foreground/50" />
-                                ) : field.type === "checkbox" ? (
-                                  <CheckCircle className="w-3 h-3 text-muted-foreground/50" />
-                                ) : field.type === "table" ? (
-                                  <LayoutList className="w-3 h-3 text-muted-foreground/50" />
-                                ) : (
-                                  <FileText className="w-3 h-3 text-muted-foreground/50" />
-                                )}
-                                <span className="font-medium text-foreground/80">{field.label}</span>
-                                <span className="text-muted-foreground/40 font-mono">{field.key}</span>
-                                {field.required && (
-                                  <span className="text-red-400 text-[10px] ml-0.5">*</span>
-                                )}
-                                <Badge variant="outline" className="text-[9px] ml-auto py-0">{field.type}</Badge>
-                                {field.options && (
-                                  <span className="text-[10px] text-muted-foreground/40 max-w-[120px] truncate">
-                                    {field.options.slice(0, 3).join(", ")}{field.options.length > 3 ? ` +${field.options.length - 3}` : ""}
-                                  </span>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
+                            })}
+                          </div>
+                        );
+                      })()}
 
                       {/* Quick actions */}
                       <div className="flex flex-wrap gap-2 pt-2">
