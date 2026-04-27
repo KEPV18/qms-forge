@@ -12,7 +12,7 @@ import {
   ChevronRight, Layers,
 } from 'lucide-react';
 import { FORM_SCHEMAS, getFormSchema, getFormSections, getFormsBySection } from '../data/formSchemas';
-import { getNextSerial, isoToDisplay } from '../schemas';
+import { getNextSerial } from '../schemas';
 import { todayDDMMYYYY } from '../schemas';
 import { MODULE_CONFIG } from '../config/modules';
 import DynamicFormRenderer, { type RecordData } from '../components/forms/DynamicFormRenderer';
@@ -88,17 +88,22 @@ const RecordCreationPage: React.FC = () => {
     data.formCode = selectedCode;
     data._createdAt = new Date().toISOString();
     data._createdBy = 'Ahmed Khaled';
-    // Convert dates from ISO to display format
-    schema.fields.forEach(field => {
-      if (field.type === 'date' && data[field.key]) {
-        data[field.key] = isoToDisplay(data[field.key] as string);
-      }
-    });
+    // Convert dates from display format (DD/MM/YYYY) to display format (already DD/MM/YYYY from template)
+    // No conversion needed — DateOrTextCell stores values as-is
+    console.log('[CreateRecord] Submitting data:', JSON.stringify(data, null, 2));
     createMutation.mutate(data as any, {
-      onSuccess: (record: any) => {
-        setCreated({ code: selectedCode, serial: data.serial as string, data: data as RecordData });
+      onSuccess: (result: any) => {
+        console.log('[CreateRecord] Mutation result:', JSON.stringify(result, null, 2));
+        // Check if the mutation actually succeeded
+        if (result?.success === false) {
+          setCreateError(result.error || 'Failed to create record');
+          return;
+        }
+        const serial = result?.record?.serial || data.serial || '';
+        setCreated({ code: selectedCode, serial: serial as string, data: data as RecordData });
       },
       onError: (err: any) => {
+        console.error('[CreateRecord] Mutation error:', err);
         setCreateError(err.message || 'Failed to create record');
       },
     });
