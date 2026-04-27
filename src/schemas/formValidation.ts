@@ -42,6 +42,9 @@ export const OPTIONAL_TEXT = z.string().default('');
 /** Person name */
 export const PERSON_NAME = z.string().min(1, 'Name is required').max(100);
 
+/** Date or free text — accepts DD/MM/YYYY, ISO date, or any text string */
+export const DATE_OR_TEXT = z.string().default('');
+
 /** Year number */
 export const YEAR = z.number().int().min(2020).max(2099);
 
@@ -152,16 +155,18 @@ export type PreCreationGateData = z.infer<typeof PreCreationGateSchema>;
 
 export const F08Schema = z.object({
   serial: AUTO_SERIAL,
-  date: ISO_DATE,
-  project_name: REQUIRED_TEXT,
-  client_name: REQUIRED_TEXT,
-  client_contact: OPTIONAL_TEXT,
-  start_date: ISO_DATE,
-  end_date: ISO_DATE,
-  scope: REQUIRED_TEXT,
-  deliverables: OPTIONAL_TEXT,
-  approved_by: SIGNATURE,
-  approval_date: ISO_DATE,
+  date: DATE_OR_TEXT,          // Date — DD/MM/YYYY or free text
+  client_name: REQUIRED_TEXT,  // Customer name
+  mode_of_receipt: OPTIONAL_TEXT, // Email / Phone / Walk-in
+  items: z.string().optional().default('[]'), // Product items as JSON string
+  test_certificate_required: z.enum(['Yes', 'No']).optional().default('No'),
+  delivery_schedule: DATE_OR_TEXT, // Date or free text
+  complies: z.enum(['Complies', 'Does Not Comply']).optional().default('Complies'),
+  order_status: z.enum(['Accepted', 'Rejected']).optional().default('Accepted'),
+  remarks: OPTIONAL_TEXT,
+  reviewed_by: OPTIONAL_TEXT,   // Authorised person
+  bill_no: OPTIONAL_TEXT,      // Bill No — auto from serial
+  despatch_date: DATE_OR_TEXT, // Despatch Date — DD/MM/YYYY or free text
 });
 export type F08Data = z.infer<typeof F08Schema>;
 

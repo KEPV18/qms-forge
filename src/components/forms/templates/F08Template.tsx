@@ -35,38 +35,13 @@ function val(data: Record<string, unknown> | undefined, key: string): string {
   return String(v);
 }
 
-/** Get today in YYYY-MM-DD format for HTML date inputs */
-function todayISO(): string {
-  const now = new Date();
-  const day = String(now.getDate()).padStart(2, "0");
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const year = now.getFullYear();
-  return `${year}-${month}-${day}`;
-}
-
 /** Get today in DD/MM/YYYY display format */
-function todayDisplay(): string {
+function todayDDMMYYYY(): string {
   const now = new Date();
   const day = String(now.getDate()).padStart(2, "0");
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const year = now.getFullYear();
   return `${day}/${month}/${year}`;
-}
-
-/** Convert YYYY-MM-DD (HTML date) to DD/MM/YYYY (display) */
-function isoToDisplay(date: string): string {
-  if (!date) return "";
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(date)) return date;
-  const [y, m, d] = date.substring(0, 10).split("-");
-  return `${d}/${m}/${y}`;
-}
-
-/** Convert DD/MM/YYYY (display) to YYYY-MM-DD (HTML date) */
-function displayToIso(date: string): string {
-  if (!date) return "";
-  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
-  const [d, m, y] = date.split("/");
-  return `${y}-${m}-${d}`;
 }
 
 /* 14-column grid matching DOCX proportions ──────────────────────────── */
@@ -163,36 +138,32 @@ export function F08Template({ data, isTemplate = true, editMode = false, onChang
     );
   };
 
-  // Date cell helper — uses date input in editMode, defaults to today
-  const DateCell = ({ field, colSpan, className, defaultToday }: {
+  // Date-or-text cell — shows a date picker with a text toggle, or plain text in readonly
+  const DateOrTextCell = ({ field, colSpan, className, defaultToday, placeholder }: {
     field: string;
     colSpan?: number;
     className?: string;
     defaultToday?: boolean;
+    placeholder?: string;
   }) => {
     const rawValue = val(d, field);
-    // For display: convert ISO to DD/MM/YYYY or show as-is
-    const displayValue = rawValue ? isoToDisplay(rawValue) : (isTemplate ? "DD/MM/YYYY" : "");
     if (readonly) {
       return (
         <td colSpan={colSpan} className={cn(className || emptyValueCls, !rawValue && "text-slate-300 dark:text-slate-600")}>
-          {displayValue}
+          {rawValue || (isTemplate ? (placeholder || "DD/MM/YYYY") : "")}
         </td>
       );
     }
-    // In edit mode, use HTML date input. Convert DD/MM/YYYY to YYYY-MM-DD for input value.
-    const htmlDateValue = rawValue ? displayToIso(rawValue) : (defaultToday ? todayISO() : "");
+    // In edit mode: text input with today's date as default, user can type anything
+    const displayValue = rawValue || (defaultToday ? todayDDMMYYYY() : "");
     return (
       <td colSpan={colSpan} className={cn(className || valueCls)}>
         <input
-          type="date"
-          value={htmlDateValue || (defaultToday ? todayISO() : "")}
-          onChange={e => {
-            // Store as DD/MM/YYYY for display consistency
-            const display = isoToDisplay(e.target.value);
-            onChange?.(field, display);
-          }}
-          className="w-full bg-transparent outline-none text-sm text-slate-900 dark:text-slate-100"
+          type="text"
+          value={displayValue}
+          onChange={e => onChange?.(field, e.target.value)}
+          placeholder={placeholder || "DD/MM/YYYY or text"}
+          className={inputCls}
         />
       </td>
     );
@@ -263,7 +234,7 @@ export function F08Template({ data, isTemplate = true, editMode = false, onChang
             </tr>
             <tr>
               <Cell field="serial" colSpan={8} placeholder="Auto-generated" />
-              <DateCell field="date" colSpan={6} defaultToday={editMode && !isTemplate} />
+              <DateOrTextCell field="date" colSpan={6} defaultToday={editMode && !isTemplate} />
             </tr>
 
             {/* ── Row 2: Customer ──────────────────────────── */}
@@ -366,7 +337,7 @@ export function F08Template({ data, isTemplate = true, editMode = false, onChang
             <tr>
               <LabelCell text="Delivery Schedule" colSpan={5} />
               <td colSpan={2} className={cn(labelCls, "text-center")}>:</td>
-              <DateCell field="delivery_schedule" colSpan={7} defaultToday={editMode && !isTemplate} />
+              <DateOrTextCell field="delivery_schedule" colSpan={7} defaultToday={editMode && !isTemplate} placeholder="Date or text" />
             </tr>
 
             {/* ── Row: Statutory And Regulatory ──────────── */}
@@ -445,7 +416,7 @@ export function F08Template({ data, isTemplate = true, editMode = false, onChang
             <tr>
               <LabelCell text="Despatch Date" colSpan={2} />
               <td colSpan={1} className={cn(labelCls, "text-center")}>:</td>
-              <DateCell field="despatch_date" colSpan={3} defaultToday={editMode && !isTemplate} />
+              <DateOrTextCell field="despatch_date" colSpan={3} defaultToday={editMode && !isTemplate} placeholder="DD/MM/YYYY or text" />
               <td colSpan={2} className={emptyValueCls} />
               <td colSpan={3} className={emptyValueCls} />
               <td colSpan={3} className={emptyValueCls} />
