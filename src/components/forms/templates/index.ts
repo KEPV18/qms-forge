@@ -10,6 +10,8 @@ import { F08Template } from "./F08Template";
 export interface FormTemplateProps {
   data?: Record<string, unknown>;
   isTemplate?: boolean;
+  editMode?: boolean;
+  onChange?: (field: string, value: string) => void;
   className?: string;
 }
 
@@ -17,10 +19,7 @@ type FormTemplateComponent = React.FC<FormTemplateProps>;
 
 const TEMPLATE_MAP: Record<string, FormTemplateComponent> = {
   "F/08": F08Template,
-  // Add more forms here as they're built:
-  // "F/09": F09Template,
-  // "F/10": F10Template,
-  // ...
+  // Add more forms here as they're built
 };
 
 /**

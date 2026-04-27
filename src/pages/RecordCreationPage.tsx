@@ -5,13 +5,14 @@
 // No more dumping all 50 forms at once.
 // ============================================================================
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   FileText, Search, CheckCircle, XCircle, ArrowLeft, Loader2,
   ChevronRight, Layers,
 } from 'lucide-react';
 import { FORM_SCHEMAS, getFormSchema, getFormSections, getFormsBySection } from '../data/formSchemas';
+import { getNextSerial, isoToDisplay } from '../schemas';
 import { MODULE_CONFIG } from '../config/modules';
 import DynamicFormRenderer, { type RecordData } from '../components/forms/DynamicFormRenderer';
 import { SchemaDrivenRecordView } from '../components/forms/SchemaDrivenRecordView';
@@ -50,6 +51,39 @@ const RecordCreationPage: React.FC = () => {
     urlFormCode ? 'gate' : 'select'
   );
   const [createError, setCreateError] = useState<string | null>(null);
+
+  // Template form data for DOCX-accurate form editing
+  const [formData, setFormData] = useState<Record<string, unknown>>({});
+
+  const handleTemplateFieldChange = useCallback((field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  }, []);
+
+  const handleFormSubmit = useCallback(() => {
+    if (!schema || !selectedCode) return;
+    // Build RecordData from template form data
+    const data: RecordData = { ...formData };
+    if (!data.serial || data.serial === 'auto') {
+      data.serial = getNextSerial(selectedCode);
+    }
+    data.formCode = selectedCode;
+    data._createdAt = new Date().toISOString();
+    data._createdBy = 'Ahmed Khaled';
+    // Convert dates from ISO to display format
+    schema.fields.forEach(field => {
+      if (field.type === 'date' && data[field.key]) {
+        data[field.key] = isoToDisplay(data[field.key] as string);
+      }
+    });
+    createMutation.mutate(data as any, {
+      onSuccess: (record: any) => {
+        setCreated({ code: selectedCode, serial: data.serial as string, data: data as RecordData });
+      },
+      onError: (err: any) => {
+        setCreateError(err.message || 'Failed to create record');
+      },
+    });
+  }, [schema, selectedCode, formData, createMutation]);
 
   // If we came from a module but no formCode, skip straight to form list (no section picker)
   // If we came from /create directly with nothing, show section picker
@@ -248,16 +282,57 @@ const RecordCreationPage: React.FC = () => {
       )}
 
       {/* ======== STEP: FORM (Actual Creation) ======== */}
-      {gateStep === 'form' && schema && (
-        <div className="max-w-2xl mx-auto">
-          <DynamicFormRenderer
-            formCode={selectedCode}
-            onSubmit={handleSubmit}
-            onCancel={() => { setGateStep('select'); setSelectedCode(''); }}
-            isSubmitting={createMutation.isPending}
-          />
-        </div>
-      )}
+      {gateStep === 'form' && schema && (() => {
+        const TemplateComponent = getFormTemplateComponent(selectedCode);
+        if (TemplateComponent) {
+          // Use DOCX-accurate template for form creation
+          return (
+            <div className="max-w-4xl mx-auto">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl font-bold text-foreground">Create {schema.name}</h1>
+                  <p className="text-sm text-muted-foreground mt-1">Fill in the form below. Fields marked with * are required.</p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setGateStep('select'); setSelectedCode(''); }}
+                    className="ds-press ds-focus-ring px-4 py-2 text-sm bg-secondary text-secondary-foreground border border-border rounded-sm hover:bg-accent transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleFormSubmit}
+                    disabled={createMutation.isPending}
+                    className="ds-press ds-focus-ring px-6 py-2 text-sm bg-primary text-primary-foreground rounded-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {createMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                    Create Record
+                  </button>
+                </div>
+              </div>
+              <div className="ds-card p-6">
+                <TemplateComponent
+                  data={formData}
+                  isTemplate={false}
+                  editMode={true}
+                  onChange={handleTemplateFieldChange}
+                />
+              </div>
+            </div>
+          );
+        }
+        // Fallback: schema-driven form
+        return (
+          <div className="max-w-2xl mx-auto">
+            <DynamicFormRenderer
+              formCode={selectedCode}
+              onSubmit={handleSubmit}
+              onCancel={() => { setGateStep('select'); setSelectedCode(''); }}
+              isSubmitting={createMutation.isPending}
+            />
+          </div>
+        );
+      })()}
 
       {/* ======== STEP: SELECT (Section picker or form list) ======== */}
       {gateStep === 'select' && (
