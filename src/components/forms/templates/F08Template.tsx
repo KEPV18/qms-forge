@@ -5,10 +5,19 @@
 //   isTemplate=true           → read-only placeholder view (Template tab)
 //   isTemplate=false, editMode=false → filled record view (Record page)
 //   isTemplate=false, editMode=true   → editable form (Create/Edit page)
+//
+// Edit mode features:
+//   - Product table: starts with 1 row, "Add Row" button to add more
+//   - Sr. No.: auto-generated, editable
+//   - Date / Despatch Date: default to today, editable
+//   - Bill No.: auto-generated from serial, editable
+//   - Rev No.: shows actual serial (e.g. F/08-001), editable
+//   - Delivery Schedule: date picker, not text
 // ============================================================================
 
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { Plus, Trash2 } from "lucide-react";
 
 export interface F08Props {
   data?: Record<string, unknown>;
@@ -26,13 +35,97 @@ function val(data: Record<string, unknown> | undefined, key: string): string {
   return String(v);
 }
 
+/** Get today in YYYY-MM-DD format for HTML date inputs */
+function todayISO(): string {
+  const now = new Date();
+  const day = String(now.getDate()).padStart(2, "0");
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const year = now.getFullYear();
+  return `${year}-${month}-${day}`;
+}
+
+/** Get today in DD/MM/YYYY display format */
+function todayDisplay(): string {
+  const now = new Date();
+  const day = String(now.getDate()).padStart(2, "0");
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const year = now.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+/** Convert YYYY-MM-DD (HTML date) to DD/MM/YYYY (display) */
+function isoToDisplay(date: string): string {
+  if (!date) return "";
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(date)) return date;
+  const [y, m, d] = date.substring(0, 10).split("-");
+  return `${d}/${m}/${y}`;
+}
+
+/** Convert DD/MM/YYYY (display) to YYYY-MM-DD (HTML date) */
+function displayToIso(date: string): string {
+  if (!date) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
+  const [d, m, y] = date.split("/");
+  return `${y}-${m}-${d}`;
+}
+
 /* 14-column grid matching DOCX proportions ──────────────────────────── */
 
 export function F08Template({ data, isTemplate = true, editMode = false, onChange, className }: F08Props) {
   const d = data ?? {};
   const readonly = isTemplate || !editMode;
 
-  // Styling presets
+  // ── Product items (dynamic rows) ────────────────────────────────────
+  // Parse items from data. In edit mode, manage as local state via onChange.
+  const items: Array<Record<string, string>> = useMemo(() => {
+    const raw = d.items;
+    if (typeof raw === "string") {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed.map((item: Record<string, unknown>) => ({
+          product_name: String(item.product_name ?? ""),
+          specifications: String(item.specifications ?? ""),
+          qty: String(item.qty ?? ""),
+        }));
+      } catch { /* fall through */ }
+    }
+    if (Array.isArray(raw)) {
+      return raw.map((item: Record<string, unknown>) => ({
+        product_name: String(item.product_name ?? ""),
+        specifications: String(item.specifications ?? ""),
+        qty: String(item.qty ?? ""),
+      }));
+    }
+    // Default: 1 empty row for edit, 3 placeholder rows for template
+    if (editMode && !isTemplate) return [{ product_name: "", specifications: "", qty: "" }];
+    if (isTemplate) return [
+      { product_name: "", specifications: "", qty: "" },
+      { product_name: "", specifications: "", qty: "" },
+      { product_name: "", specifications: "", qty: "" },
+    ];
+    return [{ product_name: "", specifications: "", qty: "" }];
+  }, [d.items, editMode, isTemplate]);
+
+  // Helper: update items array
+  const updateItems = useCallback((newItems: Array<Record<string, string>>) => {
+    onChange?.("items", JSON.stringify(newItems));
+  }, [onChange]);
+
+  const addItem = useCallback(() => {
+    updateItems([...items, { product_name: "", specifications: "", qty: "" }]);
+  }, [items, updateItems]);
+
+  const removeItem = useCallback((index: number) => {
+    if (items.length <= 1) return; // Keep at least 1 row
+    updateItems(items.filter((_, i) => i !== index));
+  }, [items, updateItems]);
+
+  const updateItem = useCallback((index: number, field: string, value: string) => {
+    const newItems = items.map((item, i) => i === index ? { ...item, [field]: value } : item);
+    updateItems(newItems);
+  }, [items, updateItems]);
+
+  // ── Styling presets ─────────────────────────────────────────────────
   const labelCls = "bg-slate-100 dark:bg-slate-800 font-semibold text-sm px-3 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300";
   const valueCls = "px-2 py-2 border border-slate-300 dark:border-slate-600 text-sm text-slate-900 dark:text-slate-100 min-h-[2.25rem]";
   const emptyValueCls = cn(valueCls, isTemplate ? "text-slate-300 dark:text-slate-600" : "");
@@ -40,15 +133,17 @@ export function F08Template({ data, isTemplate = true, editMode = false, onChang
   const headerCls = "bg-indigo-50 dark:bg-indigo-950 font-semibold text-xs uppercase tracking-wide px-3 py-2 border border-indigo-200 dark:border-indigo-800 text-indigo-800 dark:text-indigo-300";
   const inputCls = "w-full bg-transparent outline-none text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600";
 
-  // Editable cell helper
-  const Cell = ({ field, colSpan, className, placeholder }: {
+  // ── Cell helpers ────────────────────────────────────────────────────
+  const Cell = ({ field, colSpan, className, placeholder, readonly: forceReadonly }: {
     field: string;
     colSpan?: number;
     className?: string;
     placeholder?: string;
+    readonly?: boolean;
   }) => {
     const value = val(d, field);
-    if (readonly) {
+    const isReadonly = forceReadonly ?? readonly;
+    if (isReadonly) {
       return (
         <td colSpan={colSpan} className={cn(className || emptyValueCls, !value && "text-slate-300 dark:text-slate-600")}>
           {value || (isTemplate ? (placeholder || "") : "")}
@@ -68,27 +163,35 @@ export function F08Template({ data, isTemplate = true, editMode = false, onChang
     );
   };
 
-  // Date cell helper (uses date input in editMode)
-  const DateCell = ({ field, colSpan, className, placeholder }: {
+  // Date cell helper — uses date input in editMode, defaults to today
+  const DateCell = ({ field, colSpan, className, defaultToday }: {
     field: string;
     colSpan?: number;
     className?: string;
-    placeholder?: string;
+    defaultToday?: boolean;
   }) => {
-    const value = val(d, field);
+    const rawValue = val(d, field);
+    // For display: convert ISO to DD/MM/YYYY or show as-is
+    const displayValue = rawValue ? isoToDisplay(rawValue) : (isTemplate ? "DD/MM/YYYY" : "");
     if (readonly) {
       return (
-        <td colSpan={colSpan} className={cn(className || emptyValueCls, !value && "text-slate-300 dark:text-slate-600")}>
-          {value || (isTemplate ? (placeholder || "DD/MM/YYYY") : "")}
+        <td colSpan={colSpan} className={cn(className || emptyValueCls, !rawValue && "text-slate-300 dark:text-slate-600")}>
+          {displayValue}
         </td>
       );
     }
+    // In edit mode, use HTML date input. Convert DD/MM/YYYY to YYYY-MM-DD for input value.
+    const htmlDateValue = rawValue ? displayToIso(rawValue) : (defaultToday ? todayISO() : "");
     return (
       <td colSpan={colSpan} className={cn(className || valueCls)}>
         <input
           type="date"
-          value={value}
-          onChange={e => onChange?.(field, e.target.value)}
+          value={htmlDateValue || (defaultToday ? todayISO() : "")}
+          onChange={e => {
+            // Store as DD/MM/YYYY for display consistency
+            const display = isoToDisplay(e.target.value);
+            onChange?.(field, display);
+          }}
           className="w-full bg-transparent outline-none text-sm text-slate-900 dark:text-slate-100"
         />
       </td>
@@ -100,20 +203,11 @@ export function F08Template({ data, isTemplate = true, editMode = false, onChang
     <td colSpan={colSpan} className={className || labelCls}>{text}</td>
   );
 
-  // Product rows
-  const productRows = isTemplate
-    ? Array.from({ length: 6 }, (_, i) => ({ sr: String(i + 1), product_name: "", specifications: "", qty: "" }))
-    : (() => {
-        const items = (d.items as Array<Record<string, unknown>> | undefined) ?? [];
-        if (items.length === 0) return Array.from({ length: 6 }, (_, i) => ({ sr: String(i + 1), product_name: "", specifications: "", qty: "" }));
-        while (items.length < 6) items.push({ sr: String(items.length + 1), product_name: "", specifications: "", qty: "" });
-        return items.map((item, i) => ({
-          sr: String(i + 1),
-          product_name: val(item as Record<string, unknown>, "product_name"),
-          specifications: val(item as Record<string, unknown>, "specifications"),
-          qty: val(item as Record<string, unknown>, "qty"),
-        }));
-      })();
+  // ── Computed defaults for edit mode ─────────────────────────────────
+  // Serial: show in Rev No. and Sr. No.
+  const serialValue = val(d, "serial");
+  // Bill No: auto from serial if not set
+  const billNoValue = val(d, "bill_no") || serialValue || "";
 
   return (
     <div className={cn("max-w-4xl mx-auto font-[Arial,Helvetica,sans-serif]", className)}>
@@ -142,13 +236,23 @@ export function F08Template({ data, isTemplate = true, editMode = false, onChang
             <col className="w-[10%]" />
           </colgroup>
           <tbody>
-            {/* ── Row 0: Title + F/08 ─────────────────────── */}
+            {/* ── Row 0: Title + Serial/Rev ─────────────────────── */}
             <tr>
               <td colSpan={13} className={cn(titleCls, "text-center text-lg")}>
                 Order Form / Order Confirmation
               </td>
               <td colSpan={1} className={cn(titleCls, "text-center text-sm whitespace-nowrap")}>
-                F/08<br />Rev No.00
+                F/08<br />
+                {editMode && !isTemplate ? (
+                  <input
+                    className="w-full text-xs bg-transparent outline-none text-center text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
+                    value={serialValue}
+                    onChange={e => onChange?.("serial", e.target.value)}
+                    placeholder="F/08-001"
+                  />
+                ) : (
+                  `Rev ${serialValue || "No.00"}`
+                )}
               </td>
             </tr>
 
@@ -159,7 +263,7 @@ export function F08Template({ data, isTemplate = true, editMode = false, onChang
             </tr>
             <tr>
               <Cell field="serial" colSpan={8} placeholder="Auto-generated" />
-              <DateCell field="date" colSpan={6} />
+              <DateCell field="date" colSpan={6} defaultToday={editMode && !isTemplate} />
             </tr>
 
             {/* ── Row 2: Customer ──────────────────────────── */}
@@ -184,51 +288,60 @@ export function F08Template({ data, isTemplate = true, editMode = false, onChang
               <td colSpan={3} className={headerCls}>Qty.</td>
             </tr>
 
-            {/* ── Rows 5–10: Product data rows ──────────────── */}
-            {productRows.map((row, i) => (
+            {/* ── Product rows (dynamic) ──────────────────────── */}
+            {items.map((item, i) => (
               <tr key={i}>
-                <td colSpan={1} className={cn(valueCls, "text-center")}>{row.sr}</td>
+                <td colSpan={1} className={cn(valueCls, "text-center font-medium text-slate-500")}>
+                  {i + 1}
+                </td>
                 {editMode && !isTemplate ? (
                   <>
                     <td colSpan={3} className={valueCls}>
-                      <input className={inputCls} value={row.product_name} placeholder="Product name"
-                        onChange={e => {
-                          const items = [...((d.items as Array<Record<string, unknown>>) || Array.from({ length: 6 }, () => ({})))];
-                          while (items.length < 6) items.push({});
-                          items[i] = { ...items[i], product_name: e.target.value, sr: String(i + 1) };
-                          onChange?.("items", JSON.stringify(items));
-                        }} />
+                      <input className={inputCls} value={item.product_name} placeholder="Product name"
+                        onChange={e => updateItem(i, "product_name", e.target.value)} />
                     </td>
                     <td colSpan={7} className={valueCls}>
-                      <input className={inputCls} value={row.specifications} placeholder="Specifications"
-                        onChange={e => {
-                          const items = [...((d.items as Array<Record<string, unknown>>) || Array.from({ length: 6 }, () => ({})))];
-                          while (items.length < 6) items.push({});
-                          items[i] = { ...items[i], specifications: e.target.value, sr: String(i + 1) };
-                          onChange?.("items", JSON.stringify(items));
-                        }} />
+                      <input className={inputCls} value={item.specifications} placeholder="Specifications"
+                        onChange={e => updateItem(i, "specifications", e.target.value)} />
                     </td>
                     <td colSpan={3} className={valueCls}>
-                      <input className={inputCls} value={row.qty} placeholder="Qty"
-                        onChange={e => {
-                          const items = [...((d.items as Array<Record<string, unknown>>) || Array.from({ length: 6 }, () => ({})))];
-                          while (items.length < 6) items.push({});
-                          items[i] = { ...items[i], qty: e.target.value, sr: String(i + 1) };
-                          onChange?.("items", JSON.stringify(items));
-                        }} />
+                      <div className="flex items-center gap-1">
+                        <input className={inputCls} value={item.qty} placeholder="Qty"
+                          onChange={e => updateItem(i, "qty", e.target.value)} />
+                        {items.length > 1 && (
+                          <button type="button" onClick={() => removeItem(i)}
+                            className="shrink-0 p-1 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950 rounded"
+                            title="Remove row">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </>
                 ) : (
                   <>
-                    <td colSpan={3} className={cn(emptyValueCls)}>{row.product_name}</td>
-                    <td colSpan={7} className={cn(emptyValueCls)}>{row.specifications}</td>
-                    <td colSpan={3} className={cn(emptyValueCls)}>{row.qty}</td>
+                    <td colSpan={3} className={cn(emptyValueCls)}>{item.product_name}</td>
+                    <td colSpan={7} className={cn(emptyValueCls)}>{item.specifications}</td>
+                    <td colSpan={3} className={cn(emptyValueCls)}>{item.qty}</td>
                   </>
                 )}
               </tr>
             ))}
 
-            {/* ── Row 10: Requirement Of Test Certificate ──── */}
+            {/* ── Add Row button (edit mode only) ──────────────── */}
+            {editMode && !isTemplate && (
+              <tr>
+                <td colSpan={14} className="border border-slate-300 dark:border-slate-600">
+                  <button type="button" onClick={addItem}
+                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950 transition-colors w-full justify-center">
+                    <Plus className="w-3.5 h-3.5" />
+                    Add Product Row
+                  </button>
+                </td>
+              </tr>
+            )}
+
+            {/* ── Row: Requirement Of Test Certificate ──── */}
             <tr>
               <LabelCell text="Requirement Of Test Certificate" colSpan={5} />
               <td colSpan={2} className={cn(labelCls, "text-center")}>:</td>
@@ -249,14 +362,14 @@ export function F08Template({ data, isTemplate = true, editMode = false, onChang
               )}
             </tr>
 
-            {/* ── Row 11: Delivery Schedule ──────────────────── */}
+            {/* ── Row: Delivery Schedule (date picker) ──── */}
             <tr>
               <LabelCell text="Delivery Schedule" colSpan={5} />
               <td colSpan={2} className={cn(labelCls, "text-center")}>:</td>
-              <Cell field="delivery_schedule" colSpan={7} placeholder="Delivery date or timeline" />
+              <DateCell field="delivery_schedule" colSpan={7} defaultToday={editMode && !isTemplate} />
             </tr>
 
-            {/* ── Row 12: Statutory And Regulatory ──────────── */}
+            {/* ── Row: Statutory And Regulatory ──────────── */}
             <tr>
               <LabelCell text="Statutory And Regulatory Requirements, If Any" colSpan={5} />
               <td colSpan={2} className={cn(labelCls, "text-center")}>:</td>
@@ -277,7 +390,7 @@ export function F08Template({ data, isTemplate = true, editMode = false, onChang
               )}
             </tr>
 
-            {/* ── Row 13: Order decision ──────────────────────── */}
+            {/* ── Row: Order decision ──────────────────────── */}
             <tr>
               <LabelCell text="Order" colSpan={5} />
               <td colSpan={2} className={cn(labelCls, "text-center")}>:</td>
@@ -298,7 +411,7 @@ export function F08Template({ data, isTemplate = true, editMode = false, onChang
               )}
             </tr>
 
-            {/* ── Row 14: Remarks + Reviewed By ───────────────── */}
+            {/* ── Row: Remarks + Reviewed By ───────────────── */}
             <tr>
               <LabelCell text="Remarks" colSpan={8} />
               <LabelCell text="Reviewed By / Authorised Person" colSpan={6} />
@@ -318,21 +431,21 @@ export function F08Template({ data, isTemplate = true, editMode = false, onChang
               <Cell field="reviewed_by" colSpan={6} placeholder="Authorised person name" />
             </tr>
 
-            {/* ── Row 15: Bill No. ────────────────────────────── */}
+            {/* ── Row: Bill No. (auto from serial, editable) ──── */}
             <tr>
               <LabelCell text="Bill No." colSpan={2} />
               <td colSpan={1} className={cn(labelCls, "text-center")}>:</td>
-              <Cell field="bill_no" colSpan={3} placeholder="Bill number" />
+              <Cell field="bill_no" colSpan={3} placeholder={serialValue || "Auto-generated"} />
               <td colSpan={2} className={emptyValueCls} />
               <td colSpan={3} className={emptyValueCls} />
               <td colSpan={3} className={emptyValueCls} />
             </tr>
 
-            {/* ── Row 16: Despatch Date ──────────────────────── */}
+            {/* ── Row: Despatch Date (default today, editable) ── */}
             <tr>
               <LabelCell text="Despatch Date" colSpan={2} />
               <td colSpan={1} className={cn(labelCls, "text-center")}>:</td>
-              <DateCell field="despatch_date" colSpan={3} placeholder="DD/MM/YYYY" />
+              <DateCell field="despatch_date" colSpan={3} defaultToday={editMode && !isTemplate} />
               <td colSpan={2} className={emptyValueCls} />
               <td colSpan={3} className={emptyValueCls} />
               <td colSpan={3} className={emptyValueCls} />
@@ -342,9 +455,9 @@ export function F08Template({ data, isTemplate = true, editMode = false, onChang
       </div>
 
       {/* ── Footer ────────────────────────────────────────────── */}
-      {!isTemplate && (
+      {!isTemplate && serialValue && (
         <div className="text-center text-xs text-slate-400 mt-4">
-          QMS Forge · {val(d, "serial")}
+          QMS Forge · {serialValue}
         </div>
       )}
     </div>

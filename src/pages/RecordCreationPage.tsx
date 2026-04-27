@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { FORM_SCHEMAS, getFormSchema, getFormSections, getFormsBySection } from '../data/formSchemas';
 import { getNextSerial, isoToDisplay } from '../schemas';
+import { todayDDMMYYYY } from '../schemas';
 import { MODULE_CONFIG } from '../config/modules';
 import DynamicFormRenderer, { type RecordData } from '../components/forms/DynamicFormRenderer';
 import { SchemaDrivenRecordView } from '../components/forms/SchemaDrivenRecordView';
@@ -57,6 +58,21 @@ const RecordCreationPage: React.FC = () => {
 
   // Template form data for DOCX-accurate form editing
   const [formData, setFormData] = useState<Record<string, unknown>>({});
+
+  // Initialize defaults when entering form step
+  useEffect(() => {
+    if (gateStep === 'form' && selectedCode) {
+      const serial = getNextSerial(selectedCode);
+      const today = todayDDMMYYYY();
+      setFormData(prev => ({
+        ...prev,
+        serial: prev.serial || serial,
+        date: prev.date || today,
+        despatch_date: prev.despatch_date || today,
+        bill_no: prev.bill_no || serial,
+      }));
+    }
+  }, [gateStep, selectedCode]);
 
   const handleTemplateFieldChange = useCallback((field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
