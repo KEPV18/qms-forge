@@ -9,14 +9,16 @@ import {
   ArrowLeft, Edit3, Save, X, AlertTriangle, Shield, Clock, User,
   FileText, CheckCircle, Lock, Loader2, RefreshCw, History,
   Download, FileJson, FileSpreadsheet, FileText as FileTextIcon,
+  Trash2,
 } from 'lucide-react';
 import { getFormSchema } from '../data/formSchemas';
 import { isoToDisplay } from '../schemas';
 import DynamicFormRenderer, { type RecordData } from '../components/forms/DynamicFormRenderer';
 import { SchemaDrivenRecordView } from '../components/forms/SchemaDrivenRecordView';
 import { getFormTemplateComponent } from '@/components/forms/templates';
-import { useRecord, useUpdateRecord, useRecords } from '../hooks/useRecordStorage';
+import { useRecord, useUpdateRecord, useRecords, useDeleteRecord } from '../hooks/useRecordStorage';
 import { useAuditLog } from '../hooks/useAuditLog';
+import { useAuth } from '../hooks/useAuth';
 import { evaluateRulesForRecord, getSeverityColor, type RuleSeverity } from '../services/ruleEngine';
 import { getEditRiskLevel } from '../services/recordUtils';
 import { exportRecordToDocx } from '../services/docxExport';
@@ -46,7 +48,10 @@ const RecordViewPage: React.FC = () => {
 
   const { data: originalRecord, isLoading, error, refetch } = useRecord(decodedSerial);
   const updateMutation = useUpdateRecord();
+  const deleteMutation = useDeleteRecord();
   const { data: allRecords } = useRecords();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const schema = originalRecord ? getFormSchema(originalRecord.formCode as string) : null;
 
   const [mode, setMode] = useState<'view' | 'edit' | 'intent' | 'history'>('view');
@@ -55,6 +60,7 @@ const RecordViewPage: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const { data: auditLog, isLoading: auditLoading } = useAuditLog(decodedSerial);
   const auditEntries = auditLog || [];
@@ -222,6 +228,22 @@ const RecordViewPage: React.FC = () => {
     catch (err) { toast.error('Export failed: ' + (err as Error).message); }
   };
 
+  const handleDelete = async () => {
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      return;
+    }
+    const recordId = (originalRecord as Record<string, unknown>)?.id as string;
+    if (!recordId) { toast.error('Cannot delete: record ID not found'); return; }
+    try {
+      await deleteMutation.mutateAsync(recordId);
+      setConfirmDelete(false);
+      navigate('/records');
+    } catch {
+      // Error handled by mutation onError
+    }
+  };
+
   // ─── Render ────────────────────────────────────────────────────────────
 
   return (
@@ -271,6 +293,26 @@ const RecordViewPage: React.FC = () => {
               className="ds-press ds-focus-ring px-4 py-2 bg-primary text-primary-foreground rounded-sm flex items-center gap-2 text-sm font-medium hover:bg-primary/90 transition-colors">
               <Edit3 className="w-4 h-4" /> Edit
             </button>
+          )}
+          {mode === 'view' && isAdmin && (
+            confirmDelete ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-destructive font-medium">Delete this record?</span>
+                <button onClick={handleDelete} disabled={deleteMutation.isPending}
+                  className="ds-press px-3 py-2 bg-destructive text-destructive-foreground rounded-sm flex items-center gap-2 text-sm font-medium hover:bg-destructive/90 transition-colors">
+                  {deleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />} Confirm
+                </button>
+                <button onClick={() => setConfirmDelete(false)}
+                  className="ds-press px-3 py-2 bg-secondary text-secondary-foreground rounded-sm flex items-center gap-2 text-sm hover:bg-accent transition-colors">
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button onClick={handleDelete}
+                className="ds-press ds-focus-ring px-3 py-2 bg-secondary text-destructive rounded-sm flex items-center gap-2 text-sm hover:bg-destructive/10 transition-colors border border-destructive/20">
+                <Trash2 className="w-4 h-4" /> Delete
+              </button>
+            )
           )}
           {mode === 'edit' && (
             <>

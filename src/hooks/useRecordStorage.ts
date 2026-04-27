@@ -11,6 +11,7 @@ import {
   getRecord,
   createRecord,
   updateRecord,
+  softDeleteRecord,
   invalidateRowCache,
   type StorageResult,
 } from '../services/recordStorage';
@@ -214,5 +215,43 @@ export function useExistingSerials(formCode: string) {
     staleTime: 10_000,      // 10 seconds — needs to be fresh for duplicate checks
     gcTime: 60_000,
     enabled: !!formCode,
+  });
+}
+
+// ============================================================================
+// useDeleteRecord — soft-delete a record (admin only, enforced by RPC)
+// ============================================================================
+
+export function useDeleteRecord() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => softDeleteRecord(id),
+
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: RECORD_KEYS.all });
+      const previousRecords = queryClient.getQueryData<RecordData[]>(RECORD_KEYS.all);
+      // Optimistic remove from cache
+      queryClient.setQueryData<RecordData[]>(RECORD_KEYS.all, (old = []) =>
+        old.filter(r => (r as Record<string, unknown>).id !== id)
+      );
+      return { previousRecords };
+    },
+
+    onSuccess: (result: StorageResult, id) => {
+      if (result.success) {
+        toast.success('Record deleted successfully');
+      } else {
+        toast.error(`Delete failed: ${result.error || 'Unknown error'}`);
+      }
+      queryClient.invalidateQueries({ queryKey: RECORD_KEYS.all });
+    },
+
+    onError: (error: Error, _variables, context) => {
+      if (context?.previousRecords) {
+        queryClient.setQueryData(RECORD_KEYS.all, context.previousRecords);
+      }
+      toast.error(`Delete failed: ${error.message}`);
+    },
   });
 }
