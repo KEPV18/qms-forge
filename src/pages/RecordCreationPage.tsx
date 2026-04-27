@@ -225,7 +225,8 @@ const RecordCreationPage: React.FC = () => {
             </button>
           )}
           <h1 className="text-2xl font-bold text-foreground">
-            {gateStep === 'form' && schema ? `Create ${schema.name}` : 'Create Record'}
+            {gateStep === 'form' && schema && getFormTemplateComponent(selectedCode)
+              ? '' : gateStep === 'form' && schema ? `Create ${schema.name}` : 'Create Record'}
           </h1>
           {currentSectionName && gateStep !== 'form' && (
             <span className="text-sm text-muted-foreground font-medium px-2 py-0.5 bg-muted/30 rounded-sm">
