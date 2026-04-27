@@ -15,6 +15,7 @@ import { FORM_SCHEMAS, getFormSchema, getFormSections, getFormsBySection } from 
 import { MODULE_CONFIG } from '../config/modules';
 import DynamicFormRenderer, { type RecordData } from '../components/forms/DynamicFormRenderer';
 import { SchemaDrivenRecordView } from '../components/forms/SchemaDrivenRecordView';
+import { getFormTemplateComponent } from '@/components/forms/templates';
 import { useCreateRecord } from '../hooks/useRecordStorage';
 import { AppShell } from '@/components/layout/AppShell';
 import { cn } from '@/lib/utils';
@@ -147,11 +148,13 @@ const RecordCreationPage: React.FC = () => {
 
           {/* Form-Formatted Record View */}
           <div className="ds-card p-6 mb-4">
-            <SchemaDrivenRecordView
-              formCode={created.code}
-              data={created.data}
-              showMeta={true}
-            />
+            {(() => {
+              const TemplateComponent = getFormTemplateComponent(created.code);
+              if (TemplateComponent) {
+                return <TemplateComponent data={created.data as Record<string, unknown>} isTemplate={false} />;
+              }
+              return <SchemaDrivenRecordView formCode={created.code} data={created.data} showMeta={true} />;
+            })()}
           </div>
 
           {/* Action Buttons */}
@@ -248,7 +251,7 @@ const RecordCreationPage: React.FC = () => {
       {gateStep === 'form' && schema && (
         <div className="max-w-2xl mx-auto">
           <DynamicFormRenderer
-            schema={schema}
+            formCode={selectedCode}
             onSubmit={handleSubmit}
             onCancel={() => { setGateStep('select'); setSelectedCode(''); }}
             isSubmitting={createMutation.isPending}
