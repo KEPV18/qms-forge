@@ -152,9 +152,9 @@ BEGIN
   -- Define required fields per form code
   -- These match the Zod schemas in formValidation.ts
   v_required_fields := CASE p_form_code
-    WHEN 'F/08' THEN ARRAY['date','project_name','client_name','start_date','end_date','scope']
-    WHEN 'F/09' THEN ARRAY['date','customer_name','feedback_type','description']
-    WHEN 'F/10' THEN ARRAY['date','project_name']
+    WHEN 'F/08' THEN ARRAY['date','client_name']
+    WHEN 'F/09' THEN ARRAY['date','complainant_name','complaint_type','description']
+    WHEN 'F/10' THEN ARRAY['date','client_name']
     WHEN 'F/11' THEN ARRAY['date','month','year','batch_count']
     WHEN 'F/12' THEN ARRAY['date','nc_title','nc_description','nc_type']
     WHEN 'F/13' THEN ARRAY['date','title','description']
@@ -186,7 +186,7 @@ BEGIN
     WHEN 'F/46' THEN ARRAY['date','procedure_title','version']
     WHEN 'F/47' THEN ARRAY['date','nc_title','corrective_action']
     WHEN 'F/48' THEN ARRAY['date','month','audit_findings']
-    WHEN 'F/50' THEN ARRAY['date','project_name','deliverable']
+    WHEN 'F/50' THEN ARRAY['date','client_name','description']
     ELSE ARRAY[]::text[]
   END;
 
