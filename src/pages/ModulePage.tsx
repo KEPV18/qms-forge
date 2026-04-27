@@ -1,9 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
-import { SectionHeader } from "@/components/dashboard/SectionHeader";
 import { useRecords } from "@/hooks/useRecordStorage";
-import { FORM_SCHEMAS, getFormSections } from "@/data/formSchemas";
+import { FORM_SCHEMAS } from "@/data/formSchemas";
 import { MODULE_CONFIG, type ModuleConfig } from "@/config/modules";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,9 @@ import { cn } from "@/lib/utils";
 import {
   FileText, FilePlus, Database, AlertTriangle, CheckCircle,
   ChevronRight, ArrowRight, BarChart3, Shield, Clock,
+  FolderOpen, Inbox, ListChecks,
 } from "lucide-react";
+import { StateScreen } from "@/components/ui/StateScreen";
 
 function getModuleById(id: string): ModuleConfig | undefined {
   return Object.values(MODULE_CONFIG).find(m => m.id === id);
@@ -21,8 +22,11 @@ function getModuleById(id: string): ModuleConfig | undefined {
 export default function ModulePage() {
   const { moduleId } = useParams<{ moduleId: string }>();
   const navigate = useNavigate();
-  const { data: records } = useRecords();
+  const { data: records, isLoading: recordsLoading } = useRecords();
   const mod = moduleId ? getModuleById(moduleId) : undefined;
+
+  // ─── Selected form in left panel ──────────────────────
+  const [selectedForm, setSelectedForm] = useState<string | null>(null);
 
   const sectionForms = useMemo(() => {
     if (!mod) return [];
@@ -35,6 +39,14 @@ export default function ModulePage() {
     return records.filter(r => formCodes.has(r.formCode as string));
   }, [records, mod, sectionForms]);
 
+  // Records for the currently selected form
+  const selectedFormRecords = useMemo(() => {
+    if (!selectedForm) return [];
+    return sectionRecords
+      .filter(r => r.formCode === selectedForm)
+      .sort((a, b) => ((b._createdAt as string) || '').localeCompare((a._createdAt as string) || ''));
+  }, [selectedForm, sectionRecords]);
+
   const formCodesWithRecords = useMemo(() => {
     const codes = new Set(sectionRecords.map(r => r.formCode as string));
     return codes;
@@ -45,15 +57,13 @@ export default function ModulePage() {
     ? Math.round(((sectionForms.length - gapForms.length) / sectionForms.length) * 100)
     : 0;
 
+  // Auto-select first form on load
+  const effectiveSelectedForm = selectedForm ?? (sectionForms[0]?.code ?? null);
+
   if (!mod) {
     return (
       <AppShell breadcrumbs={[{ label: "Dashboard", path: "/" }, { label: "Module Not Found" }]}>
-        <div className="flex flex-col items-center justify-center py-20">
-          <AlertTriangle className="w-12 h-12 text-muted-foreground/40 mb-4" />
-          <h2 className="text-xl text-foreground mb-2">Module Not Found</h2>
-          <p className="text-sm text-muted-foreground mb-4">No module with ID "{moduleId}"</p>
-          <Button onClick={() => navigate("/")} variant="outline">Back to Dashboard</Button>
-        </div>
+        <StateScreen state="error" icon={AlertTriangle} title="Module Not Found" message={`No module with ID "${moduleId}"`} action={{ label: "Back to Dashboard", onClick: () => navigate("/") }} />
       </AppShell>
     );
   }
@@ -63,13 +73,14 @@ export default function ModulePage() {
     { label: mod.name },
   ];
 
-  const recentRecords = [...sectionRecords]
-    .sort((a, b) => ((b._createdAt as string) || '').localeCompare((a._createdAt as string) || ''))
-    .slice(0, 5);
+  const selectedFormSchema = effectiveSelectedForm
+    ? FORM_SCHEMAS.find(f => f.code === effectiveSelectedForm)
+    : undefined;
 
   return (
     <AppShell breadcrumbs={breadcrumbs}>
       <div className="space-y-6">
+        {/* ─── Header ───────────────────────────────────── */}
         <div className="flex items-start gap-4">
           <div className={cn("w-12 h-12 rounded-sm flex items-center justify-center border", mod.moduleClass, "bg-primary/10 border-primary/20")}>
             <mod.icon className="w-6 h-6 text-primary" />
@@ -84,6 +95,7 @@ export default function ModulePage() {
           </Button>
         </div>
 
+        {/* ─── Stats ────────────────────────────────────── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card className="border-primary/15 bg-primary/5">
             <CardContent className="p-4 flex items-center gap-3">
@@ -125,6 +137,7 @@ export default function ModulePage() {
           </Card>
         </div>
 
+        {/* ─── Gap Warning ──────────────────────────────── */}
         {gapForms.length > 0 && (
           <Card className="border-amber-500/20 bg-amber-500/5">
             <CardContent className="p-4 flex items-center gap-3">
@@ -140,85 +153,214 @@ export default function ModulePage() {
           </Card>
         )}
 
-        <SectionHeader icon={FileText} label="Forms in This Section" description={`${sectionForms.length} forms · ${sectionForms.length - gapForms.length} populated`} />
+        {/* ═══════════════════════════════════════════════════════════
+            Split Layout: Forms (Left) | Records (Right)
+        ═══════════════════════════════════════════════════════════ */}
+        <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6 min-h-[400px]">
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {sectionForms.map(form => {
-            const formRecordCount = sectionRecords.filter(r => r.formCode === form.code).length;
-            const hasRecords = formRecordCount > 0;
+          {/* ─── LEFT: Form List ─────────────────────────── */}
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 px-1 mb-2">
+              <FolderOpen className="w-4 h-4 text-primary" />
+              <h2 className="text-sm font-semibold text-foreground">Forms</h2>
+              <span className="text-[10px] text-muted-foreground ml-auto">{sectionForms.length} total</span>
+            </div>
 
-            return (
-              <Card
-                key={form.code}
-                className={cn(
-                  "cursor-pointer hover:border-primary/30 transition-all group",
-                  !hasRecords && "border-amber-500/15"
-                )}
-                onClick={() => navigate(`/records?formCode=${form.code}`)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-mono text-xs font-bold text-primary">{form.code}</span>
-                    <Badge variant="outline" className={cn(
-                      "text-[10px]",
-                      form.importance === "Critical" ? "border-red-500/30 text-red-400" :
-                      form.importance === "High" ? "border-amber-500/30 text-amber-400" :
-                      "border-border text-muted-foreground"
-                    )}>
-                      {form.importance}
-                    </Badge>
+            {sectionForms.map(form => {
+              const formRecordCount = sectionRecords.filter(r => r.formCode === form.code).length;
+              const hasRecords = formRecordCount > 0;
+              const isActive = effectiveSelectedForm === form.code;
+
+              return (
+                <button
+                  key={form.code}
+                  onClick={() => setSelectedForm(form.code)}
+                  className={cn(
+                    "w-full text-left px-3 py-2.5 rounded-sm transition-all group flex items-start gap-3",
+                    "border border-transparent",
+                    isActive
+                      ? "bg-primary/10 border-primary/25 text-foreground"
+                      : "hover:bg-muted/40 text-foreground/80 hover:text-foreground",
+                  )}
+                >
+                  {/* Icon */}
+                  <div className={cn(
+                    "w-8 h-8 rounded-sm flex items-center justify-center shrink-0 mt-0.5",
+                    isActive ? "bg-primary/20" : "bg-muted/30"
+                  )}>
+                    <FileText className={cn("w-4 h-4", isActive ? "text-primary" : "text-muted-foreground")} />
                   </div>
-                  <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors truncate">{form.name}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{form.description}</p>
-                  <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/30">
-                    <span className="text-[10px] text-muted-foreground/60">{form.frequency}</span>
-                    <div className="flex items-center gap-1.5">
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className={cn("font-mono text-[11px] font-bold", isActive ? "text-primary" : "text-primary/60")}>{form.code}</span>
+                      <Badge variant="outline" className={cn(
+                        "text-[9px] px-1 py-0",
+                        form.importance === "Critical" ? "border-red-500/30 text-red-400" :
+                        form.importance === "High" ? "border-amber-500/30 text-amber-400" :
+                        "border-border text-muted-foreground"
+                      )}>
+                        {form.importance}
+                      </Badge>
+                    </div>
+                    <p className={cn(
+                      "text-sm font-medium truncate",
+                      isActive ? "text-foreground" : "text-foreground/80"
+                    )}>
+                      {form.name}
+                    </p>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className="text-[10px] text-muted-foreground/60">{form.frequency}</span>
+                      <span className="text-muted-foreground/30">·</span>
                       {hasRecords ? (
-                        <span className="text-xs text-muted-foreground">{formRecordCount} record{formRecordCount !== 1 ? 's' : ''}</span>
+                        <span className="text-[10px] text-muted-foreground">{formRecordCount} record{formRecordCount !== 1 ? 's' : ''}</span>
                       ) : (
-                        <span className="text-[10px] text-amber-400 flex items-center gap-1">
-                          <AlertTriangle className="w-3 h-3" /> Empty
+                        <span className="text-[10px] text-amber-400 flex items-center gap-0.5">
+                          <AlertTriangle className="w-2.5 h-2.5" /> Empty
                         </span>
                       )}
-                      <ChevronRight className="w-3 h-3 text-muted-foreground/40 group-hover:text-primary transition-colors" />
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+
+                  {/* Arrow */}
+                  <ChevronRight className={cn(
+                    "w-4 h-4 mt-2 shrink-0 transition-colors",
+                    isActive ? "text-primary" : "text-muted-foreground/20 group-hover:text-muted-foreground/60"
+                  )} />
+                </button>
+              );
+            })}
+          </div>
+
+          {/* ─── RIGHT: Selected Form ────────────────────── */}
+          <div className="border border-border/40 rounded-sm bg-card/50 overflow-hidden">
+            {selectedFormSchema ? (
+              <div className="flex flex-col h-full">
+                {/* Right panel header */}
+                <div className="px-5 py-4 border-b border-border/30 bg-muted/10 flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-sm flex items-center justify-center bg-primary/10 shrink-0">
+                    <FileText className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-bold text-primary">{selectedFormSchema.code}</span>
+                      <Badge variant="outline" className="text-[9px]">{selectedFormSchema.importance}</Badge>
+                    </div>
+                    <h3 className="text-sm font-semibold text-foreground truncate">{selectedFormSchema.name}</h3>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => navigate(`/create?formCode=${selectedFormSchema.code}`)}
+                    className="gap-1.5 shrink-0"
+                  >
+                    <FilePlus className="w-3.5 h-3.5" /> New
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => navigate(`/records?formCode=${selectedFormSchema.code}`)}
+                    className="gap-1.5 shrink-0"
+                  >
+                    <Database className="w-3.5 h-3.5" /> View All
+                  </Button>
+                </div>
+
+                {/* Form description */}
+                <div className="px-5 py-3 border-b border-border/20 bg-muted/5">
+                  <p className="text-xs text-muted-foreground">{selectedFormSchema.description}</p>
+                  <div className="flex items-center gap-3 mt-1.5">
+                    <span className="text-[10px] text-muted-foreground/60">Frequency: {selectedFormSchema.frequency}</span>
+                    <span className="text-[10px] text-muted-foreground/60">Fields: {selectedFormSchema.fields.length}</span>
+                    <span className="text-[10px] text-muted-foreground/60">Section: {selectedFormSchema.sectionName}</span>
+                  </div>
+                </div>
+
+                {/* Records list for this form */}
+                <div className="flex-1 overflow-y-auto">
+                  {recordsLoading ? (
+                    <div className="p-5">
+                      <StateScreen state="loading" icon={ListChecks} title="Loading records…" />
+                    </div>
+                  ) : selectedFormRecords.length === 0 ? (
+                    <div className="p-5">
+                      <StateScreen
+                        state="empty"
+                        icon={Inbox}
+                        title="No records yet"
+                        message={`No ${selectedFormSchema.code} records found. Create the first one.`}
+                        action={{
+                          label: "Create First Record",
+                          onClick: () => navigate(`/create?formCode=${selectedFormSchema.code}`)
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-border/20">
+                      {selectedFormRecords.map(r => (
+                        <button
+                          key={r.serial as string}
+                          onClick={() => navigate(`/records/${encodeURIComponent(r.serial as string)}`)}
+                          className="w-full text-left px-5 py-3 hover:bg-muted/20 transition-colors flex items-center gap-3 group"
+                        >
+                          <div className="w-7 h-7 rounded-sm flex items-center justify-center bg-muted/30 shrink-0">
+                            <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm font-mono font-medium text-foreground group-hover:text-primary transition-colors">
+                              {r.serial as string}
+                            </span>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-[10px] text-muted-foreground/60">
+                                {r._createdAt ? new Date(r._createdAt as string).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                              </span>
+                              {r._createdBy && (
+                                <>
+                                  <span className="text-muted-foreground/20">·</span>
+                                  <span className="text-[10px] text-muted-foreground/60">{r._createdBy as string}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <Badge variant="outline" className="text-[9px] shrink-0">{(r.formName as string) || selectedFormSchema.code}</Badge>
+                          <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/20 group-hover:text-primary transition-colors shrink-0" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer with count */}
+                {selectedFormRecords.length > 0 && (
+                  <div className="px-5 py-2.5 border-t border-border/20 bg-muted/5 flex items-center justify-between">
+                    <span className="text-[10px] text-muted-foreground">
+                      {selectedFormRecords.length} record{selectedFormRecords.length !== 1 ? 's' : ''} for {selectedFormSchema.code}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-[10px] gap-1 h-6"
+                      onClick={() => navigate(`/records?formCode=${selectedFormSchema.code}`)}
+                    >
+                      View All <ArrowRight className="w-3 h-3" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-full min-h-[300px]">
+                <StateScreen
+                  state="empty"
+                  icon={FolderOpen}
+                  title="Select a form"
+                  message="Choose a form from the list to view its records."
+                />
+              </div>
+            )}
+          </div>
         </div>
 
-        {recentRecords.length > 0 && (
-          <>
-            <SectionHeader icon={Clock} label="Recent Records" />
-            <div className="space-y-2">
-              {recentRecords.map(r => (
-                <Card
-                  key={r.serial as string}
-                  className="cursor-pointer hover:border-primary/30 transition-colors"
-                  onClick={() => navigate(`/records/${encodeURIComponent(r.serial as string)}`)}
-                >
-                  <CardContent className="p-3 flex items-center gap-3">
-                    <FileText className="w-4 h-4 text-muted-foreground" />
-                    <div className="flex-1 min-w-0">
-                      <span className="text-sm font-mono font-medium">{r.serial as string}</span>
-                      <span className="text-xs text-muted-foreground ml-2">{r.formName as string}</span>
-                    </div>
-                    <Badge variant="outline" className="text-[10px]">{r.formCode as string}</Badge>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground/30" />
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-            <div className="flex justify-center">
-              <Button variant="outline" onClick={() => navigate(`/records?section=${mod.section}`)} className="gap-2">
-                View All Records <ArrowRight className="w-4 h-4" />
-              </Button>
-            </div>
-          </>
-        )}
-
+        {/* ─── Bottom Actions ────────────────────────────── */}
         <div className="flex flex-wrap gap-3 pt-2">
           <Button variant="outline" onClick={() => navigate(`/records?section=${mod.section}`)} className="gap-2">
             <Database className="w-4 h-4" /> All Records
