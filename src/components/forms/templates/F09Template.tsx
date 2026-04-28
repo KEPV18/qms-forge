@@ -50,7 +50,6 @@ export function F09Template({ data, isTemplate = true, editMode = false, onChang
   const valueCls = "px-2 py-2 border border-slate-300 dark:border-slate-600 text-sm text-slate-900 dark:text-slate-100 min-h-[2.25rem]";
   const emptyValueCls = cn(valueCls, isTemplate ? "text-slate-300 dark:text-slate-600" : "");
   const titleCls = "bg-slate-100 dark:bg-slate-800 font-bold text-base px-4 py-3 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100";
-  const headerCls = "bg-indigo-50 dark:bg-indigo-950 font-semibold text-xs uppercase tracking-wide px-3 py-2 border border-indigo-200 dark:border-indigo-800 text-indigo-800 dark:text-indigo-300";
   const inputCls = "w-full bg-transparent outline-none text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600";
 
   // ── Cell helpers ────────────────────────────────────────────────────
@@ -144,6 +143,16 @@ export function F09Template({ data, isTemplate = true, editMode = false, onChang
     <td colSpan={colSpan} className={cn(labelCls, className)}>{text}</td>
   );
 
+  // Label on left + input on right, in same row
+  const LabelInputRow = ({ label, field, labelSpan, inputSpan, placeholder }: {
+    label: string; field: string; labelSpan: number; inputSpan: number; placeholder?: string;
+  }) => (
+    <tr>
+      <LabelCell text={label} colSpan={labelSpan} />
+      <Cell field={field} colSpan={inputSpan} placeholder={placeholder} />
+    </tr>
+  );
+
   const serialValue = val(d, "serial") || val(d, "formCode") || "";
 
   return (
@@ -184,7 +193,7 @@ export function F09Template({ data, isTemplate = true, editMode = false, onChang
             </td>
           </tr>
 
-          {/* ── Row 1: Complaint Sr. No. + Date labels ───── */}
+          {/* ── Row 1: Complaint Sr. No. label + value | Date label + value ── */}
           <tr>
             <LabelCell text="Complaint Sr. No." colSpan={7} />
             <LabelCell text="Date" colSpan={5} />
@@ -194,99 +203,96 @@ export function F09Template({ data, isTemplate = true, editMode = false, onChang
             <DateOrTextCell field="date" colSpan={5} defaultToday={editMode && !isTemplate} />
           </tr>
 
-          {/* ── Row 2-4: Receipt of Complaint section ────── */}
-          {/* ── R2: Receipt of Complaint | Date | Received By ── */}
+          {/* ── Row 2-3: Receipt of Complaint section ────── */}
+          {/*  DOCX: "Receipt of Complaint" merged vertically over R2-R4
+              R2: Receipt of Complaint | Date: [input] | Received By: [input]
+              R3: (cont)              | Time: [input] | (cont)
+          */}
           <tr>
-            <LabelCell text="Receipt of Complaint" colSpan={1} className="text-xs" />
+            <LabelCell text="Receipt of Complaint" rowSpan={2} colSpan={1} className="text-xs align-middle" />
             <LabelCell text="Date" colSpan={3} />
             <DateOrTextCell field="receipt_date" colSpan={3} placeholder="DD/MM/YYYY" />
-            <LabelCell text="Received By" colSpan={5} />
+            <LabelCell text="Received By" rowSpan={2} colSpan={2} className="align-middle" />
+            <Cell field="received_by" rowSpan={2} colSpan={3} placeholder="Name" />
           </tr>
-
-          {/* ── R3: Receipt of Complaint (cont) | Time | Received By ── */}
           <tr>
-            <LabelCell text="" colSpan={1} className="text-xs" />
             <LabelCell text="Time" colSpan={3} />
             <Cell field="receipt_time" colSpan={3} placeholder="HH:MM" />
-            <Cell field="received_by" colSpan={5} placeholder="Name" />
           </tr>
 
-          {/* ── R4: Mode of Receipt | Received By (cont) ── */}
-          <tr>
-            <LabelCell text="Mode of Receipt" colSpan={7} />
-            <Cell field="received_by" colSpan={5} placeholder="Name" readonly />
-          </tr>
+          {/* ── Row 4: Mode of Receipt — LABEL on left, INPUT on right ── */}
+          <LabelInputRow label="Mode of Receipt" field="mode_of_receipt" labelSpan={7} inputSpan={5} placeholder="Email / Phone / Letter / In-person" />
 
-          {/* ── R5: Customer Name ──────────────────────────── */}
-          <tr>
-            <LabelCell text="Customer Name" colSpan={7} />
-            <Cell field="client_name" colSpan={5} placeholder="Customer name" />
-          </tr>
+          {/* ── Row 5: Customer Name — LABEL on left, INPUT on right ── */}
+          <LabelInputRow label="Customer Name" field="client_name" labelSpan={7} inputSpan={5} placeholder="Customer name" />
 
-          {/* ── R6: Details of Product ───────────────────── */}
+          {/* ── Row 6-7: Details of Product ───────────────────── */}
+          {/*  DOCX: R6 is label spanning full row, R7 has "Type Of Product" label + input */}
           <tr>
             <LabelCell text="Details of Product" colSpan={12} />
           </tr>
-
-          {/* ── R7: Type Of Product ──────────────────────── */}
           <tr>
             <LabelCell text="Type Of Product" colSpan={2} />
             <Cell field="product_type" colSpan={10} placeholder="Product / service type" />
           </tr>
+          {/* Extra row for product details text input (the DOCX has space for free-text product details) */}
+          <tr>
+            <Cell field="product_details" colSpan={12} placeholder="Product name, model, batch no., etc." />
+          </tr>
 
-          {/* ── R8: Description Of Complaints ─────────────── */}
+          {/* ── Row 8: Description Of Complaints ─────────────── */}
           <tr>
             <LabelCell text="Description Of Complaints" colSpan={12} />
           </tr>
           <tr>
-            <Cell field="description" colSpan={12} placeholder="Describe the complaint in detail..." />
+            <TextAreaCell field="description" colSpan={12} placeholder="Describe the complaint in detail..." />
           </tr>
 
-          {/* ── R9-10: Nature Of Complaints ──────────────── */}
+          {/* ── Row 9-10: Nature Of Complaints ──────────────── */}
+          {/*  DOCX: R9 is header row: "Nature Of Complaints" | SERIOUS | MAJOR | MINOR
+              R10 is the selection row with checkboxes/radios BELOW each label
+              → The labels (SERIOUS/MAJOR/MINOR) are HEADERS, not clickable areas.
+              The input row below has the actual radio buttons.
+          */}
           <tr>
             <LabelCell text="Nature Of Complaints" colSpan={3} />
-            <td colSpan={3} className={cn(headerCls, "text-center")}>SERIOUS</td>
-            <td colSpan={3} className={cn(headerCls, "text-center")}>MAJOR</td>
-            <td colSpan={3} className={cn(headerCls, "text-center")}>MINOR</td>
+            <td colSpan={3} className="bg-slate-100 dark:bg-slate-800 font-semibold text-sm text-center px-3 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300">SERIOUS</td>
+            <td colSpan={3} className="bg-slate-100 dark:bg-slate-800 font-semibold text-sm text-center px-3 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300">MAJOR</td>
+            <td colSpan={3} className="bg-slate-100 dark:bg-slate-800 font-semibold text-sm text-center px-3 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300">MINOR</td>
           </tr>
+          {/* Checkbox row — small checkmark area, NOT full-width radio buttons */}
           <tr>
-            <td colSpan={3} className={emptyValueCls}>
+            <td colSpan={3} className="bg-white dark:bg-slate-900 text-center py-2 border border-slate-300 dark:border-slate-600 min-h-[2rem]">
               {editMode && !isTemplate ? (
-                <label className="flex items-center gap-2 px-2">
-                  <input type="radio" name="complaint_nature_f09" value="SERIOUS"
-                    checked={natureChecks.serious}
-                    onChange={() => {
-                      setNatureChecks({ serious: true, major: false, minor: false });
-                      onChange?.("complaint_nature", "SERIOUS");
-                    }}
-                    className="accent-indigo-500" />
-                </label>
+                <input type="radio" name="complaint_nature_f09" value="SERIOUS"
+                  checked={natureChecks.serious}
+                  onChange={() => {
+                    setNatureChecks({ serious: true, major: false, minor: false });
+                    onChange?.("complaint_nature", "SERIOUS");
+                  }}
+                  className="accent-indigo-500 w-4 h-4" />
               ) : (val(d, "complaint_nature") === "SERIOUS" ? "✓" : "")}
             </td>
-            <td colSpan={3} className={emptyValueCls}>
+            <td colSpan={3} className="bg-white dark:bg-slate-900 text-center py-2 border border-slate-300 dark:border-slate-600 min-h-[2rem]">
               {editMode && !isTemplate ? (
-                <label className="flex items-center gap-2 px-2">
-                  <input type="radio" name="complaint_nature_f09" value="MAJOR"
-                    checked={natureChecks.major}
-                    onChange={() => {
-                      setNatureChecks({ serious: false, major: true, minor: false });
-                      onChange?.("complaint_nature", "MAJOR");
-                    }}
-                    className="accent-indigo-500" />
-                </label>
+                <input type="radio" name="complaint_nature_f09" value="MAJOR"
+                  checked={natureChecks.major}
+                  onChange={() => {
+                    setNatureChecks({ serious: false, major: true, minor: false });
+                    onChange?.("complaint_nature", "MAJOR");
+                  }}
+                  className="accent-indigo-500 w-4 h-4" />
               ) : (val(d, "complaint_nature") === "MAJOR" ? "✓" : "")}
             </td>
-            <td colSpan={3} className={emptyValueCls}>
+            <td colSpan={3} className="bg-white dark:bg-slate-900 text-center py-2 border border-slate-300 dark:border-slate-600 min-h-[2rem]">
               {editMode && !isTemplate ? (
-                <label className="flex items-center gap-2 px-2">
-                  <input type="radio" name="complaint_nature_f09" value="MINOR"
-                    checked={natureChecks.minor}
-                    onChange={() => {
-                      setNatureChecks({ serious: false, major: false, minor: true });
-                      onChange?.("complaint_nature", "MINOR");
-                    }}
-                    className="accent-indigo-500" />
-                </label>
+                <input type="radio" name="complaint_nature_f09" value="MINOR"
+                  checked={natureChecks.minor}
+                  onChange={() => {
+                    setNatureChecks({ serious: false, major: false, minor: true });
+                    onChange?.("complaint_nature", "MINOR");
+                  }}
+                  className="accent-indigo-500 w-4 h-4" />
               ) : (val(d, "complaint_nature") === "MINOR" ? "✓" : "")}
             </td>
           </tr>
@@ -309,17 +315,23 @@ export function F09Template({ data, isTemplate = true, editMode = false, onChang
             <TextAreaCell field="actions_proposed" colSpan={7} rows={3} />
           </tr>
 
+          {/* Customer Informed section — DOCX has "Customer Informed Vide" as header
+              with two sub-rows: Vide [input] and Date [input]  */}
           <tr>
-            <LabelCell text="" colSpan={5} />
-            <LabelCell text="Customer Informed Vide" colSpan={3} />
-            <LabelCell text="" colSpan={2} />
-            <LabelCell text="" colSpan={2} />
+            <td colSpan={5} />
+            <LabelCell text="Customer Informed Vide" colSpan={7} />
           </tr>
+          {/* Sub-row 1: Vide reference input */}
           <tr>
-            <Cell field="result_reference" colSpan={5} placeholder="Reference" readonly />
-            <LabelCell text="Customer Informed" colSpan={3} />
+            <td colSpan={5} />
+            <LabelCell text="Vide" colSpan={2} />
+            <Cell field="customer_informed_vide" colSpan={5} placeholder="Reference / Memo no." />
+          </tr>
+          {/* Sub-row 2: Date input */}
+          <tr>
+            <td colSpan={5} />
             <LabelCell text="Date" colSpan={2} />
-            <DateOrTextCell field="customer_informed_date" colSpan={2} placeholder="DD/MM/YYYY" />
+            <DateOrTextCell field="customer_informed_date" colSpan={5} placeholder="DD/MM/YYYY" />
           </tr>
 
           {/* ── R15: Analysed By / Closed By ──────────────── */}
