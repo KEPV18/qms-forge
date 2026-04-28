@@ -15,6 +15,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useProceduresData } from "@/hooks/useProceduresData";
+import { PROCEDURES_METADATA } from "@/lib/ProceduresContent";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -183,7 +184,14 @@ export default function ProceduresPage() {
           </div>
           <div className="min-w-0">
             <h1 className="text-lg font-bold tracking-tight truncate">Quality Procedures</h1>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-[0.12em] font-medium">Standard Operating Procedures (SOP)</p>
+            <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+              <Badge variant="outline" className="text-[8px] h-4 px-1.5 bg-primary/5 text-primary border-primary/15 font-mono">
+                {PROCEDURES_METADATA.documentPrefix}
+              </Badge>
+              <span>Rev {PROCEDURES_METADATA.revisionNo}</span>
+              <span>·</span>
+              <span>Approved {PROCEDURES_METADATA.approvalDate}</span>
+            </div>
           </div>
         </div>
 
@@ -258,6 +266,20 @@ export default function ProceduresPage() {
                     <RotateCcw className="w-3 h-3" /> Reset all
                   </Button>
                 )}
+              </div>
+              <div className="p-3 border-t border-border/20 bg-muted/10 space-y-1.5 text-[10px]">
+                <div className="flex justify-between text-muted-foreground">
+                  <span className="flex items-center gap-1"><User className="w-3 h-3" /> Prepared</span>
+                  <span className="font-semibold text-foreground text-[9px]">{PROCEDURES_METADATA.preparedBy}</span>
+                </div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span className="flex items-center gap-1"><History className="w-3 h-3" /> Approved</span>
+                  <span className="font-semibold text-foreground text-[9px]">{PROCEDURES_METADATA.approvedBy}</span>
+                </div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span className="flex items-center gap-1"><History className="w-3 h-3" /> Approval Date</span>
+                  <span className="font-semibold text-foreground text-[9px]">{PROCEDURES_METADATA.approvalDate}</span>
+                </div>
               </div>
             </div>
 

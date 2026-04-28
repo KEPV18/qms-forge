@@ -10,8 +10,9 @@ export const MANNUAL_METADATA = {
   documentNo: "M/01",
   revisionNo: "02",
   updateDate: "03/2026",
+  approvalDate: "01/2026",
   preparedBy: "Ahmed Khaled (QMS Team Leader)",
-  approvedBy: "Kareem Yehia (CEO)",
+  approvedBy: "Top Management",
 };
 
 export const MANUAL_CONTENT: ManualSection[] = [

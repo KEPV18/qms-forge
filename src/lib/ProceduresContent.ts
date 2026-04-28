@@ -1,4 +1,13 @@
 
+export const PROCEDURES_METADATA = {
+  company: "Vezloo",
+  documentPrefix: "P-SOP",
+  revisionNo: "01",
+  approvalDate: "01/2026",
+  preparedBy: "Ahmed Khaled (QMS Team Leader)",
+  approvedBy: "Top Management",
+};
+
 export interface ProcedureSection {
   id: string;
   title: string;

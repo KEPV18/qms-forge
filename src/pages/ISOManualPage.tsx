@@ -83,6 +83,8 @@ export default function ISOManualPage() {
               <span>Rev {MANNUAL_METADATA.revisionNo}</span>
               <span>·</span>
               <span>{MANNUAL_METADATA.updateDate}</span>
+              <span>·</span>
+              <span>Approved {MANNUAL_METADATA.approvalDate}</span>
             </div>
           </div>
         </div>
@@ -157,6 +159,10 @@ export default function ISOManualPage() {
             <div className="flex justify-between text-muted-foreground">
               <span className="flex items-center gap-1"><History className="w-3 h-3" /> Approved</span>
               <span className="font-semibold text-foreground text-[9px]">{MANNUAL_METADATA.approvedBy}</span>
+            </div>
+            <div className="flex justify-between text-muted-foreground">
+              <span className="flex items-center gap-1"><History className="w-3 h-3" /> Approval Date</span>
+              <span className="font-semibold text-foreground text-[9px]">{MANNUAL_METADATA.approvalDate}</span>
             </div>
           </div>
         </div>
