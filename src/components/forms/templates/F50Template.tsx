@@ -141,16 +141,18 @@ export function F50Template({ data, isTemplate = true, editMode = false, onChang
               Customer Property Monitoring Register
             </td>
             <td colSpan={3} className={cn(titleCls, "text-center text-sm whitespace-nowrap")}>
-              F/50<br />
               {editMode && !isTemplate ? (
-                <input
-                  className="w-full text-xs bg-transparent outline-none text-center text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
-                  value={serialValue}
-                  onChange={e => onChange?.("serial", e.target.value)}
-                  placeholder="F/50-001"
-                />
+                <>
+                  F 50 Rev{" "}
+                  <input
+                    className="inline w-16 text-xs bg-transparent outline-none border-b border-slate-400 text-center text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
+                    value={serialValue}
+                    onChange={e => onChange?.("serial", e.target.value)}
+                    placeholder="00"
+                  />
+                </>
               ) : (
-                `Rev ${serialValue || "00"}`
+                `F 50 Rev ${serialValue || "00"}`
               )}
             </td>
           </tr>
@@ -167,8 +169,8 @@ export function F50Template({ data, isTemplate = true, editMode = false, onChang
             <td className={headerCls}>Outward Date</td>
             <td className={headerCls}>Outward Qty</td>
             <td className={headerCls}>Balance Qty</td>
-            <td className={headerCls}>Damage / Rejection</td>
-            <td className={headerCls}>Outward By</td>
+            <td className={headerCls}>Summary of damage/rejection</td>
+            <td className={headerCls}>Outward By Sign.</td>
             <td className={headerCls}>Sr. No.</td>
           </tr>
 

@@ -7,8 +7,7 @@
 //   isTemplate=false, editMode=true   → editable form (Create/Edit page)
 //
 // Layout: 10-column grid matching DOCX proportions.
-// Includes a self-rating table (Product Quality, Order Processing, etc.)
-// with checkbox-style rating columns.
+// Includes a self-rating table with checkboxes + N/A option.
 // ============================================================================
 
 import React, { useState } from "react";
@@ -30,23 +29,18 @@ function val(data: Record<string, unknown> | undefined, key: string): string {
   return String(v);
 }
 
-function todayDDMMYYYY(): string {
-  const now = new Date();
-  const day = String(now.getDate()).padStart(2, "0");
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const year = now.getFullYear();
-  return `${day}/${month}/${year}`;
-}
-
 const RATING_FIELDS = [
   { key: "rating_product_quality", label: "Product Quality" },
   { key: "rating_order_processing", label: "Order Processing" },
   { key: "rating_complaint_handling", label: "Complaint Handling" },
   { key: "rating_delivery", label: "Delivery" },
   { key: "rating_price", label: "Price" },
+  { key: "comment", label: "Comment" },
 ] as const;
 
-const RATING_OPTIONS = ["Excellent", "Good", "Satisfactory", "Average", "Poor"] as const;
+const RATING_OPTIONS = ["Excellent", "Good", "Satisfactory", "Average", "Poor", "N/A"] as const;
+
+type RatingValue = typeof RATING_OPTIONS[number] | "";
 
 export function F10Template({ data, isTemplate = true, editMode = false, onChange, className }: F10Props) {
   const d = data ?? {};
@@ -66,20 +60,14 @@ export function F10Template({ data, isTemplate = true, editMode = false, onChang
   const valueCls = "px-2 py-2 border border-slate-300 dark:border-slate-600 text-sm text-slate-900 dark:text-slate-100 min-h-[2.25rem]";
   const emptyValueCls = cn(valueCls, isTemplate ? "text-slate-300 dark:text-slate-600" : "");
   const titleCls = "bg-slate-100 dark:bg-slate-800 font-bold text-base px-4 py-3 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100";
-  const headerCls = "bg-indigo-50 dark:bg-indigo-950 font-semibold text-xs uppercase tracking-wide px-2 py-2 border border-indigo-200 dark:border-indigo-800 text-indigo-800 dark:text-indigo-300";
   const inputCls = "w-full bg-transparent outline-none text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600";
 
   // ── Cell helpers ────────────────────────────────────────────────────
-  const Cell = ({ field, colSpan, className, placeholder, readonly: forceReadonly }: {
-    field: string;
-    colSpan?: number;
-    className?: string;
-    placeholder?: string;
-    readonly?: boolean;
+  const Cell = ({ field, colSpan, className, placeholder }: {
+    field: string; colSpan?: number; className?: string; placeholder?: string;
   }) => {
     const value = val(d, field);
-    const isReadonly = forceReadonly ?? readonly;
-    if (isReadonly) {
+    if (readonly) {
       return (
         <td colSpan={colSpan} className={cn(className || emptyValueCls, !value && "text-slate-300 dark:text-slate-600")}>
           {value || (isTemplate ? (placeholder || "") : "")}
@@ -100,11 +88,7 @@ export function F10Template({ data, isTemplate = true, editMode = false, onChang
   };
 
   const TextAreaCell = ({ field, colSpan, className, placeholder, rows = 3 }: {
-    field: string;
-    colSpan?: number;
-    className?: string;
-    placeholder?: string;
-    rows?: number;
+    field: string; colSpan?: number; className?: string; placeholder?: string; rows?: number;
   }) => {
     const value = val(d, field);
     if (readonly) {
@@ -127,38 +111,17 @@ export function F10Template({ data, isTemplate = true, editMode = false, onChang
     );
   };
 
-  const DateOrTextCell = ({ field, colSpan, className, defaultToday, placeholder }: {
-    field: string;
-    colSpan?: number;
-    className?: string;
-    defaultToday?: boolean;
-    placeholder?: string;
-  }) => {
-    const rawValue = val(d, field);
-    if (readonly) {
-      return (
-        <td colSpan={colSpan} className={cn(className || emptyValueCls, !rawValue && "text-slate-300 dark:text-slate-600")}>
-          {rawValue || (isTemplate ? (placeholder || "DD/MM/YYYY") : "")}
-        </td>
-      );
-    }
-    const displayValue = rawValue || (defaultToday ? todayDDMMYYYY() : "");
-    return (
-      <td colSpan={colSpan} className={cn(className || valueCls)}>
-        <input
-          type="text"
-          value={displayValue}
-          onChange={e => onChange?.(field, e.target.value)}
-          placeholder={placeholder || "DD/MM/YYYY"}
-          className={inputCls}
-        />
-      </td>
-    );
-  };
-
   const LabelCell = ({ text, colSpan, className }: { text: string; colSpan?: number; className?: string }) => (
     <td colSpan={colSpan} className={cn(labelCls, className)}>{text}</td>
   );
+
+  // ── Rating handler ─────────────────────────────────────────────────
+  const handleRatingChange = (fieldKey: string, rating: string) => {
+    const current = ratings[fieldKey];
+    const newRating = current === rating ? "" : rating; // toggle off if same clicked
+    setRatings(prev => ({ ...prev, [fieldKey]: newRating }));
+    onChange?.(fieldKey, newRating);
+  };
 
   const serialValue = val(d, "serial") || val(d, "formCode") || "";
 
@@ -166,147 +129,265 @@ export function F10Template({ data, isTemplate = true, editMode = false, onChang
     <div className={cn("overflow-x-auto", className)}>
       <table className="w-full border-collapse">
         <colgroup>
-          <col className="w-[12%]" />
-          <col className="w-[8%]" />
-          <col className="w-[8%]" />
-          <col className="w-[16%]" />
-          <col className="w-[14%]" />
-          <col className="w-[14%]" />
-          <col className="w-[8%]" />
-          <col className="w-[6%]" />
-          <col className="w-[6%]" />
-          <col className="w-[8%]" />
+          <col className="w-[15%]" /> {/* Comment/row label — 2 cols */}
+          <col className="w-[7%]" />  {/* Excellent */}
+          <col className="w-[7%]" />  {/* Good */}
+          <col className="w-[7%]" />  {/* Satisfactory */}
+          <col className="w-[7%]" />  {/* Average */}
+          <col className="w-[7%]" />  {/* Poor */}
+          <col className="w-[7%]" />  {/* N/A */}
+          <col className="w-[2%]" />  {/* spacer */}
+          <col className="w-[2%]" />  {/* spacer */}
+          <col className="w-[39%]" /> {/* Comment text area */}
         </colgroup>
         <tbody>
           {/* ── Row 0: Title + Serial ─────────────────────── */}
           <tr>
-            <td colSpan={8} className={cn(titleCls, "text-center text-lg")}>
+            <td colSpan={7} className={cn(titleCls, "text-center text-lg")}>
               Customers Feedback Form
-            </td>
-            <td colSpan={2} className={cn(titleCls, "text-center text-sm whitespace-nowrap")}>
-              F/10<br />
               {editMode && !isTemplate ? (
-                <input
-                  className="w-full text-xs bg-transparent outline-none text-center text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
-                  value={serialValue}
-                  onChange={e => onChange?.("serial", e.target.value)}
-                  placeholder="F/10-001"
-                />
+                <span className="ml-2">
+                  : Project:{" "}
+                  <input
+                    className="inline w-32 bg-transparent outline-none border-b border-slate-400 text-base text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
+                    value={val(d, "project_name")}
+                    onChange={e => onChange?.("project_name", e.target.value)}
+                    placeholder="Project name"
+                  />
+                </span>
+              ) : val(d, "project_name") ? (
+                <span className="ml-2">: Project: {val(d, "project_name")}</span>
+              ) : null}
+            </td>
+            <td colSpan={3} className={cn(titleCls, "text-center text-sm whitespace-nowrap")}>
+              F/10
+              {editMode && !isTemplate ? (
+                <>
+                  <br />
+                  <input
+                    className="w-full text-xs bg-transparent outline-none text-center text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
+                    value={serialValue}
+                    onChange={e => onChange?.("serial", e.target.value)}
+                    placeholder="Rev No.00"
+                  />
+                </>
               ) : (
-                `No. ${serialValue || "00"}`
+                <><br />Rev {serialValue || "No.00"}</>
               )}
             </td>
           </tr>
 
-          {/* ── Row 1: Date + Year ────────────────────────── */}
+          {/* ── Row 1: Date | Year ──────────────────────── */}
           <tr>
-            <LabelCell text="Date" colSpan={3} />
-            <DateOrTextCell field="date" colSpan={3} defaultToday={editMode && !isTemplate} />
-            <LabelCell text="Year" colSpan={1} />
-            <Cell field="year" colSpan={3} placeholder={new Date().getFullYear().toString()} />
+            <LabelCell text="Date" colSpan={5} />
+            <LabelCell text="Year" colSpan={5} />
+          </tr>
+          <tr>
+            <Cell field="date" colSpan={5} placeholder="DD/MM/YYYY" />
+            <Cell field="year" colSpan={5} placeholder="2026" />
           </tr>
 
           {/* ── Row 2: Name ──────────────────────────────── */}
           <tr>
-            <LabelCell text="Name" colSpan={3} />
-            <Cell field="client_name" colSpan={7} placeholder="Customer name" />
+            <LabelCell text="Name" colSpan={10} />
           </tr>
-
-          {/* ── Row 3: Address ────────────────────────────── */}
           <tr>
-            <LabelCell text="Address" colSpan={3} />
-            <Cell field="address" colSpan={7} placeholder="Customer address" />
+            <Cell field="client_name" colSpan={10} placeholder="Customer / Distributor name" />
           </tr>
 
-          {/* ── Row 4: Self Rating (header, spans full width) */}
+          {/* ── Row 3: Address ───────────────────────────── */}
           <tr>
-            <LabelCell text="Self Rating" colSpan={10} className="text-center" />
+            <LabelCell text="Address" colSpan={10} />
           </tr>
-
-          {/* ── Row 5: Comment + rating column headers ──── */}
           <tr>
-            <LabelCell text="Comment" colSpan={3} />
-            <td colSpan={1} className={cn(headerCls, "text-center")}>Excellent</td>
-            <td colSpan={1} className={cn(headerCls, "text-center")}>Good</td>
-            <td colSpan={1} className={cn(headerCls, "text-center")}>Satisfactory</td>
-            <td colSpan={1} className={cn(headerCls, "text-center")}>Average</td>
-            <td colSpan={1} className={cn(headerCls, "text-center")}>Poor</td>
-            {/* col 8+9+10 are the value cells */}
+            <Cell field="address" colSpan={10} placeholder="Full address" />
           </tr>
 
-          {/* ── Rows 6-10: Rating rows ────────────────────── */}
-          {RATING_FIELDS.map(({ key, label }) => (
-            <tr key={key}>
-              <LabelCell text={label} colSpan={3} />
-              {RATING_OPTIONS.map((option) => {
-                const isSelected = val(d, key) === option || ratings[key] === option;
-                return (
-                  <td key={option} colSpan={1} className={cn(emptyValueCls, "text-center")}>
-                    {editMode && !isTemplate ? (
-                      <input
-                        type="radio"
-                        name={key}
-                        value={option}
-                        checked={ratings[key] === option}
-                        onChange={() => {
-                          setRatings(prev => ({ ...prev, [key]: option }));
-                          onChange?.(key, option);
-                        }}
-                        className="accent-indigo-500"
-                      />
-                    ) : (
-                      isSelected ? "✓" : ""
-                    )}
+          {/* ── Self Rating table ────────────────────────────── */}
+          <tr>
+            <td colSpan={10} className="bg-slate-100 dark:bg-slate-800 font-bold text-sm px-3 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-center">
+              Self Rating
+            </td>
+          </tr>
+
+          {/* Header: Comment | Excellent | Good | Satisfactory | Average | Poor | N/A | (spacer) | (spacer) | Comment text */}
+          <tr>
+            <td className={cn(labelCls, "text-center")}>Comment</td>
+            <td className={cn(labelCls, "text-center text-xs")}>Excellent</td>
+            <td className={cn(labelCls, "text-center text-xs")}>Good</td>
+            <td className={cn(labelCls, "text-center text-xs")}>Satisfactory</td>
+            <td className={cn(labelCls, "text-center text-xs")}>Average</td>
+            <td className={cn(labelCls, "text-center text-xs")}>Poor</td>
+            <td className={cn(labelCls, "text-center text-xs")}>N/A</td>
+            <td colSpan={2} className="border border-slate-300 dark:border-slate-600" />
+            <td className={cn(labelCls, "text-center text-xs")}>Comment</td>
+          </tr>
+
+          {/* Rating rows — one per criterion */}
+          {RATING_FIELDS.map((field) => {
+            // "Comment" is special — it only has a text field, no radio buttons
+            const isCommentRow = field.key === "comment";
+            const currentRating = ratings[field.key] || val(d, field.key);
+
+            return (
+              <tr key={field.key}>
+                {/* Row label */}
+                <td className={cn(labelCls, "text-sm")}>{field.label}</td>
+
+                {/* Rating checkboxes: Excellent, Good, Satisfactory, Average, Poor, N/A */}
+                {isCommentRow ? (
+                  // For Comment row — all 6 checkbox cells are empty (no radio)
+                  <td colSpan={6} className={valueCls}>
+                    {/* No radio buttons for Comment row — but allow N/A toggle */}
                   </td>
-                );
-              })}
-              {/* Extra 2 columns for visual balance matching DOCX */}
-              <td colSpan={3} className={emptyValueCls}></td>
-            </tr>
-          ))}
+                ) : (
+                  <>
+                    {RATING_OPTIONS.map((option) => {
+                      // Only show first 5 for rating rows (not N/A)
+                      if (option === "N/A") {
+                        // N/A checkbox for rating rows
+                        const isNA = currentRating === "N/A";
+                        return (
+                          <td key={option} className="bg-white dark:bg-slate-900 text-center py-2 border border-slate-300 dark:border-slate-600 min-h-[2rem]">
+                            {editMode && !isTemplate ? (
+                              <input
+                                type="radio"
+                                name={`${field.key}_na`}
+                                checked={isNA}
+                                onChange={() => handleRatingChange(field.key, "N/A")}
+                                className="accent-indigo-500 w-4 h-4"
+                              />
+                            ) : (
+                              isNA ? "✓" : ""
+                            )}
+                          </td>
+                        );
+                      }
+                      const isChecked = currentRating === option;
+                      return (
+                        <td key={option} className="bg-white dark:bg-slate-900 text-center py-2 border border-slate-300 dark:border-slate-600 min-h-[2rem]">
+                          {editMode && !isTemplate ? (
+                            <input
+                              type="radio"
+                              name={field.key}
+                              checked={isChecked}
+                              onChange={() => handleRatingChange(field.key, option)}
+                              className="accent-indigo-500 w-4 h-4"
+                            />
+                          ) : (
+                            isChecked ? "✓" : ""
+                          )}
+                        </td>
+                      );
+                    })}
+                  </>
+                )}
 
-          {/* ── Row 11: Any other suggestions ─────────────── */}
+                {/* Spacer cols */}
+                <td colSpan={2} className="border border-slate-300 dark:border-slate-600" />
+
+                {/* Comment text column */}
+                <td className={valueCls}>
+                  {readonly ? (
+                    <span className={!currentRating && "text-slate-300 dark:text-slate-600"}>
+                      {currentRating || ""}
+                    </span>
+                  ) : (
+                    <input
+                      type="text"
+                      value={isCommentRow ? val(d, "comment_text") || "" : currentRating}
+                      onChange={e => {
+                        if (isCommentRow) {
+                          onChange?.("comment_text", e.target.value);
+                        } else {
+                          // Allow free-text comment alongside rating
+                          onChange?.(`${field.key}_comment`, e.target.value);
+                        }
+                      }}
+                      placeholder={isCommentRow ? "Customer comment..." : "Notes..."}
+                      className={inputCls}
+                    />
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+
+          {/* ── Suggestions ──────────────────────────────── */}
           <tr>
             <LabelCell text="Any other suggestions for improvement" colSpan={10} />
           </tr>
           <tr>
-            <TextAreaCell field="suggestions" colSpan={10} placeholder="Write your suggestions here..." rows={3} />
+            <TextAreaCell field="suggestions" colSpan={10} placeholder="Please note that this is just for improving ourselves. So, please feel free and write your suggestions..." rows={3} />
           </tr>
 
-          {/* ── Row 12: Disclaimer ────────────────────────── */}
-          <tr>
-            <td colSpan={10} className="text-xs text-slate-500 dark:text-slate-400 px-2 py-1 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 italic">
-              Please note that this is just for improving ourselves, your feedback is valuable to us.
-            </td>
-          </tr>
-
-          {/* ── Row 13: Signature row ────────────────────── */}
+          {/* ── Signature rows ─────────────────────────────── */}
+          {/* DOCX: R13 — Signature of Distributors | Reviewed by */}
           <tr>
             <LabelCell text="Signature of Distributors with rubber stamp" colSpan={5} />
             <LabelCell text="Reviewed by — Sales Person / Authorised person" colSpan={5} />
           </tr>
           <tr>
-            <Cell field="distributor_signature" colSpan={5} placeholder="Signature" readonly />
-            <Cell field="reviewed_by" colSpan={5} placeholder="Name & Signature" readonly />
+            {/* Signature + stamp area */}
+            <td colSpan={5} className={cn(valueCls, "min-h-[3.5rem]")}>
+              {readonly ? (
+                <span className={!val(d, "distributor_signature") && "text-slate-300 dark:text-slate-600"}>
+                  {val(d, "distributor_signature") || ""}
+                </span>
+              ) : (
+                <input
+                  type="text"
+                  value={val(d, "distributor_signature")}
+                  onChange={e => onChange?.("distributor_signature", e.target.value)}
+                  placeholder="Signature & stamp"
+                  className={inputCls}
+                />
+              )}
+            </td>
+            {/* Reviewed by area */}
+            <td colSpan={5} className={cn(valueCls, "min-h-[3.5rem]")}>
+              {readonly ? (
+                <span className={!val(d, "reviewed_by") && "text-slate-300 dark:text-slate-600"}>
+                  {val(d, "reviewed_by") || ""}
+                </span>
+              ) : (
+                <input
+                  type="text"
+                  value={val(d, "reviewed_by")}
+                  onChange={e => onChange?.("reviewed_by", e.target.value)}
+                  placeholder="Name & signature"
+                  className={inputCls}
+                />
+              )}
+            </td>
           </tr>
 
-          {/* ── Row 14: For Office Use Only header ────────── */}
+          {/* ── Office Use Only ──────────────────────────── */}
           <tr>
-            <td colSpan={10} className={cn(headerCls, "text-center")}>For Office Use Only</td>
+            <td colSpan={10} className="bg-slate-100 dark:bg-slate-800 font-bold text-sm px-3 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-center">
+              For Office Use Only
+            </td>
           </tr>
 
-          {/* ── Row 15-17: Office use fields ──────────────── */}
           <tr>
-            <LabelCell text="Action proposed for future" colSpan={5} />
-            <Cell field="action_proposed" colSpan={5} placeholder="" />
+            <LabelCell text="Action proposed for future" colSpan={10} />
           </tr>
           <tr>
-            <LabelCell text="Corrective action reference" colSpan={5} />
-            <Cell field="corrective_action_ref" colSpan={5} placeholder="" />
+            <Cell field="action_proposed" colSpan={10} placeholder="Action proposed for future..." />
+          </tr>
+
+          <tr>
+            <LabelCell text="Corrective action reference" colSpan={10} />
           </tr>
           <tr>
-            <LabelCell text="Remarks" colSpan={5} />
-            <Cell field="remarks" colSpan={5} placeholder="" />
+            <Cell field="corrective_action_ref" colSpan={10} placeholder="Reference number..." />
+          </tr>
+
+          <tr>
+            <LabelCell text="Remarks" colSpan={10} />
+          </tr>
+          <tr>
+            <Cell field="remarks" colSpan={10} placeholder="Office remarks..." />
           </tr>
 
           {/* ── VEZLOO footer ────────────────────────────── */}
