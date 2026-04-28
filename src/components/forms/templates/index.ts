@@ -6,6 +6,9 @@
 
 import React from "react";
 import { F08Template } from "./F08Template";
+import { F09Template } from "./F09Template";
+import { F10Template } from "./F10Template";
+import { F50Template } from "./F50Template";
 
 export interface FormTemplateProps {
   data?: Record<string, unknown>;
@@ -19,6 +22,9 @@ type FormTemplateComponent = React.FC<FormTemplateProps>;
 
 const TEMPLATE_MAP: Record<string, FormTemplateComponent> = {
   "F/08": F08Template,
+  "F/09": F09Template,
+  "F/10": F10Template,
+  "F/50": F50Template,
   // Add more forms here as they're built
 };
 
@@ -30,4 +36,4 @@ export function getFormTemplateComponent(formCode: string): FormTemplateComponen
   return TEMPLATE_MAP[formCode] ?? null;
 }
 
-export { F08Template };
+export { F08Template, F09Template, F10Template, F50Template };
