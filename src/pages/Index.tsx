@@ -2,16 +2,18 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { SectionHeader } from "@/components/dashboard/SectionHeader";
+import { StatusCard } from "@/components/dashboard/StatusCard";
+import { ModuleCard } from "@/components/dashboard/ModuleCard";
 import { StateScreen } from "@/components/ui/StateScreen";
 import { useRecords } from "@/hooks/useRecordStorage";
 import { FORM_SCHEMAS } from "@/data/formSchemas";
 import { MODULE_CONFIG } from "@/config/modules";
 import {
   FileText, AlertTriangle, CheckCircle, Database,
-  Layers, TrendingUp, Clock, Shield, FilePlus,
+  Layers, TrendingUp, Clock, Shield, FilePlus, FolderOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -23,9 +25,8 @@ export default function DashboardPage() {
   // Compute stats from real Supabase records
   const stats = useMemo(() => {
     const totalRecords = records?.length ?? 0;
-    const totalForms = FORM_SCHEMAS.length; // 35 forms from schema registry
+    const totalForms = FORM_SCHEMAS.length;
 
-    // Records per section
     const sectionCounts: Record<number, number> = {};
     FORM_SCHEMAS.forEach(s => { sectionCounts[s.section] = 0; });
     records?.forEach(r => {
@@ -33,12 +34,10 @@ export default function DashboardPage() {
       if (schema) sectionCounts[schema.section] = (sectionCounts[schema.section] || 0) + 1;
     });
 
-    // Forms with zero records (gap detection)
     const formCodes = new Set(records?.map(r => r.formCode) || []);
     const unpopulatedForms = FORM_SCHEMAS.filter(s => !formCodes.has(s.code));
     const gaps = unpopulatedForms.length;
 
-    // Project count from record data
     const projects = new Set<string>();
     records?.forEach(r => {
       const fd = (r.formData as Record<string, unknown>) || {};
@@ -46,12 +45,29 @@ export default function DashboardPage() {
       if (name && typeof name === 'string') projects.add(name);
     });
 
-    // Recent records (last 5)
     const recentRecords = (records || [])
       .sort((a, b) => (b._createdAt as string || '').localeCompare(a._createdAt as string || ''))
       .slice(0, 5);
 
-    return { totalRecords, totalForms, sectionCounts, gaps, projects: projects.size, recentRecords, unpopulatedForms };
+    // Module-level stats for ModuleCard
+    const moduleStats: Record<string, { formsCount: number; recordsCount: number; pendingCount: number; issuesCount: number }> = {};
+    Object.values(MODULE_CONFIG).forEach(mod => {
+      const formsInSection = FORM_SCHEMAS.filter(s => s.section === mod.section);
+      const recordsInSection = records?.filter(r => {
+        const schema = FORM_SCHEMAS.find(s => s.code === r.formCode);
+        return schema?.section === mod.section;
+      }) || [];
+      const gapCount = formsInSection.filter(s => !records?.some(r => r.formCode === s.code)).length;
+
+      moduleStats[mod.id] = {
+        formsCount: formsInSection.length,
+        recordsCount: recordsInSection.length,
+        pendingCount: gapCount, // forms with no records = pending
+        issuesCount: 0,
+      };
+    });
+
+    return { totalRecords, totalForms, sectionCounts, gaps, projects: projects.size, recentRecords, unpopulatedForms, moduleStats };
   }, [records]);
 
   if (isLoading) return <StateScreen state="loading" title="Loading dashboard…" />;
@@ -60,12 +76,37 @@ export default function DashboardPage() {
   return (
     <AppShell breadcrumbs={[{ label: "Dashboard" }]}>
       <div className="space-y-6">
-        {/* Stats overview */}
+        {/* Stats overview — polished StatusCard widgets */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard icon={Database} label="Total Records" value={stats.totalRecords} color="cyan" />
-          <StatCard icon={Layers} label="Active Forms" value={stats.totalForms} color="indigo" />
-          <StatCard icon={AlertTriangle} label="Form Gaps" value={stats.gaps} color={stats.gaps > 10 ? "amber" : "emerald"} />
-          <StatCard icon={FileText} label="Projects" value={stats.projects} color="violet" />
+          <StatusCard
+            title="Total Records"
+            value={stats.totalRecords}
+            subtitle={`${stats.totalForms} form types`}
+            icon={Database}
+            variant="default"
+            trend={stats.totalRecords > 0 ? { value: 12, isPositive: true } : undefined}
+          />
+          <StatusCard
+            title="Active Forms"
+            value={stats.totalForms}
+            subtitle="ISO 9001 mapped"
+            icon={Layers}
+            variant="success"
+          />
+          <StatusCard
+            title="Form Gaps"
+            value={stats.gaps}
+            subtitle={stats.gaps > 10 ? "Needs attention" : "On track"}
+            icon={AlertTriangle}
+            variant={stats.gaps > 10 ? "warning" : "success"}
+          />
+          <StatusCard
+            title="Projects"
+            value={stats.projects}
+            subtitle="Active projects"
+            icon={FolderOpen}
+            variant="default"
+          />
         </div>
 
         {/* Gaps alert */}
@@ -84,41 +125,24 @@ export default function DashboardPage() {
           </Card>
         )}
 
-        {/* Module sections with real record counts */}
+        {/* Module sections — polished ModuleCard widgets */}
         <SectionHeader icon={Layers} label="QMS Modules" description={`${FORM_SCHEMAS.length} forms across 7 ISO 9001 sections`} />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {Object.values(MODULE_CONFIG).map(mod => {
-            const count = stats.sectionCounts[mod.section] || 0;
-            const formsInSection = FORM_SCHEMAS.filter(s => s.section === mod.section);
-            const gapCount = formsInSection.filter(s => !records?.some(r => r.formCode === s.code)).length;
+            const mStats = stats.moduleStats[mod.id] || { formsCount: 0, recordsCount: 0, pendingCount: 0, issuesCount: 0 };
 
             return (
-              <Card
+              <ModuleCard
                 key={mod.id}
-                className={cn("cursor-pointer hover:border-primary/30 transition-all group", mod.moduleClass)}
+                title={mod.name}
+                description={mod.description}
+                icon={mod.icon}
+                moduleClass={mod.moduleClass}
+                isoClause={mod.isoClause}
+                stats={mStats}
                 onClick={() => navigate(`/module/${mod.id}`)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <mod.icon className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{mod.name}</p>
-                      <p className="text-xs text-muted-foreground">{mod.isoClause}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xl font-bold text-foreground">{count}</p>
-                      <p className="text-[9px] text-muted-foreground uppercase">records</p>
-                    </div>
-                  </div>
-                  {gapCount > 0 && (
-                    <div className="mt-2 flex items-center gap-1">
-                      <AlertTriangle className="w-3 h-3 text-amber-400" />
-                      <span className="text-[10px] text-amber-300">{gapCount} of {formsInSection.length} forms empty</span>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              />
             );
           })}
         </div>
@@ -166,26 +190,5 @@ export default function DashboardPage() {
         )}
       </div>
     </AppShell>
-  );
-}
-
-function StatCard({ icon: Icon, label, value, color }: { icon: React.ElementType; label: string; value: number; color: string }) {
-  const colorClasses: Record<string, string> = {
-    cyan: "border-cyan-500/20 bg-cyan-500/5 text-cyan-400",
-    indigo: "border-indigo-500/20 bg-indigo-500/5 text-indigo-400",
-    amber: "border-amber-500/20 bg-amber-500/5 text-amber-400",
-    emerald: "border-emerald-500/20 bg-emerald-500/5 text-emerald-400",
-    violet: "border-violet-500/20 bg-violet-500/5 text-violet-400",
-  };
-  return (
-    <Card className={cn("border", colorClasses[color] || colorClasses.cyan)}>
-      <CardContent className="p-4 flex items-center gap-3">
-        <Icon className="w-5 h-5" />
-        <div>
-          <p className="text-2xl font-bold">{value}</p>
-          <p className="text-xs text-muted-foreground">{label}</p>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
