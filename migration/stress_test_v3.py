@@ -58,8 +58,8 @@ def ts(suffix):
     return f'F/99-{TEST_RUN}-{suffix}'
 
 # ── Auth ───────────────────────────────────────────────────────────────────
-admin_token = auth('ibnkhaled16@gmail.com', 'QMS2026!admin')
-manager_token = auth('akh.dev185@gmail.com', 'QMS2026!dev')
+admin_token = auth('ibnkhaled16@gmail.com', __import__("os").environ["QMS_ADMIN_PASSWORD"])
+manager_token = auth('akh.dev185@gmail.com', __import__("os").environ["QMS_MANAGER_PASSWORD"])
 
 print('=' * 70)
 print(f'QMS FORGE — STRESS & EDGE CASE TESTING (v3) — run {TEST_RUN}')
