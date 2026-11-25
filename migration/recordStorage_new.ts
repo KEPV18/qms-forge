@@ -6,6 +6,7 @@
 // No write without validation. No bypass paths.
 // ============================================================================
 
+import { DEFAULT_AUTHOR } from '../src/config/author';
 import { supabase } from '@/integrations/supabase/client';
 import { preWriteValidation } from './preWriteValidation';
 import { getFormSchema } from '../data/formSchemas';
@@ -278,7 +279,7 @@ export async function createRecord(formData: RecordData): Promise<StorageResult>
   const formSchema = getFormSchema(formCode);
   data.formName = formSchema?.name || '';
   data._createdAt = data._createdAt || new Date().toISOString();
-  data._createdBy = data._createdBy || 'akh.dev185@gmail.com';
+  data._createdBy = data._createdBy || DEFAULT_AUTHOR;
   data._lastModifiedAt = null;
   data._lastModifiedBy = null;
   data._editCount = 0;
@@ -367,7 +368,7 @@ export async function updateRecord(
     _createdAt: currentRecord._createdAt,
     _createdBy: currentRecord._createdBy,
     _lastModifiedAt: new Date().toISOString(),
-    _lastModifiedBy: 'akh.dev185@gmail.com',
+    _lastModifiedBy: DEFAULT_AUTHOR,
     _editCount: currentEditCount + 1,
     _modificationReason: modificationReason || null,
   };
@@ -477,7 +478,7 @@ export async function changeRecordStatus(
     }
 
     // Audit status change
-    appendAuditLog(serial, 'status_change', 'akh.dev185@gmail.com', ['status'], { status: previousStatus }, { status: newStatus }).catch(err => {
+    appendAuditLog(serial, 'status_change', DEFAULT_AUTHOR, ['status'], { status: previousStatus }, { status: newStatus }).catch(err => {
       console.error('[recordStorage] Status audit log failed (non-blocking):', err);
     });
 
