@@ -9,7 +9,7 @@ REST_URL = SUPABASE_URL + '/rest/v1'
 
 # Auth
 auth_url = SUPABASE_URL + '/auth/v1/token?grant_type=password'
-data = json.dumps({'email': 'ibnkhaled16@gmail.com', 'password': __import__("os").environ["QMS_ADMIN_PASSWORD"]}).encode()
+data = json.dumps({'email': __import__("os").environ["QMS_ADMIN_EMAIL"], 'password': __import__("os").environ["QMS_ADMIN_PASSWORD"]}).encode()
 req = urllib.request.Request(auth_url, data=data, headers={
     'apikey': PUBLISHABLE_KEY, 'Content-Type': 'application/json',
 }, method='POST')
