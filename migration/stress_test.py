@@ -48,8 +48,8 @@ def api(token, path, method='GET', body=None, anon=False):
     except Exception as e:
         return None, str(e)[:200]
 
-admin_token = auth('ibnkhaled16@gmail.com', 'QMS2026!admin')
-manager_token = auth('akh.dev185@gmail.com', 'QMS2026!dev')
+admin_token = auth('ibnkhaled16@gmail.com', __import__("os").environ["QMS_ADMIN_PASSWORD"])
+manager_token = auth('akh.dev185@gmail.com', __import__("os").environ["QMS_MANAGER_PASSWORD"])
 
 print('=' * 70)
 print('QMS FORGE — STRESS & EDGE CASE TESTING')
