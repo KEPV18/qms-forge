@@ -170,7 +170,7 @@ def main():
     # ── 3. RPC functions ──────────────────────────────────────────────
     print("\n3️⃣  RPC FUNCTIONS")
     
-    admin_token = auth_token("ibnkhaled16@gmail.com", "QMS2026!admin")
+    admin_token = auth_token("ibnkhaled16@gmail.com", __import__("os").environ["QMS_ADMIN_PASSWORD"])
     
     # has_role
     result, err = rpc_call(admin_token, "has_role", {"required_role": "admin"})
