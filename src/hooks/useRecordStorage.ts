@@ -4,6 +4,7 @@
 // Hooks provide loading states, error handling, cache invalidation.
 // ============================================================================
 
+import { DEFAULT_AUTHOR } from '../config/author';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
@@ -80,7 +81,7 @@ export function useCreateRecord() {
       const optimisticRecord: RecordData = {
         ...newData,
         _createdAt: newData._createdAt || new Date().toISOString(),
-        _createdBy: newData._createdBy || 'akh.dev185@gmail.com',
+        _createdBy: newData._createdBy || DEFAULT_AUTHOR,
         _editCount: 0,
         _lastModifiedAt: null,
         _lastModifiedBy: null,
@@ -158,7 +159,7 @@ export function useUpdateRecord() {
           // Bump tracking
           _editCount: (previousRecord._editCount || 0) + 1,
           _lastModifiedAt: new Date().toISOString(),
-          _lastModifiedBy: 'akh.dev185@gmail.com',
+          _lastModifiedBy: DEFAULT_AUTHOR,
         };
         queryClient.setQueryData(RECORD_KEYS.bySerial(serial), optimisticRecord);
       }
