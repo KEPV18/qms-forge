@@ -61,7 +61,7 @@ async function method1() {
 // ═══════════════════════════════════════════════════════
 async function method2() {
   // Download original F/19 template
-  execSync(`gog drive download "1wgE4dRyRjL4hYHdc79kTsLmh6q1rjeh0" --account ibnkhaled16@gmail.com --output "${DIR}/F19-template.docx" 2>/dev/null`);
+  execSync(`gog drive download "1wgE4dRyRjL4hYHdc79kTsLmh6q1rjeh0" --account ${process.env.GOG_ACCOUNT} --output "${DIR}/F19-template.docx" 2>/dev/null`);
 
   const zip = new AdmZip(`${DIR}/F19-template.docx`);
   const entry = zip.getEntry("word/document.xml");
@@ -108,7 +108,7 @@ async function method2() {
 // ═══════════════════════════════════════════════════════
 async function method3() {
   // Download original
-  execSync(`gog drive download "1wgE4dRyRjL4hYHdc79kTsLmh6q1rjeh0" --account ibnkhaled16@gmail.com --output "${DIR}/F19-template-3.docx" 2>/dev/null`);
+  execSync(`gog drive download "1wgE4dRyRjL4hYHdc79kTsLmh6q1rjeh0" --account ${process.env.GOG_ACCOUNT} --output "${DIR}/F19-template-3.docx" 2>/dev/null`);
 
   const zip = new AdmZip(`${DIR}/F19-template-3.docx`);
   const entry = zip.getEntry("word/document.xml");
@@ -154,15 +154,15 @@ async function method3() {
 // ═══════════════════════════════════════════════════════
 async function method4() {
   // Step 1: Copy template to a new Google Doc
-  const copyResult = execSync(`gog drive copy "1wgE4dRyRjL4hYHdc79kTsLmh6q1rjeh0" "WAY4-gdoc-${RECORD_NAME}" --account ibnkhaled16@gmail.com --json 2>/dev/null`, { encoding: "utf-8" });
+  const copyResult = execSync(`gog drive copy "1wgE4dRyRjL4hYHdc79kTsLmh6q1rjeh0" "WAY4-gdoc-${RECORD_NAME}" --account ${process.env.GOG_ACCOUNT} --json 2>/dev/null`, { encoding: "utf-8" });
   const fileId = JSON.parse(copyResult).file.id;
   console.log(`  Created Google Doc: ${fileId}`);
 
   // Step 2: Download as docx (Google converts it)
-  execSync(`gog drive download "${fileId}" --account ibnkhaled16@gmail.com --output "${DIR}/WAY4-gdoc-${RECORD_NAME}.docx" 2>/dev/null`);
+  execSync(`gog drive download "${fileId}" --account ${process.env.GOG_ACCOUNT} --output "${DIR}/WAY4-gdoc-${RECORD_NAME}.docx" 2>/dev/null`);
 
   // Step 3: Clean up the Google Doc
-  execSync(`gog drive delete "${fileId}" --account ibnkhaled16@gmail.com --force 2>/dev/null`);
+  execSync(`gog drive delete "${fileId}" --account ${process.env.GOG_ACCOUNT} --force 2>/dev/null`);
 
   console.log("✅ Way 4: Google Docs copy & download");
 }
@@ -173,7 +173,7 @@ async function method4() {
 async function method5() {
   // Just download the original and rename - no modifications
   // The user fills data manually
-  execSync(`gog drive download "1wgE4dRyRjL4hYHdc79kTsLmh6q1rjeh0" --account ibnkhaled16@gmail.com --output "${DIR}/WAY5-original-${RECORD_NAME}.docx" 2>/dev/null`);
+  execSync(`gog drive download "1wgE4dRyRjL4hYHdc79kTsLmh6q1rjeh0" --account ${process.env.GOG_ACCOUNT} --output "${DIR}/WAY5-original-${RECORD_NAME}.docx" 2>/dev/null`);
   console.log("✅ Way 5: original template - no modifications (user fills manually)");
 }
 
