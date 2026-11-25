@@ -46,8 +46,8 @@ def api(token, path, method='GET', body=None, prefer_rep=False):
         err_body = e.read().decode()[:300]
         return None, f'HTTP {e.code}: {err_body}', e.code
 
-admin_token = auth('ibnkhaled16@gmail.com', __import__("os").environ["QMS_ADMIN_PASSWORD"])
-manager_token = auth('akh.dev185@gmail.com', __import__("os").environ["QMS_MANAGER_PASSWORD"])
+admin_token = auth(__import__("os").environ["QMS_ADMIN_EMAIL"], __import__("os").environ["QMS_ADMIN_PASSWORD"])
+manager_token = auth(__import__("os").environ["QMS_MANAGER_EMAIL"], __import__("os").environ["QMS_MANAGER_PASSWORD"])
 
 print('=' * 70)
 print('QMS FORGE — STRESS & EDGE CASE TESTING (v2)')
