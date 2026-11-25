@@ -1,73 +1,30 @@
-# Welcome to QMS Platform
+# QMS Forge
 
-## Project info
+An ISO 9001 record management web app, built with AI-assisted development. Prototype under active iteration.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+Live app: https://qms-forge.vercel.app
 
-## How can I edit this code?
+## What it covers
 
-There are several ways of editing your application.
+Pages in `src/pages` include records (create, list, view), forms and a forms registry, procedures, the ISO manual, CAPA register, risk register, process interaction map, audit, activity log, notifications, projects and an admin panel.
 
-**Use QMS Platform**
+## Tech stack
 
-Simply visit the QMS Platform and start prompting.
+- React 18, TypeScript, Vite, Tailwind CSS
+- TanStack Query, React Router, Recharts, Zod
+- Supabase
+- Small Express server (`server/`)
+- Deployed on Vercel
 
-Changes made via Lovable will be committed automatically to this repo.
+## Run locally
 
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Copy `.env.example` to `.env` and use your own values.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Status
 
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Prototype. Parts of the code were generated or edited with AI tools (Lovable and others) and then adjusted by hand. Example documents in the repository are working copies for development.
