@@ -17,9 +17,9 @@ const { createClient } = require('@supabase/supabase-js');
 const SUPABASE_URL = 'https://iouuikteroixnsqazznc.supabase.co';
 const ANON_KEY     = 'sb_publishable_-9nZ5bjWkfV8_AFSSA3Qdg_LAMr8NxJ';
 const SERVICE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const ADMIN_EMAIL    = 'ibnkhaled16@gmail.com';
+const ADMIN_EMAIL    = process.env.QMS_ADMIN_EMAIL;
 const ADMIN_PASSWORD = process.env.QMS_ADMIN_PASSWORD;
-const MANAGER_EMAIL  = 'akh.dev185@gmail.com';
+const MANAGER_EMAIL  = process.env.QMS_MANAGER_EMAIL;
 const MANAGER_PASSWORD = process.env.QMS_MANAGER_PASSWORD;
 
 const svc = createClient(SUPABASE_URL, SERVICE_KEY);
