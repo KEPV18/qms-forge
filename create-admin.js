@@ -16,7 +16,7 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
 
 async function createAdmin() {
   const email = 'admin@test.com'
-  const password = 'Admin123456'
+  const password = process.env.QMS_ADMIN_PASSWORD
 
   const { data: existingRole } = await supabase
     .from('user_roles')
