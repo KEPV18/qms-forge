@@ -89,7 +89,7 @@ def main():
     print("QMS FORGE — PHASE F: VALIDATION (v2)")
     print("=" * 70)
 
-    admin_token = auth_token("ibnkhaled16@gmail.com", __import__("os").environ["QMS_ADMIN_PASSWORD"])
+    admin_token = auth_token(__import__("os").environ["QMS_ADMIN_EMAIL"], __import__("os").environ["QMS_ADMIN_PASSWORD"])
 
     # ── 1. Schema verification ──────────────────────────────────────────
     print("\n1️⃣  SCHEMA VERIFICATION")
