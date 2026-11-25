@@ -3,6 +3,7 @@
 // Tests: Zod validation, serial generation, duplicate detection, serialization
 // ============================================================================
 
+import { DEFAULT_AUTHOR } from '../../config/author';
 import { describe, it, expect, beforeEach } from 'vitest';
 
 // ============================================================================
@@ -134,7 +135,7 @@ describe('preWriteValidation', () => {
       const result = preWriteValidation('F/12', validF12(), 'create');
       expect(result.valid).toBe(true);
       if (result.sanitizedData) {
-        expect(result.sanitizedData._createdBy).toBe('akh.dev185@gmail.com');
+        expect(result.sanitizedData._createdBy).toBe(DEFAULT_AUTHOR);
       }
     });
   });
