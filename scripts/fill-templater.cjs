@@ -7,7 +7,7 @@ const DIR = "/tmp/batfast-templater";
 fs.mkdirSync(DIR, { recursive: true });
 
 function download(id, name) {
-  execSync(`gog drive download "${id}" --account ibnkhaled16@gmail.com --output "${DIR}/${name}" 2>/dev/null`);
+  execSync(`gog drive download "${id}" --account ${process.env.GOG_ACCOUNT} --output "${DIR}/${name}" 2>/dev/null`);
   console.log(`📥 ${name}`);
 }
 
