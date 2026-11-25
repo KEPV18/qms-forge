@@ -80,8 +80,8 @@ def rpc(token, fn_name, params):
         return None, f'HTTP {e.code}: {e.read().decode()[:300]}'
 
 # ── Auth ───────────────────────────────────────────────────────────────────
-admin_token = auth('ibnkhaled16@gmail.com', 'QMS2026!admin')
-manager_token = auth('akh.dev185@gmail.com', 'QMS2026!dev')
+admin_token = auth('ibnkhaled16@gmail.com', __import__("os").environ["QMS_ADMIN_PASSWORD"])
+manager_token = auth('akh.dev185@gmail.com', __import__("os").environ["QMS_MANAGER_PASSWORD"])
 
 print('=' * 70)
 print(f'QMS FORGE — RESILIENCE VALIDATION — run {RUN_TS}')
