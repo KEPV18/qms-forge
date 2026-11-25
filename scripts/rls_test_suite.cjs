@@ -16,7 +16,7 @@ const { createClient } = require('@supabase/supabase-js');
 
 const SUPABASE_URL = 'https://iouuikteroixnsqazznc.supabase.co';
 const ANON_KEY     = 'sb_publishable_-9nZ5bjWkfV8_AFSSA3Qdg_LAMr8NxJ';
-const SERVICE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlvdXVpa3Rlcm9peG5zcWF6em5jIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDg2ODc2MCwiZXhwIjoyMDkwNDQ0NzYwfQ.JuLDMQIh97T9wwuZEybXfVXn2e145tME81a1eo8khP8';
+const SERVICE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const ADMIN_EMAIL    = 'ibnkhaled16@gmail.com';
 const ADMIN_PASSWORD = 'QMS2026!admin';
 const MANAGER_EMAIL  = 'akh.dev185@gmail.com';
