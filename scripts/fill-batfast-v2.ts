@@ -9,7 +9,7 @@ fs.mkdirSync(DIR, { recursive: true });
 // Download function using gog
 async function download(fileId, name) {
   const { execSync } = await import("child_process");
-  execSync(`gog drive download "${fileId}" --account ibnkhaled16@gmail.com --output "${DIR}/${name}" 2>/dev/null`, { stdio: "pipe" });
+  execSync(`gog drive download "${fileId}" --account ${process.env.GOG_ACCOUNT} --output "${DIR}/${name}" 2>/dev/null`, { stdio: "pipe" });
   console.log(`📥 Downloaded: ${name}`);
 }
 
