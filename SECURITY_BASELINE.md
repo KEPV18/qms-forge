@@ -24,9 +24,9 @@
 
 | User ID | Email | Role | Access Level |
 |---|---|---|---|
-| `c634003e-7507-4315-8f73-bc2bb96c4673` | ibnkhaled16@gmail.com | admin | Full CRUD on all gated tables |
-| `a90d6520-d6d3-4f89-8624-0e35bb33bb32` | akh.dev185@gmail.com | manager | Full CRUD on all gated tables |
-| `eabcebc3-34c1-4d1b-bcd2-7ba5edfc50ae` | vezlooteam@gmail.com | manager | Full CRUD on all gated tables |
+| `<user-id>` | admin@example.com | admin | Full CRUD on all gated tables |
+| `<user-id>` | manager@example.com | manager | Full CRUD on all gated tables |
+| `<user-id>` | team@example.com | manager | Full CRUD on all gated tables |
 
 ---
 
