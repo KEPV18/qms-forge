@@ -4,6 +4,7 @@
 // Even if the UI passed validation, this layer re-validates before writing.
 // ============================================================================
 
+import { DEFAULT_AUTHOR } from '../config/author';
 import { validateFormData, FORM_ZOD_SCHEMAS } from '../schemas/formValidation';
 import type { RecordData } from '../components/forms/DynamicFormRenderer';
 
@@ -207,7 +208,7 @@ export function preWriteValidation(
       validatedData._createdAt = new Date().toISOString();
     }
     if (!validatedData._createdBy) {
-      validatedData._createdBy = 'akh.dev185@gmail.com';
+      validatedData._createdBy = DEFAULT_AUTHOR;
     }
   }
 
